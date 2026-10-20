@@ -278,10 +278,130 @@ const CS = {
     'Ett semikolon efter if (...) gör if-satsen tom. Blocket nedanför körs då alltid.',
     { text: 'if utan semikolon:', example: 'int x = 5;\nif (x > 3)\n{\n    Console.WriteLine("stort");\n}' },
   ],
-  linq: () => [
-    'Hur skulle du räkna ut värdet för hand, ett element i taget?',
-    'Kodstigs motor har inte LINQ. Använd en loop och en variabel som samlar upp resultatet.',
-    { text: 'Summa med loop:', example: 'int[] tal = {2, 4, 6};\nint summa = 0;\nforeach (int t in tal)\n{\n    summa += t;\n}\nConsole.WriteLine(summa);' },
+  linq: (c) => [
+    `Vilken sorts värden går LINQ-metoden igenom på ${L(c.line)}?`,
+    'Sum, Average, Max och Min räknar på tal. Om listan innehåller objekt väljer du talet med en lambda, och ThenBy måste komma direkt efter OrderBy.',
+    { text: 'Välj ett tal med en lambda:', example: 'var priser = new List<int> { 30, 12, 45 };\nConsole.WriteLine(priser.Sum());\nConsole.WriteLine(priser.Where(p => p > 20).Max());' },
+  ],
+  'linq-tolist': (c) => [
+    `Vad returnerar LINQ-anropet på ${L(c.line)}: en lista eller en sekvens?`,
+    'Where, Select och OrderBy ger en sekvens (IEnumerable). Lägg till .ToList() eller .ToArray() när du behöver en riktig lista.',
+    { text: 'Gör om till en lista:', example: 'var tal = new List<int> { 1, 2, 3, 4 };\nList<int> jämna = tal.Where(t => t % 2 == 0).ToList();\nConsole.WriteLine(jämna[0]);' },
+  ],
+  'linq-count': (c) => [
+    `Står det parenteser efter Count på ${L(c.line)}?`,
+    'En List har egenskapen Count, men ett LINQ-resultat har metoden Count(). Skriv Count() eller gör om till en lista först.',
+    { text: 'Count() på en sekvens:', example: 'var tal = new List<int> { 5, 8, 2 };\nConsole.WriteLine(tal.Where(t => t > 3).Count());' },
+  ],
+  'empty-seq': (c) => [
+    `Kan samlingen vara tom, eller sakna ett matchande element, på ${L(c.line)}?`,
+    'First, Max och Average kräver minst ett element. Använd FirstOrDefault, eller kontrollera med Any() först.',
+    { text: 'Kontrollera först:', example: 'var tal = new List<int>();\nif (tal.Any())\n{\n    Console.WriteLine(tal.Max());\n}\nelse\n{\n    Console.WriteLine("tom lista");\n}' },
+  ],
+  'sort-objects': () => [
+    'Vad ska objekten sorteras efter?',
+    'C# vet inte hur två egna objekt ska jämföras. Säg vilket fält som avgör med OrderBy(x => x.Fält).',
+    { text: 'Sortera efter ett fält:', example: 'var ord = new List<string> { "kiwi", "äpple", "fikon" };\nforeach (var o in ord.OrderBy(o => o.Length))\n{\n    Console.WriteLine(o);\n}' },
+  ],
+  thrown: (c) => [
+    `Vilket undantag kastades, och vilken rad skickade det vidare${c.line ? ` (${L(c.line)})` : ''}?`,
+    'Ett undantag som ingen fångar stoppar programmet. Lägg koden som kan misslyckas i try och hantera felet i catch.',
+    { text: 'Fånga undantaget:', example: 'try\n{\n    throw new InvalidOperationException("Något gick fel");\n}\ncatch (InvalidOperationException fel)\n{\n    Console.WriteLine("Fångade: " + fel.Message);\n}' },
+  ],
+  throw: (c) => [
+    `Vad står efter throw på ${L(c.line)}?`,
+    'Efter throw skapar du ett undantagsobjekt med new, till exempel throw new ArgumentException("meddelande");',
+    { text: 'Kasta och fånga:', example: 'try\n{\n    throw new ArgumentException("ogiltigt värde");\n}\ncatch (ArgumentException e)\n{\n    Console.WriteLine(e.Message);\n}' },
+  ],
+  'key-not-found': (c) => [
+    `Finns nyckeln som läses på ${L(c.line)} verkligen i Dictionary?`,
+    'Att läsa en nyckel som saknas ger KeyNotFoundException. Kontrollera med ContainsKey eller använd TryGetValue.',
+    { text: 'Läs säkert:', example: 'var ålder = new Dictionary<string, int> { ["Ada"] = 36 };\nif (ålder.TryGetValue("Bo", out int å))\n{\n    Console.WriteLine(å);\n}\nelse\n{\n    Console.WriteLine("Bo saknas");\n}' },
+  ],
+  'dup-key': (c) => [
+    `Finns nyckeln redan när Add körs på ${L(c.line)}?`,
+    'Add lägger bara till nya nycklar. Använd dict[nyckel] = värde för att ändra ett befintligt värde.',
+    { text: 'Ändra med index:', example: 'var lager = new Dictionary<string, int>();\nlager.Add("äpple", 1);\nlager["äpple"] = 5;\nConsole.WriteLine(lager["äpple"]);' },
+  ],
+  access: (c) => [
+    `Är medlemmen som används på ${L(c.line)} private?`,
+    'private betyder att bara koden inuti klassen får använda medlemmen. Gör den public, eller lägg till en public metod eller egenskap som visar värdet.',
+    { text: 'Privat fält, publik egenskap:', example: 'class Konto\n{\n    private int saldo = 100;\n    public int Saldo => saldo;\n}\n\nConsole.WriteLine(new Konto().Saldo);' },
+  ],
+  'static-instance': (c) => [
+    `Anropas en vanlig (icke-static) medlem från en static metod på ${L(c.line)}?`,
+    'En static metod hör till klassen, inte till ett objekt. Gör den anropade metoden static, eller skapa ett objekt med new först.',
+    { text: 'Static anropar static:', example: 'class Program\n{\n    static void Main()\n    {\n        Console.WriteLine(Dubbla(4));\n    }\n\n    static int Dubbla(int x) => x * 2;\n}' },
+  ],
+  'static-member': (c) => [
+    `Används klassnamnet eller ett objekt framför punkten på ${L(c.line)}?`,
+    'Static medlemmar nås via klassnamnet (Räknare.Antal). Vanliga medlemmar nås via ett objekt (r.Namn).',
+    { text: 'Static via klassen:', example: 'class Räknare\n{\n    public static int Antal = 0;\n}\n\nRäknare.Antal++;\nConsole.WriteLine(Räknare.Antal);' },
+  ],
+  'abstract-new': (c) => [
+    `Är klassen som skapas på ${L(c.line)} abstract eller ett interface?`,
+    'En abstract klass eller ett interface är en ritning för andra klasser. Skapa ett objekt av en klass som ärver eller implementerar den.',
+    { text: 'Skapa subklassen:', example: 'abstract class Form\n{\n    public abstract double Area();\n}\n\nclass Kvadrat : Form\n{\n    public override double Area() => 4;\n}\n\nForm f = new Kvadrat();\nConsole.WriteLine(f.Area());' },
+  ],
+  'abstract-missing': (c) => [
+    `Vilka abstrakta metoder eller interface-metoder saknas i klassen${c.line ? ` på ${L(c.line)}` : ''}?`,
+    'En klass som ärver från en abstract klass, eller implementerar ett interface, måste skriva alla dess metoder. Abstrakta metoder kräver override.',
+    { text: 'Implementera interfacet:', example: 'interface IHälsa\n{\n    string Hälsa();\n}\n\nclass Robot : IHälsa\n{\n    public string Hälsa() => "Bip!";\n}\n\nConsole.WriteLine(new Robot().Hälsa());' },
+  ],
+  override: (c) => [
+    `Är metoden i basklassen markerad med virtual eller abstract (${L(c.line)})?`,
+    'Bara virtual- och abstract-metoder kan skrivas över med override, och signaturen måste vara likadan.',
+    { text: 'virtual och override:', example: 'class Djur\n{\n    public virtual string Ljud() => "...";\n}\n\nclass Katt : Djur\n{\n    public override string Ljud() => "mjau";\n}\n\nDjur d = new Katt();\nConsole.WriteLine(d.Ljud());' },
+  ],
+  'override-missing': (c) => [
+    `Har metoden på ${L(c.line)} samma namn som en metod i basklassen?`,
+    'När en subklass skriver om en metod från basklassen ska du skriva override, annars används inte den nya versionen via basklassen.',
+    { text: 'Lägg till override:', example: 'class Djur\n{\n    public virtual string Ljud() => "...";\n}\n\nclass Hund : Djur\n{\n    public override string Ljud() => "voff";\n}\n\nConsole.WriteLine(new Hund().Ljud());' },
+  ],
+  'tostring-override': (c) => [
+    `Hur är ToString deklarerad på ${L(c.line)}?`,
+    'ToString finns redan i alla klasser. Skriv public override string ToString() för att bestämma hur objektet skrivs ut.',
+    { text: 'Egen ToString:', example: 'class Punkt\n{\n    public int X = 2, Y = 3;\n    public override string ToString() => $"({X}, {Y})";\n}\n\nConsole.WriteLine(new Punkt());' },
+  ],
+  'no-ctor': (c) => [
+    `Vilka parametrar tar konstruktorn som anropas på ${L(c.line)}?`,
+    'Argumenten i new Klass(...) måste passa en konstruktor. Har klassen en egen konstruktor försvinner den tomma automatiskt.',
+    { text: 'Konstruktor med parameter:', example: 'class Hund\n{\n    public string Namn;\n    public Hund(string namn) { Namn = namn; }\n}\n\nConsole.WriteLine(new Hund("Rex").Namn);' },
+  ],
+  'base-ctor': (c) => [
+    `Får basklassens konstruktor de värden den behöver (${L(c.line)})?`,
+    'Om basklassen bara har en konstruktor med parametrar måste subklassen skicka vidare dem med : base(...).',
+    { text: 'Skicka vidare med base:', example: 'class Djur\n{\n    public string Namn;\n    public Djur(string namn) { Namn = namn; }\n}\n\nclass Hund : Djur\n{\n    public Hund(string namn) : base(namn) { }\n}\n\nConsole.WriteLine(new Hund("Rex").Namn);' },
+  ],
+  readonly: (c) => [
+    `Försöker ${L(c.line)} ändra något som bara får sättas en gång?`,
+    'readonly-fält och egenskaper utan set kan bara få värde i konstruktorn. Lägg till set; eller ändra värdet via en metod i klassen.',
+    { text: 'Egenskap med privat set:', example: 'class Konto\n{\n    public int Saldo { get; private set; }\n    public void SättIn(int b) { Saldo += b; }\n}\n\nvar k = new Konto();\nk.SättIn(50);\nConsole.WriteLine(k.Saldo);' },
+  ],
+  'switch-break': (c) => [
+    `Hur slutar varje case före ${L(c.line)}?`,
+    'I C# får ett case inte "falla igenom" till nästa. Avsluta varje case med break; eller return.',
+    { text: 'break efter varje case:', example: 'int dag = 2;\nswitch (dag)\n{\n    case 1:\n        Console.WriteLine("måndag");\n        break;\n    case 2:\n        Console.WriteLine("tisdag");\n        break;\n    default:\n        Console.WriteLine("annan dag");\n        break;\n}' },
+  ],
+  'modified-in-foreach': (c) => [
+    `Ändras listan inuti foreach-loopen på ${L(c.line)}?`,
+    'En samling får inte ändras medan foreach går igenom den. Använd RemoveAll, en for-loop baklänges, eller bygg en ny lista.',
+    { text: 'Ta bort med RemoveAll:', example: 'var tal = new List<int> { 1, 2, 3, 4 };\ntal.RemoveAll(t => t % 2 == 0);\nConsole.WriteLine(string.Join(", ", tal));' },
+  ],
+  null: (c) => [
+    `Vilket värde är null på ${L(c.line)}?`,
+    'Ett objekt måste skapas med new innan du läser dess fält eller anropar dess metoder. Kontrollera med if (x != null) när det kan saknas.',
+    { text: 'Skapa objektet först:', example: 'var namn = new List<string>();\nnamn.Add("Ada");\nConsole.WriteLine(namn.Count);' },
+  ],
+  recursion: () => [
+    'Vilket fall gör att metoden slutar anropa sig själv?',
+    'En rekursiv metod behöver ett basfall som returnerar direkt, och varje anrop måste komma närmare basfallet.',
+    { text: 'Rekursion med basfall:', example: 'static int Fakultet(int n)\n{\n    if (n <= 1) return 1;\n    return n * Fakultet(n - 1);\n}\n\nConsole.WriteLine(Fakultet(5));' },
+  ],
+  format: (c) => [
+    `Vilken text försöker ${L(c.line)} göra om till ett tal?`,
+    'int.Parse kraschar om texten inte är ett tal. int.TryParse returnerar false i stället och låter programmet fortsätta.',
+    { text: 'TryParse:', example: 'if (int.TryParse("12a", out int tal))\n{\n    Console.WriteLine(tal);\n}\nelse\n{\n    Console.WriteLine("inte ett tal");\n}' },
   ],
   'array-add': () => [
     'Behöver samlingen kunna växa?',

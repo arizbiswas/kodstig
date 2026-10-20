@@ -92,7 +92,7 @@ Elevens kod körs aldrig med `eval`. Python och C# tolkas av två egna, förenkl
 Tolkarna har tydliga gränser, och det står i appen under **Vad klarar Kodlabbet?**:
 
 - **Python:** variabler, if/elif/else, while/for, range, funktioner, rekursion, listor, ordlistor, tupler, mängder, listbyggare, lambda och `sorted(key=...)`, klasser med arv och `super()`, `try/except/else/finally` och `raise`, strängmetoder och f-strängar. Följande saknas: `import`, `with`, `*args`, filer och `input()`.
-- **C#:** toppnivåsatser eller `class Program` med `Main`, statiska metoder, int/double/bool/string/char, arrayer, `List<T>`, stränginterpolation med format, `Math`, `int.Parse` och vanliga strängmetoder. Följande saknas: egna klasser/objekt, LINQ, `Console.ReadLine`, generics utöver List.
+- **C#:** toppnivåsatser eller `class Program` med `Main`, metoder med standardvärden, int/double/bool/string/char, arrayer, `List<T>`, `Dictionary<K,V>`, egna klasser med fält, egenskaper, konstruktorer, arv, `abstract`/`virtual`/`override` och interface, `try`/`catch`/`finally`/`throw`, `switch`, lambdas och vanliga LINQ-metoder (`Where`, `Select`, `OrderBy`, `Sum`, `Count`, `Any`, `First` med flera), `out` med `TryParse`/`TryGetValue`, stränginterpolation med format och `Math`. Följande saknas: `Console.ReadLine`, egna generiska typer, `struct`, `record`, `async`, switch-uttryck och namespaces utöver det enklaste.
 
 Felmeddelandena är på svenska och pekar på raden. **Fastnat? Få en ledtråd** ger tre steg (en fråga, en förklaring och ett exempel). Ledtrådarna börjar om när koden ändras.
 
