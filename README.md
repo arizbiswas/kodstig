@@ -25,6 +25,12 @@ npm run test:e2e   # webbläsartester (kräver npm run build först och Chromium
 
 Utan konfiguration startar appen direkt i läget **Fortsätt utan konto**. Framstegen sparas då bara i webbläsaren, och det står tydligt i appen. Inloggningsknappen talar ärligt om att inloggning inte är konfigurerad. Den låtsas aldrig skapa ett konto.
 
+## Publicerad version
+
+Appen publiceras automatiskt på GitHub Pages varje gång `main` uppdateras (se `.github/workflows/pages.yml`): https://arizbiswas.github.io/kodstig/
+
+Bygger du för en annan sökväg sätter du `BASE_PATH`, till exempel `BASE_PATH=/kodstig/ npm run build`.
+
 ## Konton med Supabase (Google-inloggning)
 
 Kodstig använder [Supabase](https://supabase.com) för riktig inloggning, både med Google och med e-postlänk. Supabase har en gratisnivå.
