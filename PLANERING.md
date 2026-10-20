@@ -5,11 +5,11 @@ Utgår från rapporten "Kodstig jämfört med Mimo och andra kodappar" (20 oktob
 ## Fas 0: Avstämning
 - [x] Gå igenom rapportens 14 kritikpunkter och 16 förslag mot appen som den är nu och bocka av det som redan är gjort. Se [Avstämning](#avstämning-20-oktober-2026) längst ner.
 
-## Fas 1: Snabba vinster
-- [ ] Ledtrådar steg för steg (trappan från Kodlabbet) i alla lektionsövningar (2)
-- [ ] Rad med kodtecken ovanför mobilens tangentbord (4)
-- [ ] Förklaring till varje fel svar i alla flervalsfrågor (5)
-- [ ] Korta stegrubriker i kodexemplen (16)
+## Fas 1: Snabba vinster (klar 20 oktober 2026)
+- [x] Ledtrådar steg för steg (trappan från Kodlabbet) i alla lektionsövningar (2)
+- [x] Rad med kodtecken ovanför mobilens tangentbord (4)
+- [x] Förklaring till varje fel svar i alla flervalsfrågor (5)
+- [x] Korta stegrubriker i kodexemplen (16)
 
 ## Fas 2: Daglig repetition
 - [ ] Repetitionskö per begrepp: fel och gamla begrepp kommer tillbaka efter 1, 3, 7 och 14 dagar i ett kort dagligt pass. Ersätter repetitionsbonusen (1)
@@ -32,7 +32,7 @@ Utgår från rapporten "Kodstig jämfört med Mimo och andra kodappar" (20 oktob
 - [ ] Anonym statistik över var elever fastnar (14). Bara om zira säger ja
 
 ## Beslut för zira
-- [ ] Målgrupp: tonåringar 12–16 eller vuxna (11). Behövs före fas 4.
+- [x] Målgrupp (11): **alla åldrar** (zira, 20 oktober 2026). Det betyder: enkelt språk som fungerar för både tonåringar och vuxna, projekt som lockar båda (spel och praktiska verktyg), och teman som Minecraft som ett val, inte appens grundidentitet. Allt som rör konton och delning ska fungera för elever under 13 år (GDPR), till exempel utan krav på att visa namn eller e-post för andra.
 
 ## Behålls hela tiden
 Inga hjärtan eller energi, ingen betalvägg, inga globala topplistor, lokalt först utan spårning, svenska felmeddelanden och testrättning med gränsfall.
@@ -53,16 +53,16 @@ Läget efter läroplansutbyggnaden samma dag (commit 1af57c5): 130 lektioner, 72
 | 1 | Innehållet tar slut för tidigt | **Till stor del åtgärdat.** Python har nu undantag, klasser, samlingar, algoritmer och slutprojekt. C# har undantag, egna klasser, arv, interface, Dictionary, LINQ och slutprojekt. Kvar: `input()`/`ReadLine`, `import`, filer och JavaScript (fas 4). |
 | 2 | För få övningar per begrepp | **Delvis åtgärdat.** 5,6 övningar per lektion (var 3,7). Flerval är 28 % (var 41 %), skriv kod och hitta felet är 45 %. |
 | 3 | Ingen repetition som fungerar | Kvar (fas 2). |
-| 4 | Svag återkoppling i flerval | **Delvis.** 98 av 206 flervalsfrågor förklarar varje fel svar (var 5 av 109). Alla nya frågor har det, de gamla saknar (fas 1). |
-| 5 | Ledtrådstrappan bara i Kodlabbet | Kvar (fas 1). |
-| 6 | Jobbigt att skriva kod i mobilen | Kvar (fas 1). |
+| 4 | Svag återkoppling i flerval | **Åtgärdat i fas 1.** Alla 206 flervalsfrågor förklarar varje fel svar, och ett test kräver det för nya frågor. |
+| 5 | Ledtrådstrappan bara i Kodlabbet | **Åtgärdat i fas 1.** Alla lektionsövningar har trappan, lösningen först efter två försök. |
+| 6 | Jobbigt att skriva kod i mobilen | **Delvis åtgärdat i fas 1.** Rad med kodtecken på pekskärm. Ordningspussel kommer i fas 3. |
 | 7 | Ingen väg ut ur appen | Kvar (fas 4). |
 | 8 | Egna tolkar kan lära ut fel saker | **Delvis.** Tolkarna klarar mycket mer nu och skillnaderna står i Kodlabbet och README. Byte till Pyodide är inte planerat. |
 | 9 | Milo når få och är osäker | Kvar (fas 5). |
 | 10 | Strikt linjär stig utan nivåtest | Kvar (fas 3). |
 | 11 | Mycket korta lektionstexter | **Delvis.** Snitt 361 tecken (var 221), fortsättningskapitlen har längre texter. Stegrubriker kvar (fas 1). |
 | 12 | Ingen social del | Kvar (fas 5). |
-| 13 | Profilen spretar | Beslut för zira (målgrupp). |
+| 13 | Profilen spretar | **Beslutat:** alla åldrar (se Beslut). |
 | 14 | Ingen mätning av var elever fastnar | Kvar, bara om zira säger ja (fas 5). |
 
 ### Förslagen
@@ -79,7 +79,7 @@ Läget efter läroplansutbyggnaden samma dag (commit 1af57c5): 130 lektioner, 72
 | 8 | Milo får facit och testresultat | Fas 5 |
 | 9 | Ta med dig koden | Fas 4 |
 | 10 | Nivåtest och testa ut | Fas 3 |
-| 11 | Bestäm målgrupp | Beslut för zira |
+| 11 | Bestäm målgrupp | **Beslutat:** alla åldrar |
 | 12 | Förlåtande svit med frysningar | Fas 2 |
 | 13 | Dela projekt med länk | Fas 5 |
 | 14 | Anonym statistik | Fas 5, bara med zira ja |

@@ -17,9 +17,9 @@ export default {
           example: 'Console.WriteLine("Hej, kodare!");\nConsole.WriteLine("Det här är rad två.");',
           exercises: [
             { type: 'choice', prompt: 'Vad skriver programmet ut?', code: 'Console.WriteLine("Kodstig");', options: ['Kodstig', '"Kodstig"', 'Console.WriteLine'], answer: 0, out: true,
-              explain: 'Citattecknen visar var texten börjar och slutar. De skrivs inte ut.', why: { 1: 'Citattecknen visar bara var texten börjar och slutar, de skrivs inte ut.' } },
+              explain: 'Citattecknen visar var texten börjar och slutar. De skrivs inte ut.', why: { 1: 'Citattecknen visar bara var texten börjar och slutar, de skrivs inte ut.', 2: 'Console.WriteLine är kommandot som gör utskriften. Det är texten inom parentesen som visas.' } },
             { type: 'choice', prompt: 'Vilket tecken avslutar en sats i C#?', options: ['Punkt .', 'Semikolon ;', 'Kolon :'], answer: 1,
-              explain: 'Semikolon talar om för C# att instruktionen är färdig.' },
+              explain: 'Semikolon talar om för C# att instruktionen är färdig.', why: { 0: 'Punkt används i C# för att nå något inuti, som Console.WriteLine. Den avslutar inte en sats.', 2: 'Kolon används på andra ställen i C#. En sats behöver ett annat tecken på slutet.' } },
             { type: 'fill', prompt: 'Fyll i det som saknas så att programmet skriver ut Hej!', code: 'Console.___("Hej!");', answers: [['WriteLine']], output: 'Hej!',
               explain: 'WriteLine betyder ”skriv en rad”. Stora W och L behövs, eftersom C# skiljer på stora och små bokstäver.', hint: 'Metoden heter Write + Line, med stor bokstav i båda orden.' },
             { type: 'code', prompt: 'Skriv ett program som skriver ut de två raderna `Jag heter Milo` och `Jag gillar bambu`.', starter: '// Skriv din kod här\n', output: 'Jag heter Milo\nJag gillar bambu',
@@ -30,14 +30,14 @@ export default {
         {
           id: 'cs-int', title: 'Heltal och variabler', tier: 1,
           text: 'En **variabel** är en namngiven låda som håller ett värde. I C# talar du om vilken typ av värde lådan ska ha.\n\n`int` betyder heltal. `int steg = 1;` skapar en variabel som heter `steg` med värdet 1. Senare kan du ge den ett nytt värde utan att skriva `int` igen.',
-          example: 'int steg = 1;\nConsole.WriteLine(steg);\nsteg = 5;\nConsole.WriteLine(steg);',
+          example: '// 1. Skapa variabeln\nint steg = 1;\nConsole.WriteLine(steg);\n// 2. Ge den ett nytt värde\nsteg = 5;\nConsole.WriteLine(steg);',
           exercises: [
             { type: 'choice', prompt: 'Vad skrivs ut?', code: 'int poäng = 3;\npoäng = 7;\nConsole.WriteLine(poäng);', options: ['3', '7', '10'], answer: 1, out: true,
-              explain: 'Variabeln får först 3 och sedan 7. Det senaste värdet gäller.', why: { 2: 'Det nya värdet ersätter det gamla, det läggs inte ihop.' } },
+              explain: 'Variabeln får först 3 och sedan 7. Det senaste värdet gäller.', why: { 0: 'Raden poäng = 7; byter ut värdet. Det är det senaste värdet som skrivs ut.', 2: 'Det nya värdet ersätter det gamla, det läggs inte ihop.' } },
             { type: 'fill', prompt: 'Skapa en heltalsvariabel som heter antal med värdet 4.', code: '___ antal = 4;\nConsole.WriteLine(antal);', answers: [['int']], output: '4',
               explain: 'int talar om att variabeln håller ett heltal.', hint: 'Typen för heltal är tre bokstäver lång.' },
             { type: 'choice', prompt: 'Vad skrivs ut?', code: 'int a = 2;\nint b = a;\na = 10;\nConsole.WriteLine(b);', options: ['2', '10', '12'], answer: 0, out: true,
-              explain: 'b fick en kopia av värdet 2. Att a ändras efteråt påverkar inte b.' },
+              explain: 'b fick en kopia av värdet 2. Att a ändras efteråt påverkar inte b.', why: { 1: 'b fick en kopia av värdet när den skapades. Den följer inte med när a ändras senare.', 2: 'Ingenting läggs ihop här. b får bara en kopia av värdet a hade just då.' } },
             { type: 'code', prompt: 'Skapa en variabel `ålder` med värdet 12 och skriv ut den. Ändra den sedan till 13 och skriv ut den igen.', starter: '', output: '12\n13',
               solution: 'int ålder = 12;\nConsole.WriteLine(ålder);\nålder = 13;\nConsole.WriteLine(ålder);',
               require: [R('ålder\\s*=\\s*13', 'Ge variabeln det nya värdet med ålder = 13; i stället för att skriva 13 direkt.')],
@@ -47,10 +47,10 @@ export default {
         {
           id: 'cs-math', title: 'Räkna med kod', tier: 1,
           text: 'C# kan räkna med `+`, `-`, `*` (gånger) och `/` (delat med).\n\nNär två **heltal** delas blir svaret också ett heltal: `7 / 2` blir `3`. Resten får du med `%`: `7 % 2` blir `1`.',
-          example: 'int a = 7;\nint b = 2;\nConsole.WriteLine(a + b);\nConsole.WriteLine(a * b);\nConsole.WriteLine(a / b);\nConsole.WriteLine(a % b);',
+          example: '// 1. Spara två heltal\nint a = 7;\nint b = 2;\n// 2. Räkna och skriv ut\nConsole.WriteLine(a + b);\nConsole.WriteLine(a * b);\nConsole.WriteLine(a / b);\nConsole.WriteLine(a % b);',
           exercises: [
             { type: 'choice', prompt: 'Vad skrivs ut?', code: 'Console.WriteLine(2 + 3 * 4);', options: ['20', '14', '24'], answer: 1, out: true,
-              explain: 'Multiplikation räknas före addition, precis som i matematiken: 3 * 4 = 12, sedan 2 + 12.' },
+              explain: 'Multiplikation räknas före addition, precis som i matematiken: 3 * 4 = 12, sedan 2 + 12.', why: { 0: 'Du räknade från vänster till höger. Multiplikation räknas före addition.', 2: 'Kolla vilket tal som multipliceras. Det är bara 3 * 4 som räknas först, sedan läggs 2 till.' } },
             { type: 'choice', prompt: 'Vad skrivs ut?', code: 'Console.WriteLine(9 / 2);', options: ['4.5', '4', '5'], answer: 1, out: true,
               explain: 'Två heltal ger ett heltal. Decimalerna kapas bort, så 4.5 blir 4.', why: { 0: 'Det hade stämt med decimaltal, men 9 och 2 är heltal.', 2: 'C# avrundar inte, det kapar bort decimalerna.' } },
             { type: 'fill', prompt: 'Använd rätt operator så att resten vid 10 delat med 3 skrivs ut (svaret ska bli 1).', code: 'Console.WriteLine(10 ___ 3);', answers: [['%']], output: '1',
@@ -64,12 +64,12 @@ export default {
         {
           id: 'cs-string', title: 'Text och sammanfogning', tier: 1,
           text: 'Text har typen `string`. Du kan sätta ihop text med `+`.\n\nEtt smidigare sätt är **stränginterpolering**: sätt `$` före citattecknet och skriv variabler inom `{ }`.',
-          example: 'string namn = "Ada";\nint år = 1815;\nConsole.WriteLine("Hej " + namn);\nConsole.WriteLine($"{namn} föddes {år}.");',
+          example: '// 1. Spara namn och år\nstring namn = "Ada";\nint år = 1815;\n// 2. Sätt ihop med +\nConsole.WriteLine("Hej " + namn);\n// 3. Sätt ihop med interpolering\nConsole.WriteLine($"{namn} föddes {år}.");',
           exercises: [
             { type: 'choice', prompt: 'Vad skrivs ut?', code: 'string djur = "panda";\nConsole.WriteLine("En " + djur + "!");', options: ['En panda!', 'En djur!', 'En+panda+!'], answer: 0, out: true,
-              explain: 'Variabeln ersätts av sitt värde, och + sätter ihop texterna.' },
+              explain: 'Variabeln ersätts av sitt värde, och + sätter ihop texterna.', why: { 1: 'djur står utan citattecken, så det är en variabel. Det är dess värde som skrivs ut, inte namnet.', 2: 'Plustecknen är en del av koden och sätter ihop texterna. De skrivs inte ut.' } },
             { type: 'choice', prompt: 'Vad skrivs ut?', code: 'Console.WriteLine("1" + 2);', options: ['3', '12', 'Ett fel'], answer: 1, out: true,
-              explain: 'När ena sidan är text blir + sammanfogning. "1" och 2 blir texten "12".' },
+              explain: 'När ena sidan är text blir + sammanfogning. "1" och 2 blir texten "12".', why: { 0: '"1" är text, inte ett tal. När ena sidan är text sätts de ihop i stället för att räknas.', 2: 'C# tillåter text + tal. Talet görs om till text och läggs till på slutet.' } },
             { type: 'fill', prompt: 'Gör om raden till stränginterpolering så att den skriver ut Hej Mo.', code: 'string namn = "Mo";\nConsole.WriteLine(___"Hej {namn}");', answers: [['$']], output: 'Hej Mo',
               explain: '$ före citattecknet gör att {namn} byts ut mot variabelns värde.', hint: 'Ett tecken som också betyder dollar.' },
             { type: 'code', prompt: 'Skapa `string stad = "Malmö";` och `int grader = 18;`. Skriv ut exakt: `I Malmö är det 18 grader.`', starter: '', output: 'I Malmö är det 18 grader.',
@@ -81,12 +81,12 @@ export default {
         {
           id: 'cs-bool', title: 'Sant eller falskt', tier: 1,
           text: 'Typen `bool` har bara två värden: `true` och `false`.\n\nJämförelser ger en bool: `>` större än, `<` mindre än, `>=` minst, `<=` högst, `==` lika med och `!=` inte lika med. Observera dubbla `==` för att jämföra.',
-          example: 'int ålder = 15;\nbool tonåring = ålder >= 13;\nConsole.WriteLine(tonåring);\nConsole.WriteLine(ålder == 20);',
+          example: '// 1. Spara åldern\nint ålder = 15;\n// 2. Spara en jämförelse\nbool tonåring = ålder >= 13;\n// 3. Skriv ut resultaten\nConsole.WriteLine(tonåring);\nConsole.WriteLine(ålder == 20);',
           exercises: [
             { type: 'choice', prompt: 'Vad skrivs ut?', code: 'int x = 5;\nConsole.WriteLine(x > 3);', options: ['True', 'False', '5'], answer: 0, out: true,
-              explain: '5 är större än 3, så jämförelsen blir true. C# skriver ut bool-värden som True och False.' },
+              explain: '5 är större än 3, så jämförelsen blir true. C# skriver ut bool-värden som True och False.', why: { 1: 'Jämför 5 med 3 en gång till. Är 5 större än 3?', 2: 'x > 3 är en jämförelse. Den ger ett sant eller falskt svar, inte värdet av x.' } },
             { type: 'choice', prompt: 'Vilken rad jämför om `svar` är lika med 42?', options: ['svar = 42', 'svar == 42', 'svar => 42'], answer: 1,
-              explain: '== jämför. Ett ensamt = ger variabeln ett nytt värde.', why: { 0: 'Ett = ger svar värdet 42. För att jämföra behövs ==.' } },
+              explain: '== jämför. Ett ensamt = ger variabeln ett nytt värde.', why: { 0: 'Ett = ger svar värdet 42. För att jämföra behövs ==.', 2: '=> är en pil som används till annat i C#. För att jämföra likhet behövs två likhetstecken.' } },
             { type: 'fill', prompt: 'Fyll i operatorn så att programmet skriver ut True när lösenordet INTE är "1234".', code: 'string lösen = "panda";\nConsole.WriteLine(lösen ___ "1234");', answers: [['!=']], output: 'True',
               explain: '!= betyder ”inte lika med”.', hint: 'Utropstecken betyder ”inte” i C#.' },
           ],
@@ -100,10 +100,10 @@ export default {
         {
           id: 'cs-if', title: 'Om något är sant: if', tier: 1,
           text: 'Med `if` kör programmet ett block bara när ett villkor är sant.\n\nVillkoret står inom parenteser, och blocket inom klamrar `{ }`. Det finns inget semikolon direkt efter `if (...)`.',
-          example: 'int temp = 25;\nif (temp > 20)\n{\n    Console.WriteLine("Varmt ute!");\n}\nConsole.WriteLine("Klar.");',
+          example: '// 1. Spara temperaturen\nint temp = 25;\n// 2. Testa villkoret\nif (temp > 20)\n{\n    Console.WriteLine("Varmt ute!");\n}\n// 3. Körs alltid\nConsole.WriteLine("Klar.");',
           exercises: [
             { type: 'choice', prompt: 'Vad skrivs ut?', code: 'int poäng = 4;\nif (poäng > 5)\n{\n    Console.WriteLine("Bra!");\n}\nConsole.WriteLine("Slut");', options: ['Bra!\nSlut', 'Slut', 'Bra!'], answer: 1, out: true,
-              explain: '4 är inte större än 5, så blocket hoppas över. Raden efter blocket körs alltid.' },
+              explain: '4 är inte större än 5, så blocket hoppas över. Raden efter blocket körs alltid.', why: { 0: 'Villkoret är falskt eftersom 4 inte är större än 5. Då hoppas blocket över.', 2: 'Raden efter blocket ligger utanför if och körs alltid, oavsett villkoret.' } },
             { type: 'fill', prompt: 'Fyll i nyckelordet som startar ett villkor.', code: 'int x = 10;\n___ (x == 10)\n{\n    Console.WriteLine("Tio!");\n}', answers: [['if']], output: 'Tio!',
               explain: 'if betyder ”om” och kör blocket när villkoret är sant.' },
             { type: 'debug', prompt: 'Programmet ska skriva ut `Grattis!` när `poäng` är 10, men det går inte att köra. Hitta och rätta felet.', starter: 'int poäng = 10;\nif (poäng = 10)\n{\n    Console.WriteLine("Grattis!");\n}', output: 'Grattis!',
@@ -118,12 +118,12 @@ export default {
         {
           id: 'cs-else', title: 'else och else if', tier: 1,
           text: '`else` körs när villkoret i `if` är falskt. Med `else if` kan du testa flera villkor i tur och ordning.\n\nC# testar uppifrån och ner och kör bara det **första** blocket vars villkor är sant.',
-          example: 'int poäng = 72;\nif (poäng >= 90)\n{\n    Console.WriteLine("Toppen");\n}\nelse if (poäng >= 50)\n{\n    Console.WriteLine("Godkänt");\n}\nelse\n{\n    Console.WriteLine("Försök igen");\n}',
+          example: '// 1. Spara poängen\nint poäng = 72;\n// 2. Första sanna villkoret vinner\nif (poäng >= 90)\n{\n    Console.WriteLine("Toppen");\n}\nelse if (poäng >= 50)\n{\n    Console.WriteLine("Godkänt");\n}\nelse\n{\n    Console.WriteLine("Försök igen");\n}',
           exercises: [
             { type: 'choice', prompt: 'Vad skrivs ut?', code: 'int x = 0;\nif (x > 0)\n{\n    Console.WriteLine("positivt");\n}\nelse\n{\n    Console.WriteLine("inte positivt");\n}', options: ['positivt', 'inte positivt', 'ingenting'], answer: 1, out: true,
-              explain: '0 är inte större än 0, så else-blocket körs.' },
+              explain: '0 är inte större än 0, så else-blocket körs.', why: { 0: '0 är inte större än 0. Villkoret är alltså falskt.', 2: 'När if är falskt körs else. Ett av blocken körs alltid.' } },
             { type: 'choice', prompt: 'Vad skrivs ut?', code: 'int ålder = 70;\nif (ålder >= 18)\n{\n    Console.WriteLine("vuxen");\n}\nelse if (ålder >= 65)\n{\n    Console.WriteLine("pensionär");\n}', options: ['vuxen', 'pensionär', 'vuxen\npensionär'], answer: 0, out: true,
-              explain: 'Det första sanna villkoret vinner. 70 >= 18 är sant, så resten testas aldrig. Ordningen spelar roll!' },
+              explain: 'Det första sanna villkoret vinner. 70 >= 18 är sant, så resten testas aldrig. Ordningen spelar roll!', why: { 1: 'Villkoren testas uppifrån. 70 >= 18 är redan sant, så else if testas aldrig.', 2: 'I en kedja med else if körs bara ett block, det första vars villkor är sant.' } },
             { type: 'fill', prompt: 'Fyll i så att programmet skriver ut Udda.', code: 'int tal = 7;\nif (tal % 2 == 0)\n{\n    Console.WriteLine("Jämnt");\n}\n___\n{\n    Console.WriteLine("Udda");\n}', answers: [['else']], output: 'Udda',
               explain: 'else fångar alla fall där villkoret var falskt.' },
             { type: 'code', prompt: 'Skriv en if/else if/else för `int temp = 8;` som skriver ut `Kallt` under 10, `Lagom` från 10 till och med 22 och annars `Varmt`.', starter: 'int temp = 8;\n', output: 'Kallt',
@@ -135,12 +135,12 @@ export default {
         {
           id: 'cs-while', title: 'Upprepa med while', tier: 1,
           text: 'En `while`-loop upprepar ett block så länge villkoret är sant.\n\nNågot i blocket måste ändra villkoret, annars slutar loopen aldrig. `i++` ökar `i` med 1.',
-          example: 'int i = 1;\nwhile (i <= 3)\n{\n    Console.WriteLine(i);\n    i++;\n}',
+          example: '// 1. Startvärde\nint i = 1;\n// 2. Loopa medan villkoret gäller\nwhile (i <= 3)\n{\n    Console.WriteLine(i);\n    // 3. Öka räknaren\n    i++;\n}',
           exercises: [
             { type: 'choice', prompt: 'Vad skrivs ut?', code: 'int n = 3;\nwhile (n > 0)\n{\n    Console.WriteLine(n);\n    n--;\n}', options: ['3\n2\n1', '3\n2\n1\n0', '1\n2\n3'], answer: 0, out: true,
-              explain: 'n-- minskar n med 1. När n blir 0 är villkoret n > 0 falskt och loopen slutar.' },
+              explain: 'n-- minskar n med 1. När n blir 0 är villkoret n > 0 falskt och loopen slutar.', why: { 1: 'När n blir 0 är n > 0 falskt. Loopen slutar innan 0 hinner skrivas ut.', 2: 'n börjar på 3 och minskar med n--. Utskriften går alltså nedåt.' } },
             { type: 'choice', prompt: 'Hur många gånger skrivs Hej ut?', code: 'int i = 0;\nwhile (i < 4)\n{\n    Console.WriteLine("Hej");\n    i += 2;\n}', options: ['4', '2', '3'], answer: 1,
-              explain: 'i blir 0, 2 och sedan 4. När i är 4 är i < 4 falskt. Alltså två varv.' },
+              explain: 'i blir 0, 2 och sedan 4. När i är 4 är i < 4 falskt. Alltså två varv.', why: { 0: 'i ökar med 2 varje varv, inte med 1. Räkna vilka värden i får.', 2: 'När i blir 4 är i < 4 falskt. Det blir inget varv för i = 4.' } },
             { type: 'debug', prompt: 'Loopen ska skriva ut 1 till 3 men tar aldrig slut. Rätta den.', starter: 'int i = 1;\nwhile (i <= 3)\n{\n    Console.WriteLine(i);\n}', output: '1\n2\n3',
               solution: 'int i = 1;\nwhile (i <= 3)\n{\n    Console.WriteLine(i);\n    i++;\n}',
               explain: 'Utan i++ förblir i lika med 1, så villkoret är alltid sant.', hint: 'Vilken rad borde ändra i varje varv?' },
@@ -156,7 +156,7 @@ export default {
           example: 'for (int i = 0; i < 3; i++)\n{\n    Console.WriteLine($"Varv {i}");\n}',
           exercises: [
             { type: 'choice', prompt: 'Vad skrivs ut?', code: 'for (int i = 1; i <= 4; i++)\n{\n    Console.Write(i);\n}', options: ['1234', '123', '01234'], answer: 0, out: true,
-              explain: 'Write skriver utan radbrytning. i går från 1 till och med 4.' },
+              explain: 'Write skriver utan radbrytning. i går från 1 till och med 4.', why: { 1: 'Villkoret är i <= 4, så 4 kommer också med.', 2: 'Loopen startar på i = 1, inte på 0.' } },
             { type: 'fill', prompt: 'Fyll i villkoret så att loopen skriver ut 0, 1, 2, 3, 4.', code: 'for (int i = 0; ___; i++)\n{\n    Console.WriteLine(i);\n}', answers: [['i < 5', 'i <= 4', '5 > i']], output: '0\n1\n2\n3\n4',
               explain: 'i < 5 betyder att loopen kör för 0 till 4, alltså fem varv.', hint: 'Loopen ska sluta innan i blir 5.' },
             { type: 'code', prompt: 'Skriv ut 3-gångertabellen: `3 x 1 = 3` till och med `3 x 5 = 15`, en rad per tal. Använd en for-loop.', starter: '', output: '3 x 1 = 3\n3 x 2 = 6\n3 x 3 = 9\n3 x 4 = 12\n3 x 5 = 15',
@@ -174,12 +174,12 @@ export default {
         {
           id: 'cs-double', title: 'Decimaltal och typer', tier: 1,
           text: '`double` håller decimaltal. Decimaltecknet i kod är alltid **punkt**: `2.5`.\n\nOm ena talet i en division är en double blir svaret också en double: `7 / 2.0` blir `3.5`. Med `(double)` framför ett heltal gör du om det till decimaltal.',
-          example: 'double pris = 19.90;\nint antal = 3;\nConsole.WriteLine(pris * antal);\nint summa = 7;\nConsole.WriteLine((double)summa / 2);',
+          example: '// 1. Räkna med decimaltal\ndouble pris = 19.90;\nint antal = 3;\nConsole.WriteLine(pris * antal);\n// 2. Gör om heltal till double\nint summa = 7;\nConsole.WriteLine((double)summa / 2);',
           exercises: [
             { type: 'choice', prompt: 'Vad skrivs ut?', code: 'Console.WriteLine(7 / 2.0);', options: ['3', '3.5', '4'], answer: 1, out: true,
-              explain: '2.0 är en double, så divisionen görs med decimaler.' },
+              explain: '2.0 är en double, så divisionen görs med decimaler.', why: { 0: 'Kapningen gäller bara när båda talen är heltal. 2.0 är en double.', 2: 'C# avrundar inte uppåt här. Med en double i divisionen behålls decimalerna.' } },
             { type: 'choice', prompt: 'Vilken rad ger ett fel?', options: ['double a = 5;', 'int b = 2.5;', 'double c = 2.5;'], answer: 1,
-              explain: 'En int kan inte ha decimaler, så C# vägrar spara 2.5 där. Ett heltal i en double går däremot bra.' },
+              explain: 'En int kan inte ha decimaler, så C# vägrar spara 2.5 där. Ett heltal i en double går däremot bra.', why: { 0: 'Ett heltal får plats i en double. Det blir bara 5.0.', 2: 'En double är gjord för decimaltal, så 2.5 passar där.' } },
             { type: 'fill', prompt: 'Gör om summa till double före divisionen så att svaret blir 2.5.', code: 'int summa = 5;\nint antal = 2;\nConsole.WriteLine((___)summa / antal);', answers: [['double']], output: '2.5',
               explain: '(double) gör om värdet innan divisionen, så resultatet får decimaler.' },
             { type: 'code', prompt: 'Räkna ut medelvärdet av de tre heltalen 4, 5 och 8 och skriv ut det som decimaltal. Svaret ska bli 5.666666666666667.', starter: 'int a = 4;\nint b = 5;\nint c = 8;\n', output: '5.666666666666667',
@@ -190,12 +190,12 @@ export default {
         {
           id: 'cs-array', title: 'Arrayer', tier: 1,
           text: 'En **array** håller flera värden av samma typ. `int[] tal = {4, 8, 15};` skapar en array med tre heltal.\n\nVärdena nås med **index** som börjar på 0: `tal[0]` är 4. `tal.Length` är antalet element.',
-          example: 'string[] frukter = {"äpple", "päron", "kiwi"};\nConsole.WriteLine(frukter[0]);\nConsole.WriteLine(frukter.Length);\nfrukter[2] = "mango";\nConsole.WriteLine(frukter[2]);',
+          example: '// 1. Skapa arrayen\nstring[] frukter = {"äpple", "päron", "kiwi"};\n// 2. Läs element och längd\nConsole.WriteLine(frukter[0]);\nConsole.WriteLine(frukter.Length);\n// 3. Byt ut ett element\nfrukter[2] = "mango";\nConsole.WriteLine(frukter[2]);',
           exercises: [
             { type: 'choice', prompt: 'Vad skrivs ut?', code: 'int[] tal = {10, 20, 30};\nConsole.WriteLine(tal[1]);', options: ['10', '20', '30'], answer: 1, out: true,
-              explain: 'Index börjar på 0, så tal[1] är det andra elementet.' },
+              explain: 'Index börjar på 0, så tal[1] är det andra elementet.', why: { 0: 'Index börjar på 0. tal[0] är det första elementet, så tal[1] är nästa.', 2: '30 ligger på index 2. Kom ihåg att räkningen börjar på 0.' } },
             { type: 'choice', prompt: 'Vilket index har sista elementet i en array med 5 element?', options: ['5', '4', '6'], answer: 1,
-              explain: 'Index 0, 1, 2, 3, 4. Det sista är alltid Length - 1.' },
+              explain: 'Index 0, 1, 2, 3, 4. Det sista är alltid Length - 1.', why: { 0: 'Index börjar på 0, så det finns inget index 5 i en array med 5 element.', 2: 'Index kan aldrig vara större än antalet element. Räkningen börjar på 0.' } },
             { type: 'fill', prompt: 'Skriv ut antalet element i arrayen.', code: 'string[] namn = {"Ada", "Linus", "Grace"};\nConsole.WriteLine(namn.___);', answers: [['Length']], output: '3',
               explain: 'Length ger antalet element i en array.' },
             { type: 'code', prompt: 'Skapa en array `int[] veckodagar` med talen 1 till 7. Ändra sedan första elementet till 0 och skriv ut första och sista elementet på varsin rad.', starter: '', output: '0\n7',
@@ -207,10 +207,10 @@ export default {
         {
           id: 'cs-foreach', title: 'Gå igenom en array', tier: 2,
           text: '`foreach` går igenom varje element i en array, ett i taget, utan att du behöver hålla reda på index.\n\nEn variabel som samlar ihop ett resultat, till exempel en summa, skapas **före** loopen.',
-          example: 'int[] tal = {3, 5, 2};\nint summa = 0;\nforeach (int t in tal)\n{\n    summa += t;\n}\nConsole.WriteLine(summa);',
+          example: '// 1. Skapa tal och summa\nint[] tal = {3, 5, 2};\nint summa = 0;\n// 2. Lägg ihop varje tal\nforeach (int t in tal)\n{\n    summa += t;\n}\n// 3. Skriv ut summan\nConsole.WriteLine(summa);',
           exercises: [
             { type: 'choice', prompt: 'Vad skrivs ut?', code: 'string[] ord = {"kod", "stig"};\nforeach (string o in ord)\n{\n    Console.Write(o);\n}', options: ['kodstig', 'kod stig', 'o o'], answer: 0, out: true,
-              explain: 'o får värdet av varje element i tur och ordning. Write lägger inga mellanslag.' },
+              explain: 'o får värdet av varje element i tur och ordning. Write lägger inga mellanslag.', why: { 1: 'Write lägger inte till mellanslag. Texterna hamnar direkt efter varandra.', 2: 'o är en variabel som får värdet av varje element. Det är värdet som skrivs ut.' } },
             { type: 'fill', prompt: 'Fyll i nyckelordet mellan variabeln och arrayen.', code: 'int[] tal = {1, 2, 3};\nforeach (int t ___ tal)\n{\n    Console.WriteLine(t * 10);\n}', answers: [['in']], output: '10\n20\n30',
               explain: 'foreach (typ namn in samling) läses som ”för varje t i tal”.' },
             { type: 'debug', prompt: 'Summan ska bli 12 men programmet skriver fel värde. Rätta det.', starter: 'int[] tal = {2, 4, 6};\nforeach (int t in tal)\n{\n    int summa = 0;\n    summa += t;\n    Console.WriteLine(summa);\n}', output: '12',
@@ -225,10 +225,10 @@ export default {
         {
           id: 'cs-strmethods', title: 'Arbeta med text', tier: 2,
           text: 'Text har inbyggda metoder. `ToUpper()` gör versaler, `ToLower()` gemener och `Trim()` tar bort mellanslag i kanterna.\n\n`Contains("x")` svarar true eller false, och `Length` ger antalet tecken. En text kan också indexeras: `"kod"[0]` är tecknet `k`.',
-          example: 'string ord = "  Kodstig ";\nstring rent = ord.Trim();\nConsole.WriteLine(rent.ToUpper());\nConsole.WriteLine(rent.Length);\nConsole.WriteLine(rent.Contains("stig"));',
+          example: '// 1. Spara texten\nstring ord = "  Kodstig ";\n// 2. Ta bort mellanslag\nstring rent = ord.Trim();\n// 3. Använd strängmetoder\nConsole.WriteLine(rent.ToUpper());\nConsole.WriteLine(rent.Length);\nConsole.WriteLine(rent.Contains("stig"));',
           exercises: [
             { type: 'choice', prompt: 'Vad skrivs ut?', code: 'string s = "Panda";\nConsole.WriteLine(s.ToLower() + s.Length);', options: ['panda5', 'PANDA5', 'panda 5'], answer: 0, out: true,
-              explain: 'ToLower ger "panda" och Length är 5. + sätter ihop dem utan mellanslag.' },
+              explain: 'ToLower ger "panda" och Length är 5. + sätter ihop dem utan mellanslag.', why: { 1: 'ToLower gör om till små bokstäver. Det är ToUpper som ger stora.', 2: '+ sätter ihop texten utan att lägga till mellanslag.' } },
             { type: 'fill', prompt: 'Ta bort mellanslagen runt texten innan den skrivs ut.', code: 'string in1 = "  hej  ";\nConsole.WriteLine(in1.___());', answers: [['Trim']], output: 'hej',
               explain: 'Trim() är bra när text kommer från ett formulär där någon råkat skriva mellanslag.' },
             { type: 'code', prompt: 'Skriv ut första bokstaven i `string namn = "milo";` som stor bokstav, följt av resten av namnet. Resultatet ska bli `Milo`.', starter: 'string namn = "milo";\n', output: 'Milo',
@@ -246,12 +246,12 @@ export default {
         {
           id: 'cs-andor', title: 'Sammansatta villkor', tier: 2,
           text: '`&&` betyder **och**: båda villkoren måste vara sanna. `||` betyder **eller**: det räcker att ett är sant. `!` vänder på ett värde.\n\nSkriv gärna parenteser runt delarna när du blandar `&&` och `||`, så blir det tydligt vad som hör ihop.',
-          example: 'int ålder = 15;\nbool harBiljett = true;\nif (ålder >= 13 && harBiljett)\n{\n    Console.WriteLine("Välkommen in");\n}\nbool helg = false;\nif (!helg)\n{\n    Console.WriteLine("Vardag");\n}',
+          example: '// 1. Spara värdena\nint ålder = 15;\nbool harBiljett = true;\n// 2. Båda måste vara sanna\nif (ålder >= 13 && harBiljett)\n{\n    Console.WriteLine("Välkommen in");\n}\n// 3. Vänd på ett värde med !\nbool helg = false;\nif (!helg)\n{\n    Console.WriteLine("Vardag");\n}',
           exercises: [
             { type: 'choice', prompt: 'Vad skrivs ut?', code: 'int x = 7;\nConsole.WriteLine(x > 5 && x < 10);', options: ['True', 'False'], answer: 0, out: true,
-              explain: 'Båda delarna är sanna: 7 > 5 och 7 < 10.' },
+              explain: 'Båda delarna är sanna: 7 > 5 och 7 < 10.', why: { 1: 'Kolla båda delarna var för sig. Både 7 > 5 och 7 < 10 är sanna.' } },
             { type: 'choice', prompt: 'Vad skrivs ut?', code: 'bool regn = false;\nbool blåst = true;\nConsole.WriteLine(regn || blåst);', options: ['True', 'False'], answer: 0, out: true,
-              explain: 'Med || räcker det att en del är sann.' },
+              explain: 'Med || räcker det att en del är sann.', why: { 1: 'Med || räcker det att en av delarna är sann. Att regn är false gör inget.' } },
             { type: 'fill', prompt: 'Fyll i så att Rabatt skrivs ut om kunden är under 18 ELLER över 65.', code: 'int ålder = 70;\nif (ålder < 18 ___ ålder > 65)\n{\n    Console.WriteLine("Rabatt");\n}', answers: [['||']], output: 'Rabatt',
               explain: '|| ger true om minst ett av villkoren stämmer.' },
             { type: 'code', prompt: 'Skriv en metod `static bool KanÅka(int längd, bool vuxenMed)` som returnerar true om längden är minst 120 cm, eller om längden är minst 100 cm och en vuxen är med.', starter: 'static bool KanÅka(int längd, bool vuxenMed)\n{\n    // din kod\n}\n',
@@ -269,12 +269,12 @@ export default {
         {
           id: 'cs-bounds', title: 'Gränsvärden', tier: 2,
           text: 'Många fel uppstår precis vid gränsen. Är 18 år ”minst 18”? Är 0 positivt?\n\nTesta alltid värdet **på** gränsen och värdena precis under och över. `>` och `>=` skiljer sig bara i just det fallet.',
-          example: 'int poäng = 50;\nif (poäng >= 50)\n{\n    Console.WriteLine("Godkänt");\n}\nelse\n{\n    Console.WriteLine("Inte än");\n}',
+          example: '// 1. Spara poängen\nint poäng = 50;\n// 2. Testa gränsen med >=\nif (poäng >= 50)\n{\n    Console.WriteLine("Godkänt");\n}\nelse\n{\n    Console.WriteLine("Inte än");\n}',
           exercises: [
             { type: 'choice', prompt: 'Gränsen för godkänt är ”minst 60 poäng”. Vilket villkor är rätt?', options: ['poäng > 60', 'poäng >= 60', 'poäng == 60'], answer: 1,
-              explain: '”Minst 60” betyder att 60 ska räknas. Det ger >= .', why: { 0: 'Då blir exakt 60 poäng underkänt.' } },
+              explain: '”Minst 60” betyder att 60 ska räknas. Det ger >= .', why: { 0: 'Då blir exakt 60 poäng underkänt.', 2: 'Då blir bara exakt 60 godkänt. Minst 60 betyder att högre poäng också räknas.' } },
             { type: 'choice', prompt: 'Vilka värden är viktigast att testa för villkoret `ålder >= 13`?', options: ['1, 50 och 100', '12, 13 och 14', '0 och 13'], answer: 1,
-              explain: 'Värdena runt gränsen avslöjar om > och >= har blandats ihop.' },
+              explain: 'Värdena runt gränsen avslöjar om > och >= har blandats ihop.', why: { 0: 'De här talen ligger långt från gränsen. Fel med > och >= syns bara nära 13.', 2: 'Det saknas ett värde precis under gränsen och ett precis över. Testa runt 13.' } },
             { type: 'debug', prompt: 'Rea gäller för köp på **minst** 500 kr, men ett köp på exakt 500 kr får ingen rea. Rätta metoden.', starter: 'static bool HarRea(int belopp)\n{\n    return belopp > 500;\n}\n',
               tests: [
                 { fn: 'HarRea', args: [500], expect: true, edge: 'exakt 500 kr' },
@@ -296,10 +296,10 @@ export default {
         {
           id: 'cs-accum', title: 'Ackumulatorer: summa, antal och största', tier: 4,
           text: 'En **ackumulator** är en variabel som samlar upp något medan en loop går: en summa, ett antal eller det största värdet hittills.\n\nStartvärdet är viktigt. En summa börjar på 0. Det största värdet börjar lämpligen på **första elementet**, inte på 0 – tänk om alla tal är negativa!',
-          example: 'int[] temp = {-3, -8, -1, -5};\nint högst = temp[0];\nforeach (int t in temp)\n{\n    if (t > högst)\n    {\n        högst = t;\n    }\n}\nConsole.WriteLine(högst);',
+          example: '// 1. Skapa arrayen\nint[] temp = {-3, -8, -1, -5};\n// 2. Starta med första elementet\nint högst = temp[0];\n// 3. Spara det högsta värdet\nforeach (int t in temp)\n{\n    if (t > högst)\n    {\n        högst = t;\n    }\n}\n// 4. Skriv ut svaret\nConsole.WriteLine(högst);',
           exercises: [
             { type: 'choice', prompt: 'Varför startar `högst` på `temp[0]` i exemplet i stället för på 0?', options: ['Det går snabbare', 'Om alla tal är negativa skulle 0 felaktigt bli största värdet', 'C# kräver det'], answer: 1,
-              explain: '0 finns inte ens i arrayen. Att starta med ett riktigt element gör lösningen korrekt för alla tal.' },
+              explain: '0 finns inte ens i arrayen. Att starta med ett riktigt element gör lösningen korrekt för alla tal.', why: { 0: 'Hastigheten påverkas inte. Det handlar om att svaret ska bli rätt.', 2: 'C# tillåter vilket startvärde som helst. Frågan är vilket som ger rätt svar.' } },
             { type: 'code', prompt: 'Skriv `static int Summa(int[] tal)` som returnerar summan av alla tal.', starter: 'static int Summa(int[] tal)\n{\n}\n',
               tests: [
                 { fn: 'Summa', args: [[1, 2, 3]], expect: 6 }, { fn: 'Summa', args: [[10, -4]], expect: 6 },
@@ -326,10 +326,10 @@ export default {
         {
           id: 'cs-index', title: 'Index och sökning', tier: 4,
           text: 'Ibland behövs **positionen**, inte bara värdet. Då använder du en `for`-loop med index.\n\nEn vanlig konvention är att returnera `-1` när något inte hittas, eftersom -1 aldrig är ett giltigt index.',
-          example: 'string[] namn = {"Ada", "Linus", "Grace"};\nfor (int i = 0; i < namn.Length; i++)\n{\n    if (namn[i] == "Linus")\n    {\n        Console.WriteLine($"Hittade på index {i}");\n    }\n}',
+          example: '// 1. Skapa arrayen\nstring[] namn = {"Ada", "Linus", "Grace"};\n// 2. Gå igenom varje index\nfor (int i = 0; i < namn.Length; i++)\n{\n    // 3. Leta efter Linus\n    if (namn[i] == "Linus")\n    {\n        Console.WriteLine($"Hittade på index {i}");\n    }\n}',
           exercises: [
             { type: 'choice', prompt: 'Vad skrivs ut?', code: 'int[] t = {5, 6, 7};\nfor (int i = t.Length - 1; i >= 0; i--)\n{\n    Console.Write(t[i]);\n}', options: ['567', '765', '76'], answer: 1, out: true,
-              explain: 'Loopen startar på sista index och går baklänges till 0.' },
+              explain: 'Loopen startar på sista index och går baklänges till 0.', why: { 0: 'Loopen startar på sista index och räknar ner med i--. Den går baklänges.', 2: 'Villkoret är i >= 0, så index 0 kommer också med.' } },
             { type: 'code', prompt: 'Skriv `static int HittaIndex(int[] tal, int mål)` som returnerar indexet för första förekomsten av `mål`, eller -1 om det inte finns.', starter: 'static int HittaIndex(int[] tal, int mål)\n{\n}\n',
               tests: [
                 { fn: 'HittaIndex', args: [[4, 8, 15], 8], expect: 1 }, { fn: 'HittaIndex', args: [[4, 8, 4], 4], expect: 0, edge: 'första förekomsten ska returneras' },
@@ -355,12 +355,12 @@ export default {
         {
           id: 'cs-methods', title: 'Egna metoder', tier: 3,
           text: 'En **metod** är ett namngivet kodblock som du kan anropa många gånger. I Kodstig skriver du metoder längst ner, efter resten av koden.\n\n`static void Hälsa()` skapar en metod som inte lämnar tillbaka något värde (`void`). Du anropar den med `Hälsa();`.',
-          example: 'Hälsa();\nHälsa();\n\nstatic void Hälsa()\n{\n    Console.WriteLine("Hej från en metod!");\n}',
+          example: '// 1. Anropa metoden två gånger\nHälsa();\nHälsa();\n\n// 2. Definiera metoden\nstatic void Hälsa()\n{\n    Console.WriteLine("Hej från en metod!");\n}',
           exercises: [
             { type: 'choice', prompt: 'Vad skrivs ut?', code: 'Console.WriteLine("A");\nB();\nConsole.WriteLine("C");\n\nstatic void B()\n{\n    Console.WriteLine("B");\n}', options: ['A\nB\nC', 'A\nC\nB', 'B\nA\nC'], answer: 0, out: true,
-              explain: 'Metoden körs när den anropas, alltså mellan A och C.' },
+              explain: 'Metoden körs när den anropas, alltså mellan A och C.', why: { 1: 'Metoden körs där den anropas, inte där den står i filen.', 2: 'Att metoden finns körs den inte av sig själv. Den körs först när B(); anropas.' } },
             { type: 'choice', prompt: 'Vad betyder `void`?', options: ['Att metoden är tom', 'Att metoden inte returnerar något värde', 'Att metoden är privat'], answer: 1,
-              explain: 'void betyder att metoden gör något men inte lämnar tillbaka ett värde.' },
+              explain: 'void betyder att metoden gör något men inte lämnar tillbaka ett värde.', why: { 0: 'En void-metod kan innehålla massor av kod. Ordet säger något om vad metoden lämnar tillbaka.', 2: 'Om en metod är privat styrs av andra ord, som private.' } },
             { type: 'fill', prompt: 'Anropa metoden Rita två gånger.', code: '___;\n___;\n\nstatic void Rita()\n{\n    Console.WriteLine("***");\n}', answers: [['Rita()'], ['Rita()']], output: '***\n***',
               explain: 'Parenteserna gör att metoden körs.' },
             { type: 'code', prompt: 'Skriv en metod `static void Linje()` som skriver ut `----------` (tio bindestreck). Använd den för att skriva ut en linje, sedan `Meny`, sedan en linje till.', starter: '', output: '----------\nMeny\n----------',
@@ -372,10 +372,10 @@ export default {
         {
           id: 'cs-params', title: 'Parametrar', tier: 3,
           text: 'En **parameter** gör metoden flexibel. `static void Hälsa(string namn)` tar emot en text varje gång den anropas.\n\nVärdet du skickar in kallas **argument**. Antal och typer måste matcha parametrarna.',
-          example: 'Hälsa("Ada");\nHälsa("Milo");\nRitaRad(5);\n\nstatic void Hälsa(string namn)\n{\n    Console.WriteLine($"Hej {namn}!");\n}\n\nstatic void RitaRad(int längd)\n{\n    for (int i = 0; i < längd; i++)\n    {\n        Console.Write("*");\n    }\n    Console.WriteLine();\n}',
+          example: '// 1. Anropa med argument\nHälsa("Ada");\nHälsa("Milo");\nRitaRad(5);\n\n// 2. Metod med en textparameter\nstatic void Hälsa(string namn)\n{\n    Console.WriteLine($"Hej {namn}!");\n}\n\n// 3. Metod med en talparameter\nstatic void RitaRad(int längd)\n{\n    for (int i = 0; i < längd; i++)\n    {\n        Console.Write("*");\n    }\n    Console.WriteLine();\n}',
           exercises: [
             { type: 'choice', prompt: 'Vad skrivs ut?', code: 'Visa(3, "x");\n\nstatic void Visa(int antal, string tecken)\n{\n    for (int i = 0; i < antal; i++)\n    {\n        Console.Write(tecken);\n    }\n}', options: ['xxx', '3x', 'x3'], answer: 0, out: true,
-              explain: 'antal blir 3 och tecken blir "x", så x skrivs ut tre gånger.' },
+              explain: 'antal blir 3 och tecken blir "x", så x skrivs ut tre gånger.', why: { 1: 'antal används för att styra loopen. Det skrivs aldrig ut.', 2: 'Bara tecken skrivs ut. antal bestämmer hur många gånger.' } },
             { type: 'fill', prompt: 'Lägg till en parameter av typen string som heter namn.', code: 'Hej("Mo");\n\nstatic void Hej(___ namn)\n{\n    Console.WriteLine("Hej " + namn);\n}', answers: [['string']], output: 'Hej Mo',
               explain: 'Parametern behöver både typ och namn.' },
             { type: 'debug', prompt: 'Anropet stämmer inte med metoden. Rätta anropet så att programmet skriver ut `Ada är 36 år`.', starter: 'Presentera(36, "Ada");\n\nstatic void Presentera(string namn, int ålder)\n{\n    Console.WriteLine($"{namn} är {ålder} år");\n}', output: 'Ada är 36 år',
@@ -390,12 +390,12 @@ export default {
         {
           id: 'cs-return', title: 'Returvärden', tier: 3,
           text: 'En metod kan **returnera** ett värde med `return`. Typen före namnet talar om vilken sorts värde: `static int Dubbla(int x)` returnerar ett heltal.\n\nDet returnerade värdet kan sparas i en variabel eller användas direkt. `return` avslutar också metoden.',
-          example: 'int svar = Dubbla(21);\nConsole.WriteLine(svar);\nConsole.WriteLine(Dubbla(svar));\n\nstatic int Dubbla(int x)\n{\n    return x * 2;\n}',
+          example: '// 1. Spara det returnerade värdet\nint svar = Dubbla(21);\nConsole.WriteLine(svar);\n// 2. Använd svaret direkt\nConsole.WriteLine(Dubbla(svar));\n\n// 3. Metoden returnerar ett värde\nstatic int Dubbla(int x)\n{\n    return x * 2;\n}',
           exercises: [
             { type: 'choice', prompt: 'Vad skrivs ut?', code: 'Console.WriteLine(Kvadrat(Kvadrat(2)));\n\nstatic int Kvadrat(int x)\n{\n    return x * x;\n}', options: ['4', '8', '16'], answer: 2, out: true,
-              explain: 'Kvadrat(2) blir 4, och Kvadrat(4) blir 16.' },
+              explain: 'Kvadrat(2) blir 4, och Kvadrat(4) blir 16.', why: { 0: 'Kvadrat anropas två gånger. Resultatet av den inre skickas in i den yttre.', 1: 'Kvadrat multiplicerar talet med sig självt. 4 * 4 är inte 8.' } },
             { type: 'choice', prompt: 'Vad är skillnaden mellan att returnera ett värde och att skriva ut det?', options: ['Ingen', 'Ett returnerat värde kan användas vidare i koden', 'Utskrift går snabbare'], answer: 1,
-              explain: 'Return lämnar tillbaka värdet till den som anropade, så det kan räknas vidare med. Utskrift visar det bara.' },
+              explain: 'Return lämnar tillbaka värdet till den som anropade, så det kan räknas vidare med. Utskrift visar det bara.', why: { 0: 'Utskrift visar bara värdet på skärmen. Koden kan inte räkna vidare med det.', 2: 'Skillnaden handlar inte om fart, utan om vad koden kan göra med värdet efteråt.' } },
             { type: 'code', prompt: 'Skriv `static int Moms(int pris)` som returnerar 25 % moms på priset, avrundat nedåt till heltal.', starter: 'static int Moms(int pris)\n{\n}\n',
               tests: [{ fn: 'Moms', args: [100], expect: 25 }, { fn: 'Moms', args: [40], expect: 10 }, { fn: 'Moms', args: [10], expect: 2, edge: '2.5 ska bli 2' }, { fn: 'Moms', args: [0], expect: 0 }],
               solution: 'static int Moms(int pris)\n{\n    return pris * 25 / 100;\n}',
@@ -409,10 +409,10 @@ export default {
         {
           id: 'cs-list', title: 'List<T> tillsammans med metoder', tier: 3,
           text: 'En `List<int>` är som en array som kan växa. Du lägger till med `Add` och antalet heter `Count`.\n\nMetoder kan både ta emot och returnera listor. Då kan du bygga små verktyg, till exempel en metod som plockar ut vissa värden.',
-          example: 'List<int> tal = new List<int> {5, 12, 8};\ntal.Add(20);\nConsole.WriteLine(tal.Count);\nList<int> stora = Över(tal, 10);\nConsole.WriteLine(string.Join(", ", stora));\n\nstatic List<int> Över(List<int> lista, int gräns)\n{\n    List<int> resultat = new List<int>();\n    foreach (int t in lista)\n    {\n        if (t > gräns)\n        {\n            resultat.Add(t);\n        }\n    }\n    return resultat;\n}',
+          example: '// 1. Skapa och fyll listan\nList<int> tal = new List<int> {5, 12, 8};\ntal.Add(20);\nConsole.WriteLine(tal.Count);\n// 2. Filtrera med en metod\nList<int> stora = Över(tal, 10);\nConsole.WriteLine(string.Join(", ", stora));\n\n// 3. Metoden bygger en ny lista\nstatic List<int> Över(List<int> lista, int gräns)\n{\n    List<int> resultat = new List<int>();\n    foreach (int t in lista)\n    {\n        if (t > gräns)\n        {\n            resultat.Add(t);\n        }\n    }\n    return resultat;\n}',
           exercises: [
             { type: 'choice', prompt: 'Vad skrivs ut?', code: 'List<string> l = new List<string>();\nl.Add("a");\nl.Add("b");\nl.Add("c");\nConsole.WriteLine(l.Count + " " + l[2]);', options: ['3 c', '2 c', '3 b'], answer: 0, out: true,
-              explain: 'Listan har tre element och index 2 är det tredje, "c".' },
+              explain: 'Listan har tre element och index 2 är det tredje, "c".', why: { 1: 'Count räknar alla element som lagts till. Listan har tre.', 2: 'Index börjar på 0. l[2] är det tredje elementet.' } },
             { type: 'fill', prompt: 'Lägg till talet 7 i listan.', code: 'List<int> tal = new List<int>();\ntal.___(7);\nConsole.WriteLine(tal[0]);', answers: [['Add']], output: '7',
               explain: 'Add lägger till ett element sist i listan.' },
             { type: 'code', prompt: 'Skriv `static List<int> BaraJämna(List<int> tal)` som returnerar en ny lista med bara de jämna talen, i samma ordning.', starter: 'static List<int> BaraJämna(List<int> tal)\n{\n}\n',
@@ -430,10 +430,10 @@ export default {
         {
           id: 'cs-validate', title: 'Validera indata', tier: 4,
           text: 'Riktiga program får konstiga värden: negativa antal, tomma namn, siffror i fel format. **Validering** betyder att kontrollera värdet innan du använder det.\n\nEtt bra mönster är att hantera de ogiltiga fallen först med tidiga `return`, så blir resten av metoden enkel.',
-          example: 'Console.WriteLine(Hälsning("  "));\nConsole.WriteLine(Hälsning(" Ada "));\n\nstatic string Hälsning(string namn)\n{\n    if (string.IsNullOrWhiteSpace(namn))\n    {\n        return "Skriv ditt namn först.";\n    }\n    return $"Hej {namn.Trim()}!";\n}',
+          example: '// 1. Testa med olika indata\nConsole.WriteLine(Hälsning("  "));\nConsole.WriteLine(Hälsning(" Ada "));\n\nstatic string Hälsning(string namn)\n{\n    // 2. Stoppa tomt namn\n    if (string.IsNullOrWhiteSpace(namn))\n    {\n        return "Skriv ditt namn först.";\n    }\n    // 3. Hälsa när namnet är okej\n    return $"Hej {namn.Trim()}!";\n}',
           exercises: [
             { type: 'choice', prompt: 'Vilken av dessa är INTE en bra valideringsregel för ett antal varor i en varukorg?', options: ['Antalet får inte vara negativt', 'Antalet måste vara ett heltal', 'Antalet måste vara exakt 1'], answer: 2,
-              explain: 'Validering ska stoppa omöjliga värden, inte tillåtna val. Man får köpa fler än en vara.' },
+              explain: 'Validering ska stoppa omöjliga värden, inte tillåtna val. Man får köpa fler än en vara.', why: { 0: 'Ett negativt antal varor är omöjligt. Det är bra att stoppa.', 1: 'Man kan inte köpa en halv vara i en varukorg, så regeln stoppar ett omöjligt värde.' } },
             { type: 'code', prompt: 'Skriv `static bool GiltigtPin(string pin)` som returnerar true bara om pin är exakt 4 tecken och alla är siffror.', starter: 'static bool GiltigtPin(string pin)\n{\n}\n',
               tests: [{ fn: 'GiltigtPin', args: ['1234'], expect: true }, { fn: 'GiltigtPin', args: ['123'], expect: false, edge: 'för kort' }, { fn: 'GiltigtPin', args: ['12a4'], expect: false, edge: 'en bokstav' }, { fn: 'GiltigtPin', args: ['12345'], expect: false, edge: 'för lång' }, { fn: 'GiltigtPin', args: [''], expect: false, edge: 'tom text' }],
               solution: 'static bool GiltigtPin(string pin)\n{\n    if (pin.Length != 4)\n    {\n        return false;\n    }\n    foreach (char c in pin)\n    {\n        if (!char.IsDigit(c))\n        {\n            return false;\n        }\n    }\n    return true;\n}',
@@ -451,10 +451,10 @@ export default {
         {
           id: 'cs-split', title: 'Dela upp en lösning', tier: 4,
           text: 'Stora problem blir lättare om du delar upp dem i små metoder som var och en gör **en** sak. Varje del kan testas för sig.\n\nEn metod kan anropa andra metoder. Namnge dem efter vad de gör, så läses koden nästan som en mening.',
-          example: 'int[] poäng = {7, 9, 4};\nConsole.WriteLine(Beskriv(poäng));\n\nstatic int Summa(int[] t)\n{\n    int s = 0;\n    foreach (int x in t) s += x;\n    return s;\n}\n\nstatic string Beskriv(int[] t)\n{\n    return $"{t.Length} rundor, totalt {Summa(t)} poäng";\n}',
+          example: '// 1. Skapa data och skriv ut\nint[] poäng = {7, 9, 4};\nConsole.WriteLine(Beskriv(poäng));\n\n// 2. Metod som räknar summan\nstatic int Summa(int[] t)\n{\n    int s = 0;\n    foreach (int x in t) s += x;\n    return s;\n}\n\n// 3. Metod som bygger texten\nstatic string Beskriv(int[] t)\n{\n    return $"{t.Length} rundor, totalt {Summa(t)} poäng";\n}',
           exercises: [
             { type: 'choice', prompt: 'Varför är det bra att dela upp kod i små metoder?', options: ['Programmet blir alltid snabbare', 'Varje del blir lättare att förstå, testa och återanvända', 'Det krävs i C#'], answer: 1,
-              explain: 'Små delar med tydliga namn gör det lättare att hitta fel och att återanvända lösningar.' },
+              explain: 'Små delar med tydliga namn gör det lättare att hitta fel och att återanvända lösningar.', why: { 0: 'Små metoder gör inte koden snabbare. Vinsten är att koden blir lättare att arbeta med.', 2: 'C# tillåter all kod i en enda metod. Uppdelningen är ett val för att göra koden tydligare.' } },
             { type: 'code', prompt: 'Skriv två metoder: `static int Antal(int[] tal, int gräns)` som räknar talen som är minst `gräns`, och `static string Rapport(int[] tal)` som returnerar till exempel `"2 av 3 godkända"`, där godkänd betyder minst 50. Rapport ska använda Antal.', starter: 'static int Antal(int[] tal, int gräns)\n{\n}\n\nstatic string Rapport(int[] tal)\n{\n}\n',
               tests: [{ fn: 'Antal', args: [[50, 49, 80], 50], expect: 2, edge: 'exakt 50 ska räknas' }, { fn: 'Rapport', args: [[50, 49, 80]], expect: '2 av 3 godkända' }, { fn: 'Rapport', args: [[]], expect: '0 av 0 godkända', edge: 'tom array' }],
               require: [R('Rapport[\\s\\S]*Antal\\s*\\(', 'Låt Rapport anropa Antal i stället för att räkna en gång till.')],
@@ -469,7 +469,7 @@ export default {
         {
           id: 'cs-budget', title: 'Miniprojekt: en robust budget', tier: 5,
           text: 'Nu bygger du en liten budgetkalkylator. Den ska tåla konstiga värden och ge tydliga svar.\n\nDu kombinerar arrayer, loopar, villkor, validering och metoder som anropar varandra. Ta en del i taget och kör testerna ofta.',
-          example: '// Utgifter i kronor per kategori\nint[] utgifter = {4500, 1200, 800};\nint inkomst = 7000;\nint kvar = inkomst - 6500;\nConsole.WriteLine($"Kvar: {kvar} kr");',
+          example: '// 1. Spara utgifter och inkomst\n// Utgifter i kronor per kategori\nint[] utgifter = {4500, 1200, 800};\nint inkomst = 7000;\n// 2. Räkna ut det som blir kvar\nint kvar = inkomst - 6500;\n// 3. Skriv ut svaret\nConsole.WriteLine($"Kvar: {kvar} kr");',
           exercises: [
             { type: 'code', prompt: 'Del 1: Skriv `static int Totalt(int[] utgifter)` som summerar utgifterna men **hoppar över negativa värden**, eftersom en utgift inte kan vara negativ.', starter: 'static int Totalt(int[] utgifter)\n{\n}\n',
               tests: [{ fn: 'Totalt', args: [[4500, 1200, 800]], expect: 6500 }, { fn: 'Totalt', args: [[100, -50, 200]], expect: 300, edge: 'negativa värden ska ignoreras' }, { fn: 'Totalt', args: [[]], expect: 0 }],
@@ -488,7 +488,7 @@ export default {
         {
           id: 'cs-scores', title: 'Miniprojekt: poängsammanställning', tier: 5,
           text: 'I det sista miniprojektet sammanställer du poäng från en tävling. Du kombinerar listor, index, sökning, gränsfall och uppdelning i metoder.\n\nTänk på vad som ska hända med tomma listor och oavgjorda resultat. Det är de fallen som skiljer en robust lösning från en skör.',
-          example: 'string[] namn = {"Ada", "Linus"};\nint[] poäng = {12, 9};\nfor (int i = 0; i < namn.Length; i++)\n{\n    Console.WriteLine($"{namn[i]}: {poäng[i]}");\n}',
+          example: '// 1. Två arrayer i samma ordning\nstring[] namn = {"Ada", "Linus"};\nint[] poäng = {12, 9};\n// 2. Samma index i båda\nfor (int i = 0; i < namn.Length; i++)\n{\n    Console.WriteLine($"{namn[i]}: {poäng[i]}");\n}',
           exercises: [
             { type: 'code', prompt: 'Del 1: Skriv `static int BästaIndex(int[] poäng)` som returnerar index för högsta poängen. Vid lika vinner den som kom först. Tom array ger -1.', starter: 'static int BästaIndex(int[] poäng)\n{\n}\n',
               tests: [{ fn: 'BästaIndex', args: [[3, 9, 5]], expect: 1 }, { fn: 'BästaIndex', args: [[7, 2, 7]], expect: 0, edge: 'lika poäng: den första vinner' }, { fn: 'BästaIndex', args: [[]], expect: -1, edge: 'tom array' }, { fn: 'BästaIndex', args: [[-4, -1]], expect: 1, edge: 'negativa poäng' }],

@@ -43,8 +43,19 @@ export function announce(text) {
 }
 
 // Kodfält: en textarea med Tab-indrag och radnummer.
+// Tecken och ord som är krångliga att nå på en mobils tangentbord. "|" visar var
+// markören hamnar efter infogningen.
+const KEY_ROWS = {
+  python: ['⇥', '(|)', '[|]', ':', '"|"', '=', '==', '<', '>', '+', '#', 'print(|)', 'if ', 'for ', ' in ', 'range(|)', 'def ', 'return '],
+  csharp: ['⇥', '{', '}', '(|)', ';', '"|"', '=', '==', '<', '>', '[|]', '+', 'Console.WriteLine(|);', 'if (|)', 'for (|)', 'int ', 'string ', 'return '],
+  web: ['⇥', '<', '>', '</', '=', '"|"', '{', '}', ':', ';', '#', '.', 'class="|"', 'px', '%'],
+};
+const KEY_NAMES = { '⇥': 'Indrag', '(|)': 'Parenteser', '[|]': 'Hakparenteser', '"|"': 'Citattecken', '{': 'Vänster klammer', '}': 'Höger klammer', ';': 'Semikolon', ':': 'Kolon', '=': 'Likhetstecken', '==': 'Är lika med', '<': 'Mindre än', '>': 'Större än', '#': 'Fyrkant', '.': 'Punkt', '+': 'Plus', '%': 'Procent', '</': 'Sluttagg' };
+
 export function codeEditor({ value = '', lang = 'python', label = 'Kod', onInput, rows = 10, id }) {
+  const keys = KEY_ROWS[lang] || KEY_ROWS.python;
   const wrap = h(`<div class="editor" data-lang="${esc(lang)}">
+    <div class="key-row" role="toolbar" aria-label="Kodtecken">${keys.map((k, i) => `<button type="button" class="key" data-key="${i}" aria-label="${esc(KEY_NAMES[k] || k.replace('|', '').trim())}">${esc(k.replace('|', '').trim() || k)}</button>`).join('')}</div>
     <div class="editor-lines" aria-hidden="true"></div>
     <textarea class="editor-input" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" rows="${rows}" aria-label="${esc(label)}" ${id ? `id="${esc(id)}"` : ''}></textarea>
   </div>`);
@@ -79,6 +90,26 @@ export function codeEditor({ value = '', lang = 'python', label = 'Kod', onInput
     } else {
       wrap.dataset.escaped = '0';
     }
+  });
+  // Raden visas medan man skriver. Den döljs med en kort fördröjning så att sidan
+  // inte hoppar under fingret när man trycker på en knapp under kodfältet.
+  let hideTimer = null;
+  wrap.addEventListener('focusin', () => { clearTimeout(hideTimer); wrap.classList.add('is-typing'); });
+  wrap.addEventListener('focusout', () => { clearTimeout(hideTimer); hideTimer = setTimeout(() => { if (!wrap.contains(document.activeElement)) wrap.classList.remove('is-typing'); }, 400); });
+  // Knapparna tar inte fokus från textfältet, så mobilens tangentbord stannar uppe.
+  const keyRow = wrap.querySelector('.key-row');
+  keyRow.addEventListener('pointerdown', (e) => { if (e.target.closest('.key')) e.preventDefault(); });
+  keyRow.addEventListener('click', (e) => {
+    const b = e.target.closest('.key');
+    if (!b) return;
+    const k = keys[Number(b.dataset.key)];
+    const text = k === '⇥' ? indent : k.replace('|', '');
+    const caret = k.includes('|') ? k.indexOf('|') : text.length;
+    const s = ta.selectionStart;
+    ta.focus({ preventScroll: true });
+    ta.setRangeText(text, s, ta.selectionEnd, 'end');
+    ta.setSelectionRange(s + caret, s + caret);
+    ta.dispatchEvent(new Event('input'));
   });
   syncLines();
   return {

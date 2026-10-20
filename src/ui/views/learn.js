@@ -133,6 +133,7 @@ export function render(ctx, params = {}) {
     daily = renderExercise(pick.ex, {
       lang: pick.lesson.lang,
       idPrefix: `daily-${track.id}`,
+      example: pick.lesson.example,
       soundOn: () => pref(store.state, 'sound'),
       onSolved: () => {
         const c = canClaimDaily(store.state);

@@ -35,7 +35,7 @@ export default [
       {
         id: 'py-try', title: 'Fånga fel med try och except', tier: 3,
         text: 'Med try och except kan programmet hantera ett fel i stället för att krascha. Python kör koden i try. Om ett fel av rätt typ uppstår hoppar den direkt till except.\n\nAnge alltid vilken feltyp du förväntar dig, till exempel except ValueError. Då syns andra, oväntade fel fortfarande, och det är just dem du vill hitta.',
-        example: 'text = "tolv"\ntry:\n    tal = int(text)\n    print("Talet är", tal)\nexcept ValueError:\n    print("Det där var inget heltal.")',
+        example: '# 1. Text som inte är ett tal\ntext = "tolv"\n# 2. Försök göra om den\ntry:\n    tal = int(text)\n    print("Talet är", tal)\n# 3. Ta hand om felet\nexcept ValueError:\n    print("Det där var inget heltal.")',
         exercises: [
           { type: 'choice', prompt: 'Vad skrivs ut?', code: 'svar = ""\ntry:\n    svar += "A"\n    x = 1 / 0\n    svar += "B"\nexcept ZeroDivisionError:\n    svar += "C"\nprint(svar)', options: ['AC', 'ABC', 'C'], answer: 0, out: true,
             explain: 'A hinner läggas till. Sedan blir det fel, och Python hoppar direkt till except och lägger till C.',
@@ -67,7 +67,7 @@ export default [
       {
         id: 'py-raise', title: 'Kasta egna fel med raise', tier: 4,
         text: 'Dina egna funktioner kan också signalera fel. Med raise ValueError("förklaring") stoppar funktionen och skickar felet vidare till den som anropade den.\n\nDet är ofta bättre än att returnera ett konstigt värde som -1. Ett returvärde kan man glömma att kontrollera, men ett fel går inte att missa. Den som anropar bestämmer sedan själv hur felet ska hanteras med try och except.',
-        example: 'def sätt_ålder(ålder):\n    if ålder < 0:\n        raise ValueError("Åldern kan inte vara negativ")\n    return ålder\n\ntry:\n    sätt_ålder(-3)\nexcept ValueError as fel:\n    print("Fel:", fel)',
+        example: '# 1. Kasta fel vid negativ ålder\ndef sätt_ålder(ålder):\n    if ålder < 0:\n        raise ValueError("Åldern kan inte vara negativ")\n    return ålder\n\n# 2. Fånga felet\ntry:\n    sätt_ålder(-3)\nexcept ValueError as fel:\n    print("Fel:", fel)',
         exercises: [
           { type: 'choice', prompt: 'Vad skrivs ut?', code: 'def kolla(x):\n    if x > 10:\n        raise ValueError("för stort")\n    return x\n\ntry:\n    print(kolla(50))\nexcept ValueError as e:\n    print("Fel:", e)', options: ['Fel: för stort', '50', 'ValueError'], answer: 0, out: true,
             explain: 'raise stoppar funktionen. Felet fångas av except, och e innehåller texten "för stort".',
@@ -95,7 +95,7 @@ export default [
       {
         id: 'py-finally', title: 'else, finally och flera fel', tier: 4,
         text: 'En try kan ha flera except, en för varje feltyp. Du kan också fånga flera typer på en gång med en tupel: except (ValueError, TypeError):\n\nelse körs bara om inget fel uppstod. finally körs alltid, oavsett vad som hände. Där lägger man sådant som måste göras ändå, som att räkna försök eller stänga en fil.',
-        example: 'def läs(text):\n    try:\n        tal = int(text)\n    except ValueError:\n        print("Inte ett tal:", text)\n    else:\n        print("Läste", tal)\n    finally:\n        print("Klar med", text)\n\nläs("5")\nläs("x")',
+        example: '# 1. Försök, fånga och avsluta\ndef läs(text):\n    try:\n        tal = int(text)\n    except ValueError:\n        print("Inte ett tal:", text)\n    else:\n        print("Läste", tal)\n    finally:\n        print("Klar med", text)\n\n# 2. Testa med tal och text\nläs("5")\nläs("x")',
         exercises: [
           { type: 'choice', prompt: 'Vad skrivs ut?', code: 'logg = ""\ntry:\n    logg += "1"\nexcept ValueError:\n    logg += "2"\nelse:\n    logg += "3"\nfinally:\n    logg += "4"\nprint(logg)', options: ['134', '14', '1234'], answer: 0, out: true,
             explain: 'Inget fel uppstod, så except hoppas över, else körs och finally körs alltid.',
@@ -129,7 +129,7 @@ export default [
       {
         id: 'py-class', title: 'Din första klass', tier: 3,
         text: 'En klass är en ritning. Ett objekt är en sak som byggs efter ritningen. Klassen Hund beskriver vad alla hundar har, och varje hund du skapar är ett eget objekt.\n\nMetoden __init__ körs när ett objekt skapas. Där sparar du objektets egna värden, attributen, med self.namn = namn. Ordet self betyder ”just det här objektet”.',
-        example: 'class Hund:\n    def __init__(self, namn, ålder):\n        self.namn = namn\n        self.ålder = ålder\n\nmilo = Hund("Milo", 3)\nprint(milo.namn, milo.ålder)',
+        example: '# 1. Beskriv en hund\nclass Hund:\n    def __init__(self, namn, ålder):\n        self.namn = namn\n        self.ålder = ålder\n\n# 2. Skapa en hund\nmilo = Hund("Milo", 3)\n# 3. Läs attributen\nprint(milo.namn, milo.ålder)',
         exercises: [
           { type: 'choice', prompt: 'Vad är `self` i en metod?', options: ['Objektet som metoden anropas på', 'Klassens namn', 'En global variabel'], answer: 0,
             explain: 'När du skriver milo.namn inne i en metod är self samma sak som milo.',
@@ -154,7 +154,7 @@ export default [
       {
         id: 'py-methods', title: 'Metoder', tier: 3,
         text: 'En metod är en funktion som hör till en klass. Den första parametern är alltid self, så att metoden kan läsa och ändra objektets attribut.\n\nMetoder gör att data och det man gör med datan hålls ihop. Ett konto vet sitt eget saldo och vet själv hur man sätter in pengar.',
-        example: 'class Räknare:\n    def __init__(self):\n        self.värde = 0\n\n    def öka(self):\n        self.värde += 1\n\nr = Räknare()\nr.öka()\nr.öka()\nprint(r.värde)',
+        example: '# 1. Klass med startvärde\nclass Räknare:\n    def __init__(self):\n        self.värde = 0\n\n    # 2. Metod som ökar värdet\n    def öka(self):\n        self.värde += 1\n\n# 3. Skapa och använd räknaren\nr = Räknare()\nr.öka()\nr.öka()\nprint(r.värde)',
         exercises: [
           { type: 'choice', prompt: 'Vad skrivs ut?', code: 'class Lampa:\n    def __init__(self):\n        self.på = False\n\n    def växla(self):\n        self.på = not self.på\n\nl = Lampa()\nl.växla()\nl.växla()\nl.växla()\nprint(l.på)', options: ['True', 'False', 'None'], answer: 0, out: true,
             explain: 'Tre växlingar från False: True, False, True.',
@@ -179,7 +179,7 @@ export default [
       {
         id: 'py-str', title: 'Snygga objekt och klassvariabler', tier: 4,
         text: 'Om du skriver ut ett objekt visar Python något i stil med <Kort object>. Med metoden __str__ bestämmer du själv vad print ska visa.\n\nEn klassvariabel skrivs direkt i klassen, utanför metoderna. Den delas av alla objekt i klassen, så den passar för sådant som ett löpnummer eller hur många objekt som har skapats.',
-        example: 'class Kort:\n    def __init__(self, färg, värde):\n        self.färg = färg\n        self.värde = värde\n\n    def __str__(self):\n        return f"{self.värde} i {self.färg}"\n\nprint(Kort("hjärter", 7))',
+        example: '# 1. Klass med attribut\nclass Kort:\n    def __init__(self, färg, värde):\n        self.färg = färg\n        self.värde = värde\n\n    # 2. Bestäm hur kortet visas\n    def __str__(self):\n        return f"{self.värde} i {self.färg}"\n\n# 3. Skriv ut ett kort\nprint(Kort("hjärter", 7))',
         exercises: [
           { type: 'choice', prompt: 'Vad skrivs ut?', code: 'class Temp:\n    def __init__(self, c):\n        self.c = c\n\n    def __str__(self):\n        return f"{self.c} grader"\n\nprint(Temp(21))', options: ['21 grader', '<Temp object>', '21'], answer: 0, out: true,
             explain: 'print använder __str__ för att få fram texten.',
@@ -206,7 +206,7 @@ export default [
       {
         id: 'py-inherit', title: 'Arv', tier: 4,
         text: 'En klass kan ärva från en annan: class Katt(Djur). Katten får då alla metoder som Djur har, och kan själv lägga till nya eller skriva över gamla.\n\nNär barnklassen har en egen __init__ anropar man förälderns med super().__init__(...). Då slipper man skriva samma kod två gånger.',
-        example: 'class Djur:\n    def __init__(self, namn):\n        self.namn = namn\n\n    def låt(self):\n        return "..."\n\nclass Katt(Djur):\n    def låt(self):\n        return "Mjau"\n\nk = Katt("Måns")\nprint(k.namn, "säger", k.låt())',
+        example: '# 1. Basklassen\nclass Djur:\n    def __init__(self, namn):\n        self.namn = namn\n\n    def låt(self):\n        return "..."\n\n# 2. Underklass som ändrar låt\nclass Katt(Djur):\n    def låt(self):\n        return "Mjau"\n\n# 3. Skapa en katt\nk = Katt("Måns")\nprint(k.namn, "säger", k.låt())',
         exercises: [
           { type: 'choice', prompt: 'Vad skrivs ut?', code: 'class A:\n    def hej(self):\n        return "A"\n\nclass B(A):\n    pass\n\nprint(B().hej())', options: ['A', 'B', 'Ett felmeddelande'], answer: 0, out: true,
             explain: 'B har ingen egen hej, så metoden ärvs från A.',
@@ -231,7 +231,7 @@ export default [
       {
         id: 'py-bank', title: 'Miniprojekt: bankkonto', tier: 5,
         text: 'Nu bygger du ett litet banksystem. Du kombinerar klasser, metoder, egna fel med raise och felhantering med try.\n\nTa en del i taget. Varje del bygger vidare på den förra.',
-        example: 'class Konto:\n    def __init__(self, ägare):\n        self.ägare = ägare\n        self.saldo = 0\n\nk = Konto("Ada")\nprint(k.ägare, k.saldo)',
+        example: '# 1. Konto med ägare och saldo\nclass Konto:\n    def __init__(self, ägare):\n        self.ägare = ägare\n        self.saldo = 0\n\n# 2. Skapa ett konto\nk = Konto("Ada")\n# 3. Visa ägare och saldo\nprint(k.ägare, k.saldo)',
         exercises: [
           { type: 'code', prompt: 'Del 1: Gör klart `sätt_in(belopp)`. Den ska öka saldot, men kasta `ValueError("Beloppet måste vara positivt")` om beloppet är 0 eller mindre.', starter: 'class Konto:\n    def __init__(self, ägare):\n        self.ägare = ägare\n        self.saldo = 0\n\n    def sätt_in(self, belopp):\n        pass\n\nk = Konto("Ada")\nk.sätt_in(100)\ntry:\n    k.sätt_in(-5)\nexcept ValueError as e:\n    print("Fel:", e)\nprint(k.saldo)\n',
             output: 'Fel: Beloppet måste vara positivt\n100',
@@ -258,7 +258,7 @@ export default [
       {
         id: 'py-listcomp', title: 'Listbyggare', tier: 3,
         text: 'En listbyggare (list comprehension) skapar en ny lista på en enda rad: [uttryck for x in lista]. Lägg till if på slutet för att bara ta med vissa värden.\n\nDet är samma sak som en for-loop med append, bara kortare. Riktiga Python-utvecklare använder det hela tiden.',
-        example: 'tal = [1, 2, 3, 4, 5]\nkvadrater = [x * x for x in tal]\njämna = [x for x in tal if x % 2 == 0]\nprint(kvadrater)\nprint(jämna)',
+        example: '# 1. Startlistan\ntal = [1, 2, 3, 4, 5]\n# 2. Bygg nya listor\nkvadrater = [x * x for x in tal]\njämna = [x for x in tal if x % 2 == 0]\n# 3. Skriv ut dem\nprint(kvadrater)\nprint(jämna)',
         exercises: [
           { type: 'choice', prompt: 'Vad skrivs ut?', code: 'print([x * 10 for x in range(3)])', options: ['[0, 10, 20]', '[10, 20, 30]', '[0, 1, 2]'], answer: 0, out: true,
             explain: 'range(3) ger 0, 1 och 2, och varje tal gångras med 10.',
@@ -288,7 +288,7 @@ export default [
       {
         id: 'py-sets', title: 'Mängder', tier: 3,
         text: 'En mängd (set) är en samling där varje värde bara kan finnas en gång. set([1, 1, 2]) blir {1, 2}. Att kolla om något finns i en mängd med in går mycket snabbt, även när den är stor.\n\nMed | får du allt som finns i någon av två mängder, med & det som finns i båda och med - det som finns i den första men inte i den andra. Mängder har ingen bestämd ordning, så använd sorted() när ordningen spelar roll.',
-        example: 'a = {"Ada", "Bo", "Cy"}\nb = {"Bo", "Dan"}\nprint(sorted(a & b))\nprint(sorted(a | b))\nprint(sorted(a - b))',
+        example: '# 1. Skapa två mängder\na = {"Ada", "Bo", "Cy"}\nb = {"Bo", "Dan"}\n# 2. Namn som finns i båda\nprint(sorted(a & b))\n# 3. Alla namn\nprint(sorted(a | b))\n# 4. Namn bara i a\nprint(sorted(a - b))',
         exercises: [
           { type: 'choice', prompt: 'Vad skrivs ut?', code: 'print(len(set([1, 2, 2, 3, 3, 3])))', options: ['3', '6', '1'], answer: 0, out: true,
             explain: 'Dubbletterna försvinner. Kvar blir 1, 2 och 3.',
@@ -318,7 +318,7 @@ export default [
       {
         id: 'py-sortkey', title: 'Sortera med key och lambda', tier: 4,
         text: 'sorted() kan sortera efter vad du vill med parametern key. key är en funktion som säger vad som ska jämföras för varje värde. sorted(ord, key=len) sorterar ord efter längd.\n\nlambda är ett sätt att skriva en liten funktion direkt på plats: lambda p: p[1] betyder ”ta element 1”. För att sortera på flera saker kan key returnera en tupel, till exempel (-poäng, namn) för högst poäng först och sedan bokstavsordning.',
-        example: 'ord = ["banan", "äpple", "fikon", "kiwi"]\nprint(sorted(ord, key=len))\nprint(sorted(ord, key=lambda o: o[-1]))',
+        example: '# 1. Ordlistan\nord = ["banan", "äpple", "fikon", "kiwi"]\n# 2. Sortera efter längd\nprint(sorted(ord, key=len))\n# 3. Sortera efter sista bokstaven\nprint(sorted(ord, key=lambda o: o[-1]))',
         exercises: [
           { type: 'choice', prompt: 'Vad skrivs ut?', code: 'print(sorted([3, -5, 1], key=abs))', options: ['[1, 3, -5]', '[-5, 1, 3]', '[3, 1, -5]'], answer: 0, out: true,
             explain: 'abs ger avståndet till noll: 3, 5 och 1. Talen sorteras efter det, men det är de ursprungliga talen som skrivs ut.',
@@ -345,7 +345,7 @@ export default [
       {
         id: 'py-nested', title: 'Data i flera nivåer', tier: 4,
         text: 'Riktig data är ofta nästlad: en lista med ordböcker, där varje ordbok i sin tur innehåller listor. Så ser data ut när den kommer från en webbtjänst (JSON).\n\nLäs den steg för steg, utifrån och in: data["lag"][1]["namn"] betyder ”i ordboken data, ta listan lag, ta element 1 och läs dess namn”.',
-        example: 'elever = [\n    {"namn": "Ada", "poäng": [8, 9]},\n    {"namn": "Bo", "poäng": [6, 7]},\n]\nfor e in elever:\n    print(e["namn"], sum(e["poäng"]))',
+        example: '# 1. Lista med ordböcker\nelever = [\n    {"namn": "Ada", "poäng": [8, 9]},\n    {"namn": "Bo", "poäng": [6, 7]},\n]\n# 2. Skriv ut varje elevs summa\nfor e in elever:\n    print(e["namn"], sum(e["poäng"]))',
         exercises: [
           { type: 'choice', prompt: 'Vad skrivs ut?', code: 'data = {"lag": [{"namn": "Ada"}, {"namn": "Bo"}]}\nprint(data["lag"][1]["namn"])', options: ['Bo', 'Ada', 'lag'], answer: 0, out: true,
             explain: 'data["lag"] är listan, [1] är andra ordboken och ["namn"] är Bo.',
@@ -377,7 +377,7 @@ export default [
       {
         id: 'py-count', title: 'Räkna och hitta mönster', tier: 4,
         text: 'Väldigt många problem handlar om att räkna saker: vilket ord är vanligast, finns det dubbletter, består två ord av samma bokstäver?\n\nNyckeln är nästan alltid en ordbok där det du räknar är nyckeln och antalet är värdet. Mönstret räkna[x] = räkna.get(x, 0) + 1 kommer du att använda hela livet.',
-        example: 'räkna = {}\nfor färg in ["röd", "blå", "röd"]:\n    räkna[färg] = räkna.get(färg, 0) + 1\nprint(räkna)',
+        example: '# 1. Tom ordbok\nräkna = {}\n# 2. Räkna varje färg\nfor färg in ["röd", "blå", "röd"]:\n    räkna[färg] = räkna.get(färg, 0) + 1\n# 3. Visa resultatet\nprint(räkna)',
         exercises: [
           { type: 'choice', prompt: 'Hur räknar man enklast hur många gånger varje ord förekommer i en text?', options: ['En ordbok med ordet som nyckel och antalet som värde', 'En egen variabel för varje ord', 'Sortera orden och gissa'], answer: 0,
             explain: 'En ordbok växer automatiskt med nya ord, hur många olika ord texten än har.',
@@ -403,7 +403,7 @@ export default [
       {
         id: 'py-bsearch', title: 'Binärsökning', tier: 4,
         text: 'Att leta igenom en lista ett element i taget kallas linjär sökning. I en lista med en miljon tal kan det ta en miljon jämförelser.\n\nOm listan är sorterad finns ett smartare sätt: titta i mitten. Är målet mindre letar du vidare i vänstra halvan, annars i högra. Varje steg halverar sökområdet, så en miljon tal kräver bara cirka 20 jämförelser. Det kallas binärsökning och är en klassisk algoritm.',
-        example: 'lista = [2, 4, 7, 10, 15, 21]\nlo = 0\nhi = len(lista) - 1\nmål = 15\nwhile lo <= hi:\n    mitt = (lo + hi) // 2\n    print("Tittar på index", mitt)\n    if lista[mitt] == mål:\n        print("Hittad!")\n        break\n    elif lista[mitt] < mål:\n        lo = mitt + 1\n    else:\n        hi = mitt - 1',
+        example: '# 1. Sorterad lista och gränser\nlista = [2, 4, 7, 10, 15, 21]\nlo = 0\nhi = len(lista) - 1\nmål = 15\n# 2. Titta i mitten\nwhile lo <= hi:\n    mitt = (lo + hi) // 2\n    print("Tittar på index", mitt)\n    if lista[mitt] == mål:\n        print("Hittad!")\n        break\n    # 3. Flytta en gräns\n    elif lista[mitt] < mål:\n        lo = mitt + 1\n    else:\n        hi = mitt - 1',
         exercises: [
           { type: 'choice', prompt: 'Ungefär hur många jämförelser behöver binärsökning i en sorterad lista med 1 000 000 tal?', options: ['Cirka 20', 'Cirka 1 000', 'Cirka 500 000'], answer: 0,
             explain: 'Varje jämförelse halverar sökområdet, och 2 upphöjt till 20 är ungefär en miljon.',
@@ -430,7 +430,7 @@ export default [
       {
         id: 'py-recursion', title: 'Rekursion', tier: 4,
         text: 'En rekursiv funktion anropar sig själv med ett mindre problem. Den behöver alltid ett basfall, ett läge där den slutar anropa sig själv och bara returnerar ett svar.\n\nUtan basfall fortsätter den för evigt, och Python stoppar med RecursionError. Rekursion passar extra bra för saker som är nästlade, som listor i listor eller mappar i mappar.',
-        example: 'def nedräkning(n):\n    if n == 0:\n        print("Start!")\n        return\n    print(n)\n    nedräkning(n - 1)\n\nnedräkning(3)',
+        example: 'def nedräkning(n):\n    # 1. Basfall: stoppa vid 0\n    if n == 0:\n        print("Start!")\n        return\n    # 2. Skriv ut och anropa igen\n    print(n)\n    nedräkning(n - 1)\n\n# 3. Starta nedräkningen\nnedräkning(3)',
         exercises: [
           { type: 'choice', prompt: 'Vad skrivs ut?', code: 'def f(n):\n    if n == 0:\n        return 0\n    return n + f(n - 1)\n\nprint(f(4))', options: ['10', '4', '0'], answer: 0, out: true,
             explain: 'f(4) = 4 + 3 + 2 + 1 + 0 = 10.',
@@ -463,7 +463,7 @@ export default [
       {
         id: 'py-sorting', title: 'Skriv en egen sortering', tier: 4,
         text: 'I riktig kod använder man sorted(). Men att skriva en sortering själv är en klassisk övning som tränar loopar, index och byten, och det kommer ofta upp på arbetsintervjuer.\n\nUrvalssortering går till så här: hitta det minsta värdet och byt plats på det och första platsen. Hitta sedan det minsta av resten och byt med andra platsen, och så vidare. I Python byter man plats på två värden med a, b = b, a.',
-        example: 'lista = [5, 2, 8]\nlista[0], lista[1] = lista[1], lista[0]\nprint(lista)',
+        example: '# 1. Osorterad lista\nlista = [5, 2, 8]\n# 2. Byt plats på två element\nlista[0], lista[1] = lista[1], lista[0]\n# 3. Skriv ut listan\nprint(lista)',
         exercises: [
           { type: 'choice', prompt: 'Varför använder man nästan alltid sorted() i riktig kod?', options: ['Den är snabb, vältestad och redan färdig', 'Egna sorteringar är förbjudna i Python', 'sorted() kan bara sortera tal'], answer: 0,
             explain: 'Inbyggda verktyg är testade av miljontals användare. Egna sorteringar skriver man för att förstå hur det fungerar.',
@@ -519,7 +519,7 @@ export default [
       {
         id: 'py-inventory', title: 'Projekt: lagersystem', tier: 5,
         text: 'Du bygger kärnan i ett lagersystem för en liten butik. Det ska klara felaktiga beställningar utan att lagret hamnar i ett konstigt läge.\n\nDu kombinerar ordböcker, egna fel med raise, try och except, och sortering med key.',
-        example: 'lager = {"penna": 10, "block": 3}\nlager["penna"] -= 2\nprint(lager)',
+        example: '# 1. Lagret som ordbok\nlager = {"penna": 10, "block": 3}\n# 2. Minska antalet pennor\nlager["penna"] -= 2\n# 3. Visa lagret\nprint(lager)',
         exercises: [
           { type: 'code', prompt: 'Del 1: Skriv `ändra(lager, vara, ändring)` som ändrar antalet för varan och returnerar det nya antalet. Okända varor börjar på 0. Om antalet skulle bli negativt ska den kasta `ValueError("Inte tillräckligt med VARA")` utan att ändra lagret.', starter: 'def ändra(lager, vara, ändring):\n    pass\n\nlager = {"penna": 5}\ntry:\n    ändra(lager, "penna", -9)\nexcept ValueError as e:\n    print(e)\nprint(lager)\n',
             output: "Inte tillräckligt med penna\n{'penna': 5}",
@@ -542,7 +542,7 @@ export default [
       {
         id: 'py-todo', title: 'Projekt: att göra-lista med klasser', tier: 5,
         text: 'I det sista projektet bygger du en att göra-lista med två klasser som samarbetar. Den här typen av kod finns i riktiga appar.\n\nDu använder allt från de senaste kapitlen: klasser, __str__, egna fel, try och except, listbyggare och sortering med key.',
-        example: 'class Uppgift:\n    def __init__(self, titel):\n        self.titel = titel\n        self.klar = False\n\nu = Uppgift("Plugga")\nprint(u.titel, u.klar)',
+        example: '# 1. Uppgift med titel och status\nclass Uppgift:\n    def __init__(self, titel):\n        self.titel = titel\n        self.klar = False\n\n# 2. Skapa en uppgift\nu = Uppgift("Plugga")\n# 3. Visa titel och status\nprint(u.titel, u.klar)',
         exercises: [
           { type: 'code', prompt: 'Del 1: Gör klart klassen Uppgift. En tom titel ger `ValueError("Titeln får inte vara tom")` och en prioritet som inte är 1, 2 eller 3 ger `ValueError("Prioritet måste vara 1, 2 eller 3")`. `__str__` ska visa "[ ] titel (P2)", och "[x]" när uppgiften är klar.', starter: 'class Uppgift:\n    def __init__(self, titel, prioritet):\n        self.titel = titel\n        self.prioritet = prioritet\n        self.klar = False\n\n    def __str__(self):\n        pass\n\nu = Uppgift("Plugga", 2)\nprint(u)\nu.klar = True\nprint(u)\nfor titel, p in [("", 1), ("Städa", 5)]:\n    try:\n        Uppgift(titel, p)\n    except ValueError as e:\n        print(e)\n',
             output: '[ ] Plugga (P2)\n[x] Plugga (P2)\nTiteln får inte vara tom\nPrioritet måste vara 1, 2 eller 3',

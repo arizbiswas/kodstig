@@ -78,3 +78,11 @@ test('ordlistan innehåller nyckelbegreppen', () => {
     assert.ok(terms.some((x) => x.includes(t)), `saknar ${t}`);
   }
 });
+
+test('varje fel svar i varje flervalsfråga har en egen förklaring', () => {
+  const missing = [];
+  for (const l of LESSONS) l.exercises.forEach((e, i) => {
+    if (e.type === 'choice') e.options.forEach((o, k) => { if (k !== e.answer && !(e.why && e.why[k])) missing.push(`${l.id}#${i}:${k}`); });
+  });
+  assert.deepEqual(missing, []);
+});

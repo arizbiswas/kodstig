@@ -44,10 +44,19 @@ async function solveExercise(page, ex) {
   await card.locator('.feedback.good').waitFor({ timeout: 8000 });
 }
 
+// Knappen kan röra sig medan läskortet glider in, så klicket görs om tills övningen visas.
+async function startPractice(page) {
+  for (let i = 0; i < 3; i++) {
+    await page.locator('[data-start]').click();
+    try { await page.locator('.exercise-card').waitFor({ timeout: 1500 }); return; } catch { /* försök igen */ }
+  }
+  throw new Error('övningen startade inte');
+}
+
 async function finishLesson(page, id) {
   const lesson = LESSON_BY_ID.get(id);
   await page.goto(`${BASE}#/lektion/${id}`);
-  await page.locator('[data-start]').click();
+  await startPractice(page);
   for (const ex of lesson.exercises) {
     // Hoppa över redan lösta (utkast) genom att lösa igen; det är tillåtet.
     await solveExercise(page, ex);
@@ -153,7 +162,7 @@ async function main() {
     await check('Utkast i en övning finns kvar efter omladdning', async () => {
       const { context, page } = await newGuest(browser);
       await page.goto(`${BASE}#/lektion/py-print`);
-      await page.locator('[data-start]').click();
+      await startPractice(page);
       await page.locator('.choice input[value="0"]').check();
       await page.locator('[data-check]').click();
       await page.locator('[data-next]').click();
@@ -162,6 +171,44 @@ async function main() {
       await page.reload();
       await page.locator('.exercise-card').waitFor();
       eq(await page.locator('.blank').inputValue(), 'pri');
+      await context.close();
+    });
+
+    await check('Lektionsövning: ledtrådstrappa steg för steg, lösningen först efter två försök', async () => {
+      const { context, page } = await newGuest(browser);
+      await page.goto(`${BASE}#/lektion/py-print`);
+      await startPractice(page);
+      for (const ex of LESSON_BY_ID.get('py-print').exercises.slice(0, 3)) { await solveExercise(page, ex); await page.locator('[data-next]').click(); }
+      const card = page.locator('.exercise-card');
+      await card.locator('textarea').fill('print("Jag heter Milo"\n');
+      await card.locator('[data-check]').click();
+      await card.locator('.feedback.bad').waitFor();
+      assert((await card.locator('.fb-detail').textContent()).startsWith('Ledtråd 1'), 'första ledtråden visas direkt');
+      let shown = 0;
+      while (await card.locator('[data-ladder-more]').count()) { await card.locator('[data-ladder-more]').click(); shown++; }
+      assert(shown >= 2, `minst två ledtrådar till (${shown})`);
+      assert(await card.locator('.ladder').textContent().then((t) => t.includes('Försök en gång till')), 'lösningen är låst efter ett försök');
+      eq(await card.locator('.ladder-steps .is-solution').count(), 0);
+      await card.locator('[data-check]').click();
+      await card.locator('[data-ladder-more]').click();
+      eq(await card.locator('.ladder-steps .is-solution').count(), 1, 'lösningen visas efter andra försöket');
+      eq(page.errors.length, 0, page.errors.join('\n'));
+      await context.close();
+    });
+
+    await check('Mobil: rad med kodtecken infogar tecken och behåller fokus', async () => {
+      const { context, page } = await newGuest(browser, { viewport: { width: 375, height: 740 }, hasTouch: true, isMobile: true });
+      await page.goto(`${BASE}#/labb`);
+      const ta = page.locator('.editor textarea').first();
+      await ta.fill('');
+      await ta.tap();
+      const row = page.locator('.key-row').first();
+      await row.waitFor();
+      await row.locator('.key[aria-label="Parenteser"]').tap();
+      eq(await ta.inputValue(), '()');
+      eq(await ta.evaluate((t) => t.selectionStart), 1, 'markören hamnar mellan parenteserna');
+      eq(await page.evaluate(() => document.activeElement.tagName), 'TEXTAREA', 'fokus stannar i kodfältet');
+      assert(await noHorizontalScroll(page), 'raden ger ingen horisontell scroll');
       await context.close();
     });
 

@@ -95,6 +95,7 @@ export function render(ctx, lessonId) {
       saved: state.answers[i],
       solved: !!state.solved[i],
       idPrefix: `${lesson.id}-${i}`,
+      example: lesson.example,
       soundOn: () => pref(store.state, 'sound'),
       onChange: (v) => { state.answers[i] = v; persist(); },
       onSolved: () => {
