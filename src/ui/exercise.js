@@ -2,12 +2,12 @@
 // Obegränsade försök. Vid fel visas en ledtrådstrappa: först var felet är, sedan
 // begreppet, vad som kan ändras, ett liknande exempel och sist ett lösningsförslag.
 import { h, esc, on, codeEditor, announce } from './dom.js';
-import { grade, show } from '../engine/grade.js';
+import { grade, show, orderLines, shuffled } from '../engine/grade.js';
 import { runCode, checkWeb, previewSrcdoc } from '../engine/runner.js';
 import { getHints } from '../engine/hints.js';
 import { playCorrect } from './media.js';
 
-const TYPE_LABEL = { choice: 'Flerval', fill: 'Fyll i', code: 'Skriv kod', debug: 'Hitta felet', web: 'Bygg' };
+const TYPE_LABEL = { choice: 'Flerval', fill: 'Fyll i', code: 'Skriv kod', debug: 'Hitta felet', web: 'Bygg', order: 'Ordna raderna' };
 
 // Lösningsförslaget låses upp efter så här många misslyckade försök.
 const SOLUTION_AFTER = 2;
@@ -55,6 +55,47 @@ export function renderExercise(ex, { lang, saved, solved = false, onChange, onSo
     input.append(editor.el);
     input.insertAdjacentHTML('beforeend', '<div class="output" hidden><span class="output-label">Utskrift</span><pre></pre></div>');
     getAnswer = () => editor.value;
+  } else if (ex.type === 'order') {
+    // Raderna blandas likadant varje gång, men aldrig i rätt ordning från början.
+    const pool = shuffled(orderLines(ex), ex.prompt, ex.lines);
+    let picked = [];
+    if (Array.isArray(saved)) {
+      const used = new Set();
+      for (const line of saved) {
+        const k = pool.findIndex((l, j) => l === line && !used.has(j));
+        if (k >= 0) { used.add(k); picked.push(k); }
+      }
+    }
+    const lineHtml = (l) => `<code>${esc(l) || '&nbsp;'}</code>`;
+    const draw = (focusSel) => {
+      const rest = pool.map((l, j) => j).filter((j) => !picked.includes(j));
+      input.innerHTML = `<div class="order">
+        <p class="order-label" id="${idPrefix}-ans">Ditt program</p>
+        <ol class="order-answer" aria-labelledby="${idPrefix}-ans">${picked.length ? picked.map((j, k) => `<li>
+          <span class="order-line">${lineHtml(pool[j])}</span>
+          <span class="order-tools">
+            <button class="btn ghost small" type="button" data-up="${k}" aria-label="Flytta upp rad ${k + 1}" ${k === 0 ? 'disabled' : ''}>↑</button>
+            <button class="btn ghost small" type="button" data-down="${k}" aria-label="Flytta ner rad ${k + 1}" ${k === picked.length - 1 ? 'disabled' : ''}>↓</button>
+            <button class="btn ghost small" type="button" data-remove="${k}" aria-label="Ta bort rad ${k + 1}">✕</button>
+          </span></li>`).join('') : '<li class="order-empty muted">Tryck på raderna nedanför i den ordning de ska stå.</li>'}</ol>
+        <p class="order-label" id="${idPrefix}-pool">Rader att välja bland${(ex.distractors || []).length ? ' (alla behövs inte)' : ''}</p>
+        <div class="order-pool" role="group" aria-labelledby="${idPrefix}-pool">${rest.map((j) => `<button class="order-pick" type="button" data-pick="${j}">${lineHtml(pool[j])}</button>`).join('') || '<p class="tiny muted">Alla rader är använda.</p>'}</div>
+      </div>`;
+      const f = focusSel && (input.querySelector(focusSel) || input.querySelector('.order-pick, [data-remove]'));
+      if (f) f.focus({ preventScroll: true });
+    };
+    const change = (focusSel) => { draw(focusSel); onChange && onChange(getAnswer()); };
+    draw();
+    getAnswer = () => picked.map((j) => pool[j]);
+    input.addEventListener('click', (e) => {
+      const b = e.target.closest('button');
+      if (!b || b.disabled || el.classList.contains('solved')) return;
+      const d = b.dataset;
+      if (d.pick !== undefined) { picked.push(Number(d.pick)); change('.order-pick'); }
+      else if (d.remove !== undefined) { picked.splice(Number(d.remove), 1); change(`[data-remove="${Math.min(Number(d.remove), picked.length - 1)}"]`); }
+      else if (d.up !== undefined) { const k = Number(d.up); [picked[k - 1], picked[k]] = [picked[k], picked[k - 1]]; change(`[data-up="${k - 1}"]`); }
+      else if (d.down !== undefined) { const k = Number(d.down); [picked[k + 1], picked[k]] = [picked[k], picked[k + 1]]; change(`[data-down="${k + 1}"]`); }
+    });
   } else if (ex.type === 'web') {
     editor = codeEditor({ value: typeof saved === 'string' ? saved : ex.starter || '', lang: 'web', label: 'Din HTML och CSS', rows: 12, onInput: (v) => { onChange && onChange(v); schedulePreview(); } });
     input.classList.add('web-split');
@@ -108,7 +149,7 @@ export function renderExercise(ex, { lang, saved, solved = false, onChange, onSo
     if (res.run) showOutput(res.run);
     setFeedback(res);
     announce(res.ok ? 'Rätt svar.' : 'Inte rätt än. Läs ledtråden och försök igen.');
-    if (onAttempt && !(typeof answer === 'string' && !answer.trim())) onAttempt(res.ok);
+    if (onAttempt && !(typeof answer === 'string' && !answer.trim()) && !(Array.isArray(answer) && ex.type === 'order' && !answer.length)) onAttempt(res.ok);
     if (res.ok) {
       if (soundOn()) playCorrect();
       btn.hidden = true;
@@ -155,6 +196,10 @@ export function renderExercise(ex, { lang, saved, solved = false, onChange, onSo
     } else if (ex.type === 'fill') {
       if (ex.hint && ex.hint !== res.detail) add('Vad du kan ändra', ex.hint);
       exampleStep();
+    } else if (ex.type === 'order') {
+      if (ex.hint && ex.hint !== res.detail) add('Vad du kan ändra', ex.hint);
+      add('Första raden', 'Programmet börjar med den här raden. Fortsätt därifrån och tänk på vad som måste finnas innan nästa rad kan köras.', ex.lines[0]);
+      exampleStep();
     } else if (ex.type === 'web') {
       const wh = getHints('web', answer);
       if (wh.key !== 'ok' && wh.key !== 'not-run') {
@@ -164,7 +209,7 @@ export function renderExercise(ex, { lang, saved, solved = false, onChange, onSo
       if (ex.hint && ex.hint !== res.detail) add('Vad du kan ändra', ex.hint);
       exampleStep();
     }
-    const sol = ex.type === 'fill' ? ex.answers.map((a) => a[0]).join('  ·  ') : ex.solution;
+    const sol = ex.type === 'fill' ? ex.answers.map((a) => a[0]).join('  ·  ') : ex.type === 'order' ? ex.lines.join('\n') : ex.solution;
     if (sol) steps.push({ title: 'Lösningsförslag', text: 'Läs det, stäng det och prova att skriva lösningen själv. Det finns ofta flera sätt som fungerar.', code: sol, solution: true });
     return steps;
   }
@@ -203,7 +248,7 @@ export function renderExercise(ex, { lang, saved, solved = false, onChange, onSo
   return {
     el,
     focus() {
-      const t = el.querySelector('.choice input, .blank, textarea');
+      const t = el.querySelector('.choice input, .blank, textarea, .order-pick');
       if (t) t.focus({ preventScroll: false });
     },
     code: () => (editor ? editor.value : null),

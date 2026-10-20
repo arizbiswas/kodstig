@@ -4,10 +4,10 @@ import { runPython } from './python.js';
 import { runCSharp } from './csharp.js';
 
 self.onmessage = (e) => {
-  const { id, lang, code, calls } = e.data || {};
+  const { id, lang, code, calls, trace } = e.data || {};
   let res;
   try {
-    res = (lang === 'csharp' ? runCSharp : runPython)(String(code || ''), { calls: calls || [] });
+    res = (lang === 'csharp' ? runCSharp : runPython)(String(code || ''), { calls: calls || [], trace: !!trace });
   } catch (err) {
     res = { output: '', error: { kind: 'Internt fel', message: String(err && err.message || err), line: null, hint: 'internal', phase: 'runtime' }, calls: [] };
   }

@@ -25,6 +25,8 @@ export function render(ctx, lessonId) {
   }
 
   const total = lesson.exercises.length;
+  // Steg k i lektionen visar övning seq[k - 1]. Svar sparas per övningsindex.
+  const seq = lesson.sequence || lesson.exercises.map((_, i) => i);
   const saved = store.state.lessons[lesson.id] || {};
   const wasCompleted = !!store.state.completed[lesson.id];
   const state = {
@@ -82,15 +84,16 @@ export function render(ctx, lessonId) {
     if (ifr) ifr.srcdoc = previewSrcdoc(lesson.example);
   };
 
-  const showExercise = (i) => {
+  const showExercise = (pos) => {
     if (current && current.destroy) current.destroy();
+    const i = seq[pos];
     const ex = lesson.exercises[i];
-    const wrap = h(`<article class="card exercise-card">
-      <h2 class="step-label">Övning ${i + 1} av ${total}</h2>
+    const wrap = h(`<article class="card exercise-card" data-i="${i}">
+      <h2 class="step-label">Övning ${pos + 1} av ${total}</h2>
       <div class="ex-host"></div>
       <div class="row between nav-row">
-        <button class="btn ghost" type="button" data-prev>${i === 0 ? 'Läs igen' : 'Föregående'}</button>
-        <button class="btn primary" type="button" data-next ${state.solved[i] ? '' : 'hidden'}>${i === total - 1 ? 'Avsluta lektionen' : 'Fortsätt'}</button>
+        <button class="btn ghost" type="button" data-prev>${pos === 0 ? 'Läs igen' : 'Föregående'}</button>
+        <button class="btn primary" type="button" data-next ${state.solved[i] ? '' : 'hidden'}>${pos === total - 1 ? 'Avsluta lektionen' : 'Fortsätt'}</button>
       </div>
     </article>`);
     current = renderExercise(ex, {
@@ -154,7 +157,7 @@ export function render(ctx, lessonId) {
 
   const cleanups = [
     on(el, 'click', '[data-start]', () => {
-      const firstUnsolved = lesson.exercises.findIndex((_, i) => !state.solved[i]);
+      const firstUnsolved = seq.findIndex((i) => !state.solved[i]);
       go(firstUnsolved === -1 ? 1 : firstUnsolved + 1);
     }),
     on(el, 'click', '[data-prev]', () => go(state.step - 1)),

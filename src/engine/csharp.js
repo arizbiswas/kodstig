@@ -1038,6 +1038,39 @@ class Interp {
     for (const c of this.classes.values()) this.link(c);
     for (const c of prog.classes.values()) this.validate(c);
     for (const c of prog.classes.values()) if (!c.builtin && !c.isInterface && !c.isAbstract) this.checkAbstracts(c, c.line);
+    this.trace = opts.trace ? [] : null;
+    this.callStack = [];
+    this.cur = null;
+  }
+  // Stegvis körning: sparar raden som ska köras och variablernas värden just då.
+  snap(line, scope) {
+    if (!this.trace) return;
+    this.cur = scope;
+    if (this.trace.length >= TRACE_MAX) return;
+    // Varje anrop blir en ram: den som körs nu först, sedan de som väntar på den.
+    const frame = (sc) => {
+      const levels = [];
+      let x = sc || this.globalScope;
+      for (; x; x = x.parent) {
+        levels.unshift([...x.vars].filter(([, v]) => v.assigned).map(([k, v]) => [k, clip(this.traceStr(V(v.type, v.value)))]));
+        if (x.fnRoot) break;
+      }
+      return { name: x && x.fname ? `${x.fname}()` : 'Programmet', vars: levels.flat() };
+    };
+    const frames = [frame(scope), ...this.callStack.slice().reverse().map(frame)].slice(0, 6);
+    this.trace.push({ line, frames, out: this.outLen });
+  }
+  traceStr(val) {
+    const { t, v } = val;
+    if (v === null || v === undefined) return 'null';
+    if (t === 'string') return JSON.stringify(v);
+    if (t === 'char') return `'${v}'`;
+    if (v instanceof CsObject) return csStr(val) || `${v.cls.name}`;
+    const gb = genBase(t), ga = genArgs(t);
+    if (gb === 'Dictionary') return `{ ${[...v].map(([k, x]) => `${this.traceStr(V(ga[0], k))}: ${this.traceStr(V(ga[1], x))}`).join(', ')} }`;
+    const et = elemOf(t);
+    if (et && Array.isArray(v)) return `[${v.map((x) => this.traceStr(V(et, x))).join(', ')}]`;
+    return csStr(val);
   }
   step(line) { if (++this.steps > this.maxSteps) throw new StepLimit(line); }
   write(s) {
@@ -1348,6 +1381,7 @@ class Interp {
   }
   exec(s, scope) {
     this.step(s.line);
+    if (this.trace && !LOOP_KINDS.has(s.k) && s.k !== 'Block') this.snap(s.line, scope);
     switch (s.k) {
       case 'Empty': return;
       case 'Block': this.execBlock(s.body, scope); return;
@@ -1376,7 +1410,7 @@ class Interp {
         return;
       }
       case 'While':
-        while (this.cond(s.test, scope, 'while')) {
+        while ((this.trace && this.snap(s.line, scope), this.cond(s.test, scope, 'while'))) {
           this.step(s.line);
           try { this.exec(s.body, new Scope(scope)); } catch (e) { if (e instanceof BreakSig) break; if (e instanceof ContinueSig) continue; throw e; }
         }
@@ -1384,13 +1418,14 @@ class Interp {
       case 'DoWhile':
         do {
           this.step(s.line);
+          if (this.trace) this.snap(s.line, scope);
           try { this.exec(s.body, new Scope(scope)); } catch (e) { if (e instanceof BreakSig) break; if (e instanceof ContinueSig) continue; throw e; }
         } while (this.cond(s.test, scope, 'while'));
         return;
       case 'For': {
         const fs = new Scope(scope);
         if (s.init) this.exec(s.init, fs);
-        while (!s.test || this.cond(s.test, fs, 'for')) {
+        while ((this.trace && this.snap(s.line, fs), !s.test || this.cond(s.test, fs, 'for'))) {
           this.step(s.line);
           try { this.exec(s.body, new Scope(fs)); } catch (e) {
             if (e instanceof BreakSig) break;
@@ -1416,6 +1451,7 @@ class Interp {
           this.step(s.line);
           const ls = new Scope(scope);
           this.declare(ls, s.name, vt, this.convert(V(et, it), vt, s.line).v, s.line);
+          if (this.trace) this.snap(s.line, ls);
           try { this.exec(s.body, ls); } catch (e) { if (e instanceof BreakSig) break; if (!(e instanceof ContinueSig)) throw e; }
           if (watch && size() !== before) {
             throw rErr('InvalidOperationException', 'Samlingen ändrades medan foreach gick igenom den. Gå igenom en kopia (till exempel lista.ToList()) eller använd en vanlig for-loop.', s.line, 'modified-in-foreach');
@@ -2340,6 +2376,7 @@ class Interp {
 
   bindParams(m, args, line, ctx, parent = null) {
     const scope = new Scope(parent, true, ctx);
+    scope.fname = m.cls ? `${m.cls.name}.${m.name}` : m.name;
     m.params.forEach((p, i) => {
       const v = i < args.length ? args[i] : this.eval(p.def, scope);
       scope.vars.set(p.name, { type: p.type, value: this.convert(v, p.type, line ?? m.line).v, assigned: true });
@@ -2359,6 +2396,7 @@ class Interp {
     } finally { this.depth--; }
   }
   runBody(m, scope) {
+    if (this.trace) this.callStack.push(this.cur);
     try {
       for (const st of m.body) this.exec(st, scope);
       if (m.ret !== 'void') throw cErr('CS0161', `${m.name} måste returnera ett värde av typen ${svT(m.ret)} på alla vägar. Lägg till en return-sats.`, m.line, 'missing-return');
@@ -2373,7 +2411,7 @@ class Interp {
         return this.convert(e.v, m.ret, m.line);
       }
       throw e;
-    }
+    } finally { if (this.trace) { this.cur = this.callStack.pop(); } }
   }
 }
 const numOf = (v) => (v.t === 'char' ? v.v.charCodeAt(0) : v.v);
@@ -2410,20 +2448,26 @@ function toJS(val) {
   return val.v;
 }
 
-export function runCSharp(code, { calls = [], maxSteps } = {}) {
+export const TRACE_MAX = 500;
+const LOOP_KINDS = new Set(['While', 'DoWhile', 'For', 'Foreach']);
+const clip = (s) => (s.length > 80 ? `${s.slice(0, 77)}...` : s);
+
+export function runCSharp(code, { calls = [], maxSteps, trace = false } = {}) {
   const res = { output: '', error: null, calls: [] };
   let interp;
   try {
     const prog = parseCSharp(code);
-    interp = new Interp(prog, { maxSteps });
+    interp = new Interp(prog, { maxSteps, trace });
     interp.run();
   } catch (e) {
     res.error = asError(e);
     // ett kompileringsfel betyder att programmet aldrig hade körts
     res.output = interp && res.error.phase !== 'compile' ? interp.out.join('') : '';
+    if (trace) res.trace = interp ? interp.trace : [];
     return res;
   }
   res.output = interp.out.join('');
+  if (trace) { interp.snap(null, null); res.trace = interp.trace; }
   for (const c of calls) {
     const before = interp.out.length;
     const r = { value: undefined, error: null, output: '', repr: '' };

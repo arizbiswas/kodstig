@@ -17,6 +17,7 @@ export function emptyProfile(epoch = 0, prefs = {}) {
     activity: {},
     bonuses: {},
     review: {},
+    skipped: {},
     levelSeen: 1,
   };
 }
@@ -40,6 +41,7 @@ export function normalize(raw) {
   p.activity = obj(raw.activity);
   p.bonuses = obj(raw.bonuses);
   p.review = obj(raw.review);
+  p.skipped = obj(raw.skipped);
   p.levelSeen = Number.isInteger(raw.levelSeen) ? raw.levelSeen : 1;
   return p;
 }
@@ -62,6 +64,7 @@ export function merge(a, b) {
   for (const k of new Set([...Object.keys(a.lessons), ...Object.keys(b.lessons)])) out.lessons[k] = newer(a.lessons[k], b.lessons[k]);
   for (const k of new Set([...Object.keys(a.lab), ...Object.keys(b.lab)])) out.lab[k] = newer(a.lab[k], b.lab[k]);
   for (const k of new Set([...Object.keys(a.review), ...Object.keys(b.review)])) out.review[k] = newer(a.review[k], b.review[k]);
+  for (const k of new Set([...Object.keys(a.skipped), ...Object.keys(b.skipped)])) out.skipped[k] = earlier(a.skipped[k], b.skipped[k]);
   // Aktivitet sparas per enhet och dag; samma enhet tar max, olika enheter summeras vid visning.
   for (const dev of new Set([...Object.keys(a.activity), ...Object.keys(b.activity)])) {
     const da = a.activity[dev] || {}, db = b.activity[dev] || {};
@@ -94,6 +97,12 @@ export function completeLesson(p, lessonId, at = new Date().toISOString()) {
   return true;
 }
 
+/** Markerar kapitel som testade ut. De låser upp det som kommer efter men ger ingen XP. */
+export function skipChapters(p, chapterIds, at = new Date().toISOString()) {
+  for (const id of chapterIds) if (!p.skipped[id]) p.skipped[id] = { at };
+  return p;
+}
+
 /** Hämtar en bonus. Returnerar true bara om nyckeln inte redan fanns. */
 export function claimBonus(p, key, data = {}, at = new Date().toISOString()) {
   if (p.bonuses[key]) return false;
@@ -119,7 +128,7 @@ export function setLab(p, lang, code, ts = Date.now()) {
 }
 
 export function hasProgress(p) {
-  return Object.keys(p.completed || {}).length > 0 || Object.keys(p.lessons || {}).length > 0 || Object.keys(p.bonuses || {}).length > 0 || Object.keys(p.review || {}).length > 0;
+  return Object.keys(p.completed || {}).length > 0 || Object.keys(p.lessons || {}).length > 0 || Object.keys(p.bonuses || {}).length > 0 || Object.keys(p.review || {}).length > 0 || Object.keys(p.skipped || {}).length > 0;
 }
 
 /** Ny profil efter nollställning: framsteg bort, inställningar kvar. */

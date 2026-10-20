@@ -100,11 +100,13 @@ export function levelInfo(profile) {
 }
 
 // Lektioner som är upplåsta men inte avklarade, i läroplanens ordning.
+// Ett krav räknas som uppfyllt om lektionen är klar eller om dess kapitel är uttestat.
+const met = (profile, id) => !!(profile.completed?.[id] || profile.skipped?.[LESSON_BY_ID.get(id)?.chapterId]);
 export function isUnlocked(profile, lesson) {
-  return lesson.requires.every((r) => profile.completed && profile.completed[r]);
+  return lesson.requires.every((r) => met(profile, r));
 }
 export function availableLessons(profile, trackId) {
-  return LESSONS.filter((l) => (!trackId || l.trackId === trackId) && !profile.completed?.[l.id] && isUnlocked(profile, l));
+  return LESSONS.filter((l) => (!trackId || l.trackId === trackId) && !profile.completed?.[l.id] && !profile.skipped?.[l.chapterId] && isUnlocked(profile, l));
 }
 
 // Ett konkret nästa steg när XP räcker men kunskapskrav saknas.

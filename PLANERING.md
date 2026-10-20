@@ -17,11 +17,11 @@ Utgår från rapporten "Kodstig jämfört med Mimo och andra kodappar" (20 oktob
 
 Så blev det: varje klarad lektion är ett begrepp i en kö som kommer tillbaka efter 1, 3, 7, 14 och 30 dagar. Övningar som gick fel kommer först. Dagens pass har högst fem frågor och ger 10 XP en gång per dag. Rena projektlektioner utan korta övningar repeteras inte. Sviten räknar lektion, dagsmål, repetition och dagens utmaning, och två missade dagar per vecka fryses automatiskt.
 
-## Fas 3: Nya sätt att öva
-- [ ] Ordningspussel där man lägger kodrader i rätt ordning, med knappar (3)
-- [ ] Nivåtest i början och "testa ut" per kapitel (10)
-- [ ] Trappan förutsäg, pussel, lucka, tom editor i lektioner som saknar den (6)
-- [ ] Stegvis körning som visar variablernas värden rad för rad (15)
+## Fas 3: Nya sätt att öva (klar 20 oktober 2026)
+- [x] Ordningspussel där man lägger kodrader i rätt ordning, med knappar (3). Ett per lektion utom miniprojekten, 113 st, ofta med en felaktig rad att välja bort.
+- [x] Nivåtest i början och "testa ut" per kapitel (10). Nivåtestet: två frågor per grundkapitel tills något blir fel. Testa ut: 4 av 5 rätt. Ger ingen XP, lektionerna finns kvar.
+- [x] Trappan förutsäg, pussel, lucka, tom editor i lektioner som saknar den (6). Övningarna visas i den ordningen i alla lektioner, och 16 lektioner fick en "Vad skrivs ut?"-fråga.
+- [x] Stegvis körning som visar variablernas värden rad för rad (15). Knappen "Kör steg för steg" i Kodlabbet, för Python och C#.
 
 ## Fas 4: Vägen till riktig utvecklare
 - [ ] Ta med dig koden: köra koden i VS Code och terminalen, ladda ner sin kod (9)
@@ -57,11 +57,11 @@ Läget efter läroplansutbyggnaden samma dag (commit 1af57c5): 130 lektioner, 72
 | 3 | Ingen repetition som fungerar | **Åtgärdat i fas 2.** Daglig repetitionskö med 1, 3, 7, 14 och 30 dagar. |
 | 4 | Svag återkoppling i flerval | **Åtgärdat i fas 1.** Alla 206 flervalsfrågor förklarar varje fel svar, och ett test kräver det för nya frågor. |
 | 5 | Ledtrådstrappan bara i Kodlabbet | **Åtgärdat i fas 1.** Alla lektionsövningar har trappan, lösningen först efter två försök. |
-| 6 | Jobbigt att skriva kod i mobilen | **Delvis åtgärdat i fas 1.** Rad med kodtecken på pekskärm. Ordningspussel kommer i fas 3. |
+| 6 | Jobbigt att skriva kod i mobilen | **Åtgärdat.** Rad med kodtecken på pekskärm (fas 1) och ordningspussel som bara kräver tryck (fas 3). |
 | 7 | Ingen väg ut ur appen | Kvar (fas 4). |
 | 8 | Egna tolkar kan lära ut fel saker | **Delvis.** Tolkarna klarar mycket mer nu och skillnaderna står i Kodlabbet och README. Byte till Pyodide är inte planerat. |
 | 9 | Milo når få och är osäker | Kvar (fas 5). |
-| 10 | Strikt linjär stig utan nivåtest | Kvar (fas 3). |
+| 10 | Strikt linjär stig utan nivåtest | **Åtgärdat i fas 3.** Nivåtest per spår och "Testa ut" per låst kapitel. |
 | 11 | Mycket korta lektionstexter | **Delvis.** Snitt 361 tecken (var 221), fortsättningskapitlen har längre texter. Stegrubriker kvar (fas 1). |
 | 12 | Ingen social del | Kvar (fas 5). |
 | 13 | Profilen spretar | **Beslutat:** alla åldrar (se Beslut). |
@@ -73,17 +73,17 @@ Läget efter läroplansutbyggnaden samma dag (commit 1af57c5): 130 lektioner, 72
 | --- | --- | --- |
 | 1 | Daglig repetitionskö | **Gjort** (fas 2) |
 | 2 | Ledtrådstrappan i alla övningar | **Gjort** (fas 1) |
-| 3 | Ordningspussel | Fas 3 |
+| 3 | Ordningspussel | **Gjort** (fas 3) |
 | 4 | Symbolrad på mobil | **Gjort** (fas 1) |
 | 5 | Förklaring per fel svar | **Gjort** (fas 1) |
-| 6 | Fler övningar och en trappa per lektion | **Delvis gjort** (158 extraövningar i grundlektionerna, minst två skrivövningar i nästan alla). Trappan i fas 3. |
+| 6 | Fler övningar och en trappa per lektion | **Gjort** (158 extraövningar i grundlektionerna, trappan förutsäg, pussel, lucka, kod i fas 3) |
 | 7 | Fler kapitel för egna program | **Delvis gjort** (klasser, undantag). Inläsning, `import random`, filer och JavaScript i fas 4. |
 | 8 | Milo får facit och testresultat | Fas 5 |
 | 9 | Ta med dig koden | Fas 4 |
-| 10 | Nivåtest och testa ut | Fas 3 |
+| 10 | Nivåtest och testa ut | **Gjort** (fas 3) |
 | 11 | Bestäm målgrupp | **Beslutat:** alla åldrar |
 | 12 | Förlåtande svit med frysningar | **Gjort** (fas 2) |
 | 13 | Dela projekt med länk | Fas 5 |
 | 14 | Anonym statistik | Fas 5, bara med zira ja |
-| 15 | Stegvis körning | Fas 3 |
+| 15 | Stegvis körning | **Gjort** (fas 3) |
 | 16 | Stegetiketter i exemplen | **Gjort** (fas 1) |

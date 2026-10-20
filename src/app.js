@@ -21,6 +21,7 @@ import * as glossary from './ui/views/glossary.js';
 import * as progress from './ui/views/progress.js';
 import * as settings from './ui/views/settings.js';
 import * as review from './ui/views/review.js';
+import * as quiz from './ui/views/quiz.js';
 
 const local = safeStorage('localStorage');
 const session = safeStorage('sessionStorage');
@@ -205,9 +206,12 @@ export class App {
     if (path === '/intro') return this.renderBare(welcome.intro(this.ctx()));
     let view;
     const m = path.match(/^\/lektion\/([\w-]+)$/);
+    let m2;
     if (m) view = lesson.render(this.ctx(), m[1]);
     else if (path === '/installningar') view = settings.render(this.ctx());
     else if (path === '/repetition') view = review.render(this.ctx());
+    else if ((m2 = path.match(/^\/testa\/([\w-]+)$/))) view = quiz.testOut(this.ctx(), m2[1]);
+    else if ((m2 = path.match(/^\/nivatest\/([\w-]+)$/))) view = quiz.placement(this.ctx(), m2[1]);
     else {
       const item = NAV.find((n) => n.path === path) || NAV[0];
       view = item.view.render(this.ctx(), params);

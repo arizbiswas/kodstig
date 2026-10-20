@@ -5,7 +5,7 @@
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { chromium } from 'playwright';
-import { LESSON_BY_ID, LESSONS, STATS } from '../../src/content/index.js';
+import { LESSON_BY_ID, LESSONS, STATS, TRACKS } from '../../src/content/index.js';
 
 const PORT = 4174;
 const DEV_PORT = 4175;
@@ -39,6 +39,10 @@ async function solveExercise(page, ex) {
   else if (ex.type === 'fill') {
     const blanks = card.locator('.blank');
     for (let k = 0; k < ex.answers.length; k++) await blanks.nth(k).fill(ex.answers[k][0]);
+  } else if (ex.type === 'order') {
+    for (const line of ex.lines) {
+      await card.evaluate((c, l) => [...c.querySelectorAll('.order-pick')].find((b) => b.textContent === (l || '\u00a0')).click(), line);
+    }
   } else await card.locator('textarea').fill(ex.solution);
   await card.locator('[data-check]').click();
   await card.locator('.feedback.good').waitFor({ timeout: 8000 });
@@ -57,7 +61,7 @@ async function finishLesson(page, id) {
   const lesson = LESSON_BY_ID.get(id);
   await page.goto(`${BASE}#/lektion/${id}`);
   await startPractice(page);
-  for (const ex of lesson.exercises) {
+  for (const ex of lesson.sequence.map((i) => lesson.exercises[i])) {
     // Hoppa över redan lösta (utkast) genom att lösa igen; det är tillåtet.
     await solveExercise(page, ex);
     await page.locator('[data-next]').click();
@@ -163,9 +167,12 @@ async function main() {
       const { context, page } = await newGuest(browser);
       await page.goto(`${BASE}#/lektion/py-print`);
       await startPractice(page);
-      await page.locator('.choice input[value="0"]').check();
-      await page.locator('[data-check]').click();
-      await page.locator('[data-next]').click();
+      const pp = LESSON_BY_ID.get('py-print');
+      for (const i of pp.sequence) {
+        if (pp.exercises[i].type === 'fill') break;
+        await solveExercise(page, pp.exercises[i]);
+        await page.locator('[data-next]').click();
+      }
       await page.locator('.blank').fill('pri');
       await page.waitForTimeout(1200);
       await page.reload();
@@ -178,7 +185,12 @@ async function main() {
       const { context, page } = await newGuest(browser);
       await page.goto(`${BASE}#/lektion/py-print`);
       await startPractice(page);
-      for (const ex of LESSON_BY_ID.get('py-print').exercises.slice(0, 3)) { await solveExercise(page, ex); await page.locator('[data-next]').click(); }
+      const pp = LESSON_BY_ID.get('py-print');
+      for (const i of pp.sequence) {
+        if (pp.exercises[i].type === 'code') break;
+        await solveExercise(page, pp.exercises[i]);
+        await page.locator('[data-next]').click();
+      }
       const card = page.locator('.exercise-card');
       await card.locator('textarea').fill('print("Jag heter Milo"\n');
       await card.locator('[data-check]').click();
@@ -209,6 +221,118 @@ async function main() {
       eq(await ta.evaluate((t) => t.selectionStart), 1, 'markören hamnar mellan parenteserna');
       eq(await page.evaluate(() => document.activeElement.tagName), 'TEXTAREA', 'fokus stannar i kodfältet');
       assert(await noHorizontalScroll(page), 'raden ger ingen horisontell scroll');
+      await context.close();
+    });
+
+    await check('Ordningspussel: fel ordning ger ledtråd, pilarna flyttar rader, rätt ordning godkänns', async () => {
+      const { context, page } = await newGuest(browser, { viewport: { width: 375, height: 740 }, hasTouch: true, isMobile: true });
+      const pp = LESSON_BY_ID.get('py-print');
+      const oi = pp.exercises.findIndex((e) => e.type === 'order');
+      const ex = pp.exercises[oi];
+      await page.goto(`${BASE}#/lektion/py-print`);
+      await startPractice(page);
+      for (const i of pp.sequence) {
+        if (i === oi) break;
+        await solveExercise(page, pp.exercises[i]);
+        await page.locator('[data-next]').click();
+      }
+      const card = page.locator('.exercise-card');
+      eq(await card.locator('.ex-kind').textContent(), 'Ordna raderna');
+      const pick = (l) => card.evaluate((c, line) => [...c.querySelectorAll('.order-pick')].find((b) => b.textContent === (line || ' ')).click(), l);
+      // Rätt rader men de två första i omvänd ordning.
+      await pick(ex.lines[1]); await pick(ex.lines[0]);
+      for (const l of ex.lines.slice(2)) await pick(l);
+      await card.locator('[data-check]').click();
+      await card.locator('.feedback.bad').waitFor();
+      await card.locator('[data-down="0"]').click();
+      eq(await card.locator('.order-answer li .order-line').first().textContent(), ex.lines[0] || ' ', 'raden flyttades ner');
+      await card.locator('[data-check]').click();
+      await card.locator('.feedback.good').waitFor();
+      assert(await noHorizontalScroll(page), 'ingen horisontell scroll');
+      eq(page.errors.length, 0, page.errors.join('\n'));
+      await context.close();
+    });
+
+    await check('Testa ut: fyra av fem rätt låser upp kapitlet efter, utan XP', async () => {
+      const { context, page } = await newGuest(browser);
+      const py = TRACKS.find((t) => t.id === 'python');
+      await page.goto(`${BASE}#/lar?kapitel=${py.chapters[1].id}`);
+      await page.locator('.chapter-panel a[href^="#/testa/"]').click();
+      await page.locator('[data-quiz-start]').click();
+      let n = 0;
+      while (!(await page.locator('.quiz-result').count())) {
+        const card = page.locator('.quiz .exercise-card');
+        await card.waitFor();
+        const lesson = LESSON_BY_ID.get(await card.getAttribute('data-lesson'));
+        const ex = lesson.exercises[Number(await card.getAttribute('data-i'))];
+        if (n === 0 && ex.type === 'choice') {
+          await card.locator(`.choice input[value="${ex.answer === 0 ? 1 : 0}"]`).check();
+          await card.locator('[data-check]').click();
+        } else await solveExercise(page, ex);
+        eq(await card.locator('[data-check]').isVisible(), false, 'bara första svaret räknas');
+        await card.locator('[data-quiz-next]').click();
+        if (++n > 6) throw new Error('testet tog aldrig slut');
+      }
+      eq(n, 5);
+      assert((await page.locator('.quiz-result').textContent()).includes('Godkänt'));
+      await page.locator('.quiz-result a.btn.primary').click();
+      await page.locator('#learn-h').waitFor();
+      eq(await page.locator(`.station[data-ch="${py.chapters[1].id}"].s-skipped`).count(), 1, 'kapitel 2 är uttestat');
+      eq(await page.locator(`.station[data-ch="${py.chapters[2].id}"].s-open`).count(), 1, 'kapitel 3 är öppet');
+      eq(await page.locator('.next-card h2').textContent(), py.chapters[2].lessons[0].title, 'nästa steg är kapitel 3');
+      eq(parseInt(await xpText(page), 10), 0, 'ingen XP för testet');
+      eq(page.errors.length, 0, page.errors.join('\n'));
+      await context.close();
+    });
+
+    await check('Nivåtest: slutar vid första felet och erbjuder att börja där', async () => {
+      const { context, page } = await newGuest(browser);
+      const py = TRACKS.find((t) => t.id === 'python');
+      await page.goto(`${BASE}#/lar`);
+      await page.locator('.placement-link a').click();
+      await page.locator('[data-quiz-start]').click();
+      let n = 0;
+      while (!(await page.locator('.quiz-result').count())) {
+        const card = page.locator('.quiz .exercise-card');
+        await card.waitFor();
+        const ex = LESSON_BY_ID.get(await card.getAttribute('data-lesson')).exercises[Number(await card.getAttribute('data-i'))];
+        if (n < 2) await solveExercise(page, ex);
+        else {
+          // Fel svar i kapitel 2: tom ordning, fel lucka eller fel alternativ.
+          if (ex.type === 'choice') await card.locator(`.choice input[value="${ex.answer === 0 ? 1 : 0}"]`).check();
+          else if (ex.type === 'fill') await card.locator('.blank').first().fill('zzz');
+          else await card.evaluate((c) => [...c.querySelectorAll('.order-pick')].reverse().forEach((b) => b.click()));
+          await card.locator('[data-check]').click();
+        }
+        await card.locator('[data-quiz-next]').click();
+        if (++n > 4) throw new Error('testet slutade inte vid felet');
+      }
+      eq(n, 3, 'två rätt i kapitel 1 och ett fel i kapitel 2');
+      await page.locator('[data-quiz-primary]').click();
+      await page.locator('#learn-h').waitFor();
+      eq(await page.locator(`.station[data-ch="${py.chapters[0].id}"].s-skipped`).count(), 1);
+      eq(await page.locator('.placement-link').count(), 0, 'nivåtestet erbjuds inte igen');
+      eq(page.errors.length, 0, page.errors.join('\n'));
+      await context.close();
+    });
+
+    await check('Kodlabbet: stegvis körning visar rad, variabler och utskrift', async () => {
+      const { context, page } = await newGuest(browser);
+      await page.goto(`${BASE}#/labb?sprak=python`);
+      const ta = page.locator('.editor textarea').first();
+      await ta.fill('summa = 0\nfor i in range(3):\n    summa += i\nprint(summa)\n');
+      await page.locator('[data-trace]').click();
+      await page.locator('.tracer').waitFor();
+      eq(await page.locator('.tracer-code li.cur').textContent(), 'summa = 0');
+      await page.keyboard.press('ArrowRight');
+      await page.locator('.tracer-controls .btn.primary').click();
+      assert((await page.locator('.vars').first().textContent()).includes('summa'), 'variabeltabellen visar summa');
+      await page.locator('[aria-label="Till slutet"]').click();
+      assert((await page.locator('.tracer-status').textContent()).includes('klart'));
+      eq((await page.locator('.tracer .output pre').textContent()).trim(), '3');
+      await ta.fill('print(1)\n');
+      eq(await page.locator('.tracer').count(), 0, 'ändrad kod stänger steg för steg');
+      eq(page.errors.length, 0, page.errors.join('\n'));
       await context.close();
     });
 

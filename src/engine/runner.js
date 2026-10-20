@@ -30,12 +30,12 @@ function ensureWorker() {
   return worker;
 }
 
-export function runCode(lang, code, calls = []) {
+export function runCode(lang, code, calls = [], { trace = false } = {}) {
   return new Promise((resolve) => {
     let w;
     try { w = ensureWorker(); } catch {
       // Om Web Workers saknas körs tolken i sidan (den är fortfarande utan eval).
-      import(lang === 'csharp' ? './csharp.js' : './python.js').then((m) => resolve((m.runCSharp || m.runPython)(code, { calls })));
+      import(lang === 'csharp' ? './csharp.js' : './python.js').then((m) => resolve((m.runCSharp || m.runPython)(code, { calls, trace })));
       return;
     }
     const id = ++seq;
@@ -46,9 +46,12 @@ export function runCode(lang, code, calls = []) {
       resolve({ output: '', error: { kind: 'Tidsgräns', message: 'Koden tog för lång tid och stoppades. Kanske en loop som aldrig slutar?', line: null, hint: 'infinite-loop', phase: 'runtime' }, calls: [] });
     }, TIMEOUT_MS);
     pending.set(id, { resolve, timer });
-    w.postMessage({ id, lang, code, calls });
+    w.postMessage({ id, lang, code, calls, trace });
   });
 }
+
+/** Kör koden och sparar varje steg: raden som körs, variablerna och utskriften. */
+export const traceCode = (lang, code) => runCode(lang, code, [], { trace: true });
 
 export function checkWeb(ex, html) {
   return runWebChecks(ex, html, (s) => new DOMParser().parseFromString(s, 'text/html'));

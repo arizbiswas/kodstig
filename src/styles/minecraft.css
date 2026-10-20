@@ -115,6 +115,7 @@
   box-shadow: inset 0 -16px 0 #7a5230, inset 3px 3px 0 rgb(255 255 255 / 25%), inset -3px -3px 0 rgb(0 0 0 / 30%);
 }
 [data-theme="minecraft"] .station.s-done .station-node { background: #3fbf5a; box-shadow: inset 3px 3px 0 rgb(255 255 255 / 30%), inset -3px -3px 0 rgb(0 0 0 / 30%); color: #0b2410; }
+[data-theme="minecraft"] .station.s-skipped .station-node { background: #8fd49c; box-shadow: inset 3px 3px 0 rgb(255 255 255 / 30%), inset -3px -3px 0 rgb(0 0 0 / 30%); color: #0b2410; }
 [data-theme="minecraft"] .station.s-locked .station-node { background: #7c7c7c; box-shadow: inset 3px 3px 0 rgb(255 255 255 / 20%), inset -3px -3px 0 rgb(0 0 0 / 35%); color: #262626; }
 [data-theme="minecraft"] .path-bg { stroke: #6b5a3e; stroke-linecap: square; stroke-dasharray: 10 6; }
 [data-theme="minecraft"] .path-done { stroke: #3fbf5a; stroke-linecap: square; }

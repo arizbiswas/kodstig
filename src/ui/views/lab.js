@@ -2,7 +2,7 @@
 // kontot. Tipsen fungerar utan AI och börjar om när koden ändras.
 import { h, esc, on, codeEditor, announce } from '../dom.js';
 import { setLab } from '../../state/model.js';
-import { runCode, previewSrcdoc } from '../../engine/runner.js';
+import { runCode, traceCode, previewSrcdoc } from '../../engine/runner.js';
 import { getHints } from '../../engine/hints.js';
 
 export const LAB_LANGS = [
@@ -33,6 +33,7 @@ export function render(ctx, params = {}) {
         <div class="editor-slot"></div>
         <div class="row gap wrap lab-actions">
           <button class="btn primary" type="button" data-run>Kör</button>
+          <button class="btn secondary" type="button" data-trace>Kör steg för steg</button>
           <button class="btn secondary" type="button" data-hint>Fastnat? Få en ledtråd</button>
           <button class="btn ghost" type="button" data-ask>Fråga Milo</button>
           <button class="btn ghost small push" type="button" data-restore>Återställ exemplet</button>
@@ -52,6 +53,7 @@ export function render(ctx, params = {}) {
   let saveTimer = null;
   let previewTimer = null;
   let runToken = 0;
+  let trace = null; // { code, steps, i, result }
 
   const resultSlot = el.querySelector('.result-slot');
   const hintSlot = el.querySelector('.hint-slot');
@@ -81,6 +83,57 @@ export function render(ctx, params = {}) {
     </section>`;
   };
 
+  // Stegvis körning: visar raden som körs härnäst, variablerna och utskriften så långt.
+  const showTrace = ({ focus = null } = {}) => {
+    const { steps, i, result, code } = trace;
+    const st = steps[i];
+    const prev = steps[i - 1];
+    const lines = code.replace(/\n$/, '').split('\n');
+    const last = i === steps.length - 1;
+    const prevVal = (name, k) => prev && prev.frames.find((f) => f.name === name)?.vars.find(([n]) => n === k)?.[1];
+    const status = st.line ? `Steg ${i + 1} av ${steps.length}. Rad ${st.line} körs härnäst.`
+      : `Steg ${i + 1} av ${steps.length}. ${result.error ? 'Programmet stoppades av ett fel.' : 'Programmet är klart.'}`;
+    const out = (result.output || '').slice(0, st.out).replace(/\n$/, '');
+    resultSlot.innerHTML = `<section class="tracer" aria-labelledby="tr-h">
+      <div class="row between"><h2 id="tr-h" class="small-h">Steg för steg</h2><button class="btn ghost small" type="button" data-trace-close>Stäng</button></div>
+      <p class="tracer-status" role="status">${esc(status)}</p>
+      <div class="tracer-controls row gap wrap">
+        <button class="btn ghost small" type="button" data-trace-go="0" ${i === 0 ? 'disabled' : ''} aria-label="Till början">⏮</button>
+        <button class="btn secondary small" type="button" data-trace-go="${i - 1}" ${i === 0 ? 'disabled' : ''}>← Bakåt</button>
+        <button class="btn primary small" type="button" data-trace-go="${i + 1}" ${last ? 'disabled' : ''}>Framåt →</button>
+        <button class="btn ghost small" type="button" data-trace-go="${steps.length - 1}" ${last ? 'disabled' : ''} aria-label="Till slutet">⏭</button>
+      </div>
+      <input class="tracer-range" type="range" min="0" max="${steps.length - 1}" value="${i}" aria-label="Välj steg">
+      <ol class="tracer-code" aria-label="Din kod">${lines.map((l, k) => `<li${st.line === k + 1 ? ' class="cur" aria-current="step"' : ''}><code>${esc(l) || ' '}</code></li>`).join('')}</ol>
+      <div class="tracer-vars">${st.frames.map((f, fi) => `<table class="vars${fi ? ' waiting' : ''}"><caption>${esc(f.name)}${fi ? ' <span class="muted">väntar</span>' : ''}</caption>
+        ${f.vars.length ? `<thead><tr><th scope="col">Variabel</th><th scope="col">Värde</th></tr></thead><tbody>${f.vars.map(([k, v]) => {
+          const changed = !fi && prev && prevVal(f.name, k) !== v;
+          return `<tr${changed ? ' class="changed"' : ''}><th scope="row"><code>${esc(k)}</code></th><td><code>${esc(v)}</code>${changed ? '<span class="sr-only"> (ändrad)</span>' : ''}</td></tr>`;
+        }).join('')}</tbody>` : '<tbody><tr><td class="muted" colspan="2">Inga variabler än</td></tr></tbody>'}</table>`).join('')}</div>
+      <div class="output"><span class="output-label">Utskrift hittills</span><pre>${out ? esc(out) : '<span class="muted">(inget än)</span>'}</pre></div>
+      ${last && result.error ? `<div class="err" role="alert"><p><strong>${esc(result.error.kind)}${result.error.line ? ` på rad ${result.error.line}` : ''}:</strong> ${esc(result.error.message)}</p></div>` : ''}
+      ${steps.length >= 500 ? '<p class="tiny muted">Programmet tog många steg, så bara de första 500 visas.</p>' : ''}
+    </section>`;
+    const cur = resultSlot.querySelector('.tracer-code .cur');
+    if (cur) cur.scrollIntoView({ block: 'nearest' });
+    if (focus) resultSlot.querySelector(focus)?.focus();
+  };
+
+  const startTrace = async () => {
+    const code = editor.value;
+    const token = ++runToken;
+    const btn = el.querySelector('[data-trace]');
+    btn.disabled = true;
+    resultSlot.innerHTML = '<p class="muted" role="status">Förbereder…</p>';
+    const result = await traceCode(lang, code);
+    if (token !== runToken) return;
+    btn.disabled = false;
+    lastRun = { code, result, lang };
+    if (!result.trace || !result.trace.length) { trace = null; showResult(); return; }
+    trace = { code, steps: result.trace, i: 0, result };
+    showTrace({ focus: '[data-trace-go]:not([disabled])' });
+  };
+
   const showResult = () => {
     if (lang === 'web') {
       resultSlot.innerHTML = '<div class="preview tall"><span class="output-label">Förhandsvisning</span><iframe title="Förhandsvisning av din sida" sandbox="" referrerpolicy="no-referrer"></iframe></div>';
@@ -106,12 +159,15 @@ export function render(ctx, params = {}) {
         persist();
         // Tipsen gäller koden de skapades för; när koden ändras börjar de om.
         if (hint && hint.code !== editor.value) { hint = null; renderHint(); }
+        if (trace) { trace = null; showResult(); }
         if (lang === 'web') { clearTimeout(previewTimer); previewTimer = setTimeout(showResult, 300); }
       },
     });
     el.querySelector('.editor-slot').replaceChildren(editor.el);
     el.querySelectorAll('[data-lang]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.lang === lang)));
     el.querySelector('[data-run]').hidden = lang === 'web';
+    el.querySelector('[data-trace]').hidden = lang === 'web';
+    trace = null;
     el.querySelector('.limits p').textContent = LIMITS[lang];
     lastRun = null;
     hint = null;
@@ -145,7 +201,26 @@ export function render(ctx, params = {}) {
       sessionStorageSet('kodstig.lab.lang', lang);
       mountEditor();
     }),
-    on(el, 'click', '[data-run]', () => run()),
+    on(el, 'click', '[data-run]', () => { trace = null; run(); }),
+    on(el, 'click', '[data-trace]', () => startTrace()),
+    on(el, 'click', '[data-trace-go]', (e, b) => {
+      if (!trace) return;
+      trace.i = Math.max(0, Math.min(trace.steps.length - 1, Number(b.dataset.traceGo)));
+      const sel = b.getAttribute('aria-label') ? `[aria-label="${b.getAttribute('aria-label')}"]` : (b.textContent.includes('Bakåt') ? '.tracer-controls .btn.secondary' : '.tracer-controls .btn.primary');
+      showTrace({ focus: sel });
+      // Fokus kan inte stanna på en avstängd knapp; flytta till den andra riktningen.
+      if (document.activeElement === document.body || document.activeElement?.disabled) resultSlot.querySelector('[data-trace-go]:not([disabled])')?.focus();
+    }),
+    on(el, 'input', '.tracer-range', (e, r) => { if (trace) { trace.i = Number(r.value); showTrace({ focus: '.tracer-range' }); } }),
+    on(el, 'keydown', '.tracer', (e) => {
+      if (!trace || e.target.matches('input')) return;
+      if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+        e.preventDefault();
+        const b = resultSlot.querySelector(e.key === 'ArrowRight' ? '.tracer-controls .btn.primary' : '.tracer-controls .btn.secondary');
+        if (b && !b.disabled) b.click();
+      }
+    }),
+    on(el, 'click', '[data-trace-close]', () => { trace = null; showResult(); el.querySelector('[data-trace]').focus(); }),
     on(el, 'keydown', 'textarea', (e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); run(); } }),
     on(el, 'click', '[data-hint]', () => {
       const code = editor.value;

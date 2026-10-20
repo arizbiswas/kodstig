@@ -891,6 +891,21 @@ class Interp {
     this.globals = new Map();
     this.handling = [];
     this.builtins = this.makeBuiltins();
+    this.trace = opts.trace ? [] : null;
+    this.callStack = [];
+    this.cur = null;
+  }
+  // Stegvis körning: sparar raden som ska köras och variablernas värden just då.
+  snap(line, scope) {
+    if (!this.trace) return;
+    this.cur = scope;
+    if (this.trace.length >= TRACE_MAX) return;
+    const show = (vars) => [...vars].filter(([, v]) => !(v instanceof PyFunc || v instanceof PyClass || v instanceof Builtin)).map(([k, v]) => [k, clip(safeRepr(v))]);
+    // Varje anrop blir en ram: den som körs nu först, sedan de som väntar på den.
+    const frame = (sc) => (sc && sc.fname ? { name: `${sc.fname}()`, vars: show(sc.vars) } : null);
+    const frames = [frame(scope), ...this.callStack.slice().reverse().map(frame)].filter(Boolean).slice(0, 5);
+    frames.push({ name: 'Programmet', vars: show(this.globals) });
+    this.trace.push({ line, frames, out: this.outLen });
   }
   step(line) { if (++this.steps > this.maxSteps) throw new StepLimit(line); }
   write(s) {
@@ -1053,6 +1068,7 @@ class Interp {
 
   exec(s, scope) {
     this.step(s.line);
+    if (this.trace && s.k !== 'For' && s.k !== 'While') this.snap(s.line, scope);
     switch (s.k) {
       case 'Expr': this.eval(s.value, scope); return;
       case 'Assign': {
@@ -1071,7 +1087,7 @@ class Interp {
         else this.execBlock(s.orelse, scope);
         return;
       case 'While':
-        while (truthy(this.eval(s.test, scope))) {
+        while ((this.trace && this.snap(s.line, scope), truthy(this.eval(s.test, scope)))) {
           this.step(s.line);
           try { this.execBlock(s.body, scope); } catch (e) {
             if (e instanceof BreakSig) break;
@@ -1085,6 +1101,7 @@ class Interp {
         for (const it of items) {
           this.step(s.line);
           this.assign(s.target, it, scope, s.line);
+          if (this.trace) this.snap(s.line, scope);
           try { this.execBlock(s.body, scope); } catch (e) {
             if (e instanceof BreakSig) break;
             if (e instanceof ContinueSig) continue;
@@ -1369,7 +1386,7 @@ class Interp {
       throw new CodeError('TypeError', `${d.name}() tar ${req === d.params.length ? req - off : `${req - off}–${d.params.length - off}`} argument men fick ${args.length + Object.keys(kw).length - off}.`, line, 'arg-count');
     }
     if (++this.depth > 200) throw new CodeError('RecursionError', 'Funktionen anropar sig själv för många gånger.', line, 'recursion');
-    const scope = { vars: new Map(), globals: new Set(), parent: fn.closure, owner: fn.owner, self: fn.owner ? args[0] : undefined };
+    const scope = { vars: new Map(), globals: new Set(), parent: fn.closure, owner: fn.owner, self: fn.owner ? args[0] : undefined, fname: fn.owner ? `${fn.owner.name}.${d.name}` : d.name };
     d.params.forEach((p, i) => {
       let v;
       if (i < args.length) v = args[i];
@@ -1379,13 +1396,14 @@ class Interp {
       scope.vars.set(p.name, v);
     });
     for (const k of Object.keys(kw)) if (!d.params.some((p) => p.name === k)) throw new CodeError('TypeError', `${d.name}() har ingen parameter som heter ${k}.`, line, 'arg-count');
+    if (this.trace) this.callStack.push(this.cur);
     try {
       this.execBlock(d.body, scope);
       return null;
     } catch (e) {
       if (e instanceof ReturnSig) return e.v;
       throw e;
-    } finally { this.depth--; }
+    } finally { this.depth--; if (this.trace) this.cur = this.callStack.pop(); }
   }
 
   instantiate(cls, args, kw, line) {
@@ -1574,18 +1592,24 @@ export function toJS(v) {
  * Kör Python-kod. `calls` är valfria funktionsanrop som görs efter att
  * programmet körts: [{ fn: 'namn', args: [...] }].
  */
-export function runPython(code, { calls = [], maxSteps } = {}) {
+export const TRACE_MAX = 500;
+const clip = (s) => (s.length > 80 ? `${s.slice(0, 77)}...` : s);
+function safeRepr(v) { try { return pyRepr(v); } catch { return '?'; } }
+
+export function runPython(code, { calls = [], maxSteps, trace = false } = {}) {
   const res = { output: '', error: null, calls: [] };
   let interp;
   try {
     const ast = parsePython(code);
-    interp = new Interp({ maxSteps });
+    interp = new Interp({ maxSteps, trace });
     interp.run(ast);
   } catch (e) {
     res.output = interp ? interp.output() : '';
     res.error = asError(e);
+    if (trace) res.trace = interp ? interp.trace : [];
     return res;
   }
+  if (trace) { interp.snap(null, null); res.trace = interp.trace; }
   res.output = interp.output();
   for (const c of calls) {
     const before = interp.out.length;

@@ -4,14 +4,14 @@ import { TRACKS, LESSONS, STATS } from '../../src/content/index.js';
 import { GLOSSARY } from '../../src/content/glossary.js';
 import { runCSharp } from '../../src/engine/csharp.js';
 import { runPython } from '../../src/engine/python.js';
-import { grade, fillCode, normalizeOutput } from '../../src/engine/grade.js';
+import { grade, fillCode, normalizeOutput, orderLines, shuffled } from '../../src/engine/grade.js';
 
 const runner = async (lang, code, calls) => (lang === 'csharp' ? runCSharp : runPython)(code, { calls });
 
-test('omfattning: 130 lektioner, 723 övningar, 17 miniprojekt', () => {
-  assert.deepEqual(STATS, { lessons: 130, exercises: 723, projects: 17 });
+test('omfattning: 130 lektioner, 852 övningar, 17 miniprojekt', () => {
+  assert.deepEqual(STATS, { lessons: 130, exercises: 852, projects: 17 });
   const per = Object.fromEntries(TRACKS.map((t) => [t.id, [LESSONS.filter((l) => l.trackId === t.id).length, LESSONS.filter((l) => l.trackId === t.id).reduce((n, l) => n + l.exercises.length, 0)]]));
-  assert.deepEqual(per, { csharp: [49, 274], python: [43, 234], web: [38, 215] });
+  assert.deepEqual(per, { csharp: [49, 327], python: [43, 277], web: [38, 248] });
   assert.deepEqual(Object.fromEntries(TRACKS.map((t) => [t.id, t.chapters.length])), { csharp: 12, python: 11, web: 10 });
 });
 
@@ -41,6 +41,13 @@ for (const track of TRACKS.filter((t) => t.lang !== 'web')) {
             const r = await runner(track.lang, fillCode(ex.code, ans), []);
             assert.equal(r.error, null, `${tag}: luckan "${a}" ger fel`);
             if (ex.output !== undefined) assert.equal(normalizeOutput(r.output), normalizeOutput(ex.output), `${tag}: "${a}"`);
+          }
+        }
+        if (ex.type === 'order') {
+          for (const lines of [ex.lines, ...(ex.alt || [])]) {
+            const r = await runner(track.lang, lines.join('\n'), []);
+            assert.equal(r.error, null, `${tag}: raderna i rätt ordning ger fel ${r.error && r.error.message}`);
+            if (ex.output !== undefined) assert.equal(normalizeOutput(r.output), normalizeOutput(ex.output), `${tag}: utskriften stämmer inte`);
           }
         }
         if (ex.type === 'code' || ex.type === 'debug') {
@@ -85,4 +92,20 @@ test('varje fel svar i varje flervalsfråga har en egen förklaring', () => {
     if (e.type === 'choice') e.options.forEach((o, k) => { if (k !== e.answer && !(e.why && e.why[k])) missing.push(`${l.id}#${i}:${k}`); });
   });
   assert.deepEqual(missing, []);
+});
+
+test('ordningspussel: rimliga rader, blandas aldrig rätt från början och rättas korrekt', async () => {
+  const all = LESSONS.flatMap((l) => l.exercises.map((ex, i) => ({ ex, tag: `${l.id}#${i}`, lang: l.lang })).filter((x) => x.ex.type === 'order'));
+  for (const { ex, tag, lang } of all) {
+    assert.ok(ex.lines.length >= 3 && ex.lines.length <= 12, `${tag}: 3 till 12 rader`);
+    assert.ok(ex.explain && ex.hint, `${tag}: explain och hint saknas`);
+    for (const d of ex.distractors || []) {
+      assert.ok(!ex.lines.includes(d.line), `${tag}: distraktorn finns bland de rätta raderna`);
+      assert.ok(d.why, `${tag}: distraktorn saknar why`);
+    }
+    const pool = shuffled(orderLines(ex), ex.prompt, ex.lines);
+    assert.notDeepEqual(pool.slice(0, ex.lines.length), ex.lines, `${tag}: blandningen börjar i rätt ordning`);
+    assert.ok((await grade(ex, ex.lines, { lang })).ok, `${tag}: rätt ordning godkänns inte`);
+    assert.ok(!(await grade(ex, [...ex.lines].reverse(), { lang })).ok, `${tag}: omvänd ordning godkänns`);
+  }
 });

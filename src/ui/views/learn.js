@@ -2,7 +2,8 @@
 // med sex kapitel per spår. Ett kapitel i taget kan vara öppet.
 import { h, esc, on, announce, toast } from '../dom.js';
 import { ICONS } from '../icons.js';
-import { TRACKS, TIER_NAMES, trackById } from '../../content/index.js';
+import { TRACKS, LESSONS, TIER_NAMES, trackById } from '../../content/index.js';
+import { quizPool, TEST_OUT } from '../../state/placement.js';
 import { pref, setPref, claimBonus } from '../../state/model.js';
 import { dueLessons, nextDue, reviewKey, SESSION_MAX } from '../../state/review.js';
 import { TIER_XP, DAILY_XP, REVIEW_XP, today, isUnlocked, availableLessons, nextStepAdvice, canClaimDaily, trackProgress, levelInfo } from '../../state/progression.js';
@@ -30,6 +31,7 @@ export function dailyExercise(profile, track, day = today()) {
 export function chapterState(profile, ch) {
   const done = ch.lessons.filter((l) => profile.completed?.[l.id]).length;
   if (done === ch.lessons.length) return { status: 'done', done };
+  if (profile.skipped?.[ch.id]) return { status: 'skipped', done };
   if (done > 0 || isUnlocked(profile, ch.lessons[0])) return { status: 'open', done };
   return { status: 'locked', done };
 }
@@ -108,6 +110,8 @@ export function render(ctx, params = {}) {
       return;
     }
     const ch = track.chapters.find((c) => c.id === next.chapterId);
+    // Nivåtestet erbjuds bara innan man har börjat på spåret.
+    const fresh = !LESSONS.some((l) => l.trackId === track.id && (store.state.completed[l.id] || store.state.lessons[l.id])) && !track.chapters.some((c) => store.state.skipped?.[c.id]);
     const started = store.state.lessons[next.id] && (store.state.lessons[next.id].step > 0 || Object.keys(store.state.lessons[next.id].solved || {}).length);
     slot.innerHTML = `<article class="card next-card">
       <p class="eyebrow">${started ? 'Fortsätt där du var' : 'Nästa steg'} · ${esc(ch.title)}</p>
@@ -115,6 +119,7 @@ export function render(ctx, params = {}) {
       <p class="muted">${esc(TIER_NAMES[next.tier])} · ${next.exercises.length} övningar · ${TIER_XP[next.tier]} XP</p>
       ${adviceHtml}
       <a class="btn primary" href="#/lektion/${next.id}">${ICONS.play}<span>${started ? 'Fortsätt' : 'Starta lektionen'}</span></a>
+      ${fresh ? `<p class="tiny placement-link">Kan du redan lite ${esc(track.name)}? <a href="#/nivatest/${track.id}">Gör nivåtestet</a> och börja på rätt ställe.</p>` : ''}
     </article>`;
   };
 
@@ -173,10 +178,10 @@ export function render(ctx, params = {}) {
   const renderStations = () => {
     stations.innerHTML = track.chapters.map((ch, i) => {
       const st = chapterState(store.state, ch);
-      const label = { done: 'klart', open: st.done ? `${st.done} av ${ch.lessons.length} lektioner klara` : 'öppet', locked: 'låst' }[st.status];
+      const label = { done: 'klart', skipped: 'uttestat', open: st.done ? `${st.done} av ${ch.lessons.length} lektioner klara` : 'öppet', locked: 'låst' }[st.status];
       return `<li class="station s-${st.status} ${i % 2 ? 'right' : 'left'}" data-ch="${ch.id}">
         <button class="station-btn" type="button" aria-expanded="${openChapter === ch.id}" aria-controls="chapter-panel" data-chapter="${ch.id}">
-          <span class="station-node" aria-hidden="true">${st.status === 'done' ? ICONS.check : st.status === 'locked' ? ICONS.lock : `<b>${i + 1}</b>`}</span>
+          <span class="station-node" aria-hidden="true">${st.status === 'done' || st.status === 'skipped' ? ICONS.check : st.status === 'locked' ? ICONS.lock : `<b>${i + 1}</b>`}</span>
           <span class="station-text"><span class="station-num">Kapitel ${i + 1}</span><span class="station-title">${esc(ch.title)}</span>
           <span class="station-meta">${st.done}/${ch.lessons.length}<span class="sr-only">, ${label}</span></span></span>
         </button>
@@ -206,7 +211,7 @@ export function render(ctx, params = {}) {
     }).join(' ');
     svg.querySelector('.path-bg').setAttribute('d', seg(nodes));
     let lastDone = -1;
-    track.chapters.forEach((ch, i) => { if (chapterState(store.state, ch).status === 'done' && lastDone === i - 1) lastDone = i; });
+    track.chapters.forEach((ch, i) => { if (['done', 'skipped'].includes(chapterState(store.state, ch).status) && lastDone === i - 1) lastDone = i; });
     const donePts = nodes.slice(0, Math.min(nodes.length, lastDone + 2));
     svg.querySelector('.path-done').setAttribute('d', lastDone >= 0 && donePts.length > 1 ? seg(donePts) : '');
   };
@@ -234,7 +239,9 @@ export function render(ctx, params = {}) {
     chapterSlot.innerHTML = `<section id="chapter-panel" class="card chapter-panel s-${st.status}" aria-labelledby="chapter-h" tabindex="-1">
       <header class="row between"><div><p class="eyebrow">Kapitel ${idx + 1} · ${st.done}/${ch.lessons.length} klara</p><h2 id="chapter-h">${esc(ch.title)}</h2></div>
         <button class="icon-btn" type="button" data-close-chapter aria-label="Stäng kapitlet">${ICONS.close}</button></header>
-      ${st.status === 'locked' ? '<p class="notice">Det här kapitlet låses upp när du har klarat kapitlet före. Du kan titta på vad som väntar.</p>' : ''}
+      ${st.status === 'locked' ? `<div class="notice"><p>Det här kapitlet låses upp när du har klarat kapitlet före. Du kan titta på vad som väntar.</p>
+        ${quizPool(ch).length >= TEST_OUT.questions ? `<p>Kan du det här redan? <a class="btn secondary small" href="#/testa/${ch.id}">Testa ut kapitlet</a></p>` : ''}</div>` : ''}
+      ${st.status === 'skipped' ? '<p class="notice">Du testade ut det här kapitlet. Lektionerna finns kvar om du vill gå igenom dem och få XP.</p>' : ''}
       <ol class="lesson-list">${items}</ol>
     </section>`;
     if (focus) {

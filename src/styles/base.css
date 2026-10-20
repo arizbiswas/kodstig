@@ -298,6 +298,7 @@ legend { padding: 0; margin-bottom: .4em; font-weight: 600; }
 .station.s-done .station-node { background: var(--done); }
 .station.s-done .station-btn { border-color: color-mix(in srgb, var(--done) 50%, var(--line)); }
 .station.s-locked .station-node { background: var(--locked); }
+.station.s-skipped .station-node { background: color-mix(in srgb, var(--done) 55%, var(--surface)); }
 .station.s-locked .station-title { color: var(--muted); }
 .station.active .station-btn { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft), var(--shadow); }
 @media (hover: hover) { .station-btn:hover { border-color: var(--accent); } }
@@ -338,6 +339,25 @@ legend { padding: 0; margin-bottom: .4em; font-weight: 600; }
 .choice:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
 .choice:has(input:focus-visible) { outline: 3px solid var(--focus); outline-offset: 2px; }
 @media (hover: hover) { .choice:hover { border-color: var(--accent); } }
+.order { display: flex; flex-direction: column; gap: .5rem; }
+.order-label { margin: .2rem 0 0; font-size: .85rem; font-weight: 700; color: var(--muted); }
+.order-answer { list-style: none; margin: 0; padding: .4rem; display: flex; flex-direction: column; gap: .35rem; background: var(--code-bg); border: 2px dashed var(--line); border-radius: 12px; min-height: 3.2rem; }
+.order-answer li { display: flex; align-items: center; gap: .4rem; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: .25rem .25rem .25rem .6rem; min-width: 0; }
+.order-answer li.order-empty { background: transparent; border: 0; padding: .5rem; font-size: .92rem; }
+.order-line { flex: 1; min-width: 0; overflow-x: auto; }
+.order-line code, .order-pick code { background: transparent; padding: 0; white-space: pre; font-size: .92rem; color: var(--text); }
+.order-tools { display: flex; gap: .2rem; flex: none; }
+.order-tools .btn { min-width: 2.4rem; min-height: 2.4rem; padding: 0 .5rem; }
+.order-pool { display: flex; flex-direction: column; gap: .35rem; }
+.order-pick { text-align: left; padding: .6rem .8rem; min-height: 44px; border: 2px solid var(--line); border-radius: 10px; background: var(--surface); cursor: pointer; overflow-x: auto; }
+.order-pick:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+@media (hover: hover) { .order-pick:hover { border-color: var(--accent); } }
+.exercise.solved .order-tools { display: none; }
+.quiz .ladder-slot { display: none; }
+.quiz .back { display: inline-block; margin-bottom: .4rem; }
+.placement-link { margin: .8rem 0 0; }
+.notice p { margin: 0; }
+.notice p + p { margin-top: .5rem; }
 .web-split { display: grid; grid-template-columns: 1fr 1fr; gap: .8rem; align-items: start; }
 .web-split .preview { margin-top: 0; }
 .web-split .preview iframe { height: 100%; min-height: 260px; }
@@ -603,3 +623,22 @@ legend { padding: 0; margin-bottom: .4em; font-weight: 600; }
 @keyframes nudge { 0%, 100% { translate: 0; } 25% { translate: -4px 0; } 75% { translate: 4px 0; } }
 @keyframes spin-pop { 0% { transform: scale(.4) rotate(-90deg); } 70% { transform: scale(1.2) rotate(10deg); } 100% { transform: none; } }
 @keyframes pulse { 0%, 100% { scale: 1; } 50% { scale: 1.07; } }
+
+/* Stegvis körning i Kodlabbet */
+.tracer { display: flex; flex-direction: column; gap: .6rem; }
+.tracer-status { margin: 0; font-weight: 600; }
+.tracer-range { width: 100%; accent-color: var(--accent); }
+.tracer-code { list-style: none; margin: 0; padding: .4rem 0; counter-reset: ln; background: var(--code-bg); border-radius: var(--radius-sm); max-height: 16rem; overflow: auto; font-family: var(--mono); font-size: .88rem; }
+.tracer-code li { counter-increment: ln; display: flex; gap: .6rem; padding: 0 .6rem; border-left: 4px solid transparent; }
+.tracer-code li::before { content: counter(ln); color: #8d88a6; min-width: 1.6rem; text-align: right; flex: none; }
+.tracer-code li code { background: transparent; padding: 0; white-space: pre; color: var(--code-text); }
+.tracer-code li.cur { background: var(--accent-soft); border-left-color: var(--accent); }
+.tracer-code li.cur::before { content: '▶'; color: var(--accent); }
+.tracer-vars { display: flex; flex-wrap: wrap; gap: .6rem; }
+.vars { border-collapse: collapse; min-width: 12rem; flex: 1; font-size: .9rem; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-sm); }
+.vars caption { text-align: left; font-weight: 700; padding: 0 0 .2rem; }
+.vars th, .vars td { text-align: left; padding: .25rem .5rem; border-top: 1px solid var(--line); vertical-align: top; }
+.vars thead th { font-size: .78rem; color: var(--muted); font-weight: 600; }
+.vars td code { word-break: break-word; }
+.vars tr.changed td, .vars tr.changed th { background: var(--warn-soft); }
+.vars.waiting { opacity: .75; }

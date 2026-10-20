@@ -75,6 +75,8 @@ export async function grade(ex, answer, { lang, runner, webChecker }) {
         detail: ex.hint || 'Titta på exemplet i lektionen och prova igen.',
       };
     }
+    case 'order':
+      return gradeOrder(ex, Array.isArray(answer) ? answer : []);
     case 'code':
     case 'debug':
       return gradeCode(ex, String(answer ?? ''), lang, runner);
@@ -83,6 +85,46 @@ export async function grade(ex, answer, { lang, runner, webChecker }) {
     default:
       return { ok: false, title: 'Okänd övningstyp.' };
   }
+}
+
+// Ordningspussel: raderna ska stå i rätt ordning, och inga felaktiga rader får vara med.
+// Alternativa ordningar som också är rätt kan anges i `alt`.
+export function orderLines(ex) {
+  return [...ex.lines, ...(ex.distractors || []).map((d) => d.line)];
+}
+
+function hashStr(s) {
+  let x = 2166136261;
+  for (const c of s) { x ^= c.charCodeAt(0); x = Math.imul(x, 16777619); }
+  return x >>> 0;
+}
+
+// Blandar deterministiskt utifrån en nyckel. Om resultatet råkar börja med hela den
+// rätta ordningen roteras listan ett steg.
+export function shuffled(lines, key, correct) {
+  const a = [...lines];
+  let x = hashStr(key) || 1;
+  for (let i = a.length - 1; i > 0; i--) {
+    x ^= x << 13; x ^= x >>> 17; x ^= x << 5; x >>>= 0;
+    const j = x % (i + 1);
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  const startsRight = () => correct.every((l, i) => a[i] === l);
+  if (a.length > 1 && startsRight()) a.push(a.shift());
+  if (a.length > 1 && startsRight()) a.reverse();
+  return a;
+}
+
+function gradeOrder(ex, answer) {
+  if (!answer.length) return { ok: false, title: 'Välj rader först.', detail: 'Tryck på raderna i den ordning de ska stå.' };
+  const same = (want) => want.length === answer.length && want.every((l, i) => l === answer[i]);
+  if ([ex.lines, ...(ex.alt || [])].some(same)) return { ok: true, title: 'Rätt ordning!', detail: ex.explain };
+  const bad = (ex.distractors || []).find((d) => answer.includes(d.line));
+  if (bad) return { ok: false, title: 'En rad hör inte hemma här.', detail: bad.why || ex.hint };
+  if (answer.length < ex.lines.length) return { ok: false, title: `Det saknas ${ex.lines.length - answer.length === 1 ? 'en rad' : `${ex.lines.length - answer.length} rader`}.`, detail: ex.hint };
+  let k = 0;
+  while (k < answer.length && answer[k] === ex.lines[k]) k++;
+  return { ok: false, title: k ? `De ${k === 1 ? 'första raden stämmer' : `första ${k} raderna stämmer`}, men inte resten.` : 'Ordningen stämmer inte än.', detail: ex.hint };
 }
 
 async function gradeCode(ex, code, lang, runner) {
