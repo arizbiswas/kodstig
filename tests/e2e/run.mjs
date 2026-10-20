@@ -357,6 +357,45 @@ async function main() {
       await context.close();
     });
 
+    await check('Dela med länk: koden ligger i länken och kan köras utan konto', async () => {
+      const { context, page } = await newGuest(browser);
+      await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+      await page.goto(`${BASE}#/labb?sprak=python`);
+      await page.locator('.editor textarea').first().fill('namn = input("Namn? ")\nprint("Hej", namn, "åäö")\n');
+      await page.locator('[data-share]').click();
+      const url = await page.locator('#share-url').inputValue();
+      assert(url.includes('#/delat?sprak=python&kod='), 'länken pekar på delad kod');
+      assert((await page.locator('.share-box').textContent()).includes('lösenord'), 'varning om personuppgifter');
+      await page.locator('[data-share-copy]').click();
+      await page.locator('.share-msg').filter({ hasText: 'kopierad' }).waitFor();
+      const other = await browser.newContext();
+      const p2 = await other.newPage();
+      const errs = [];
+      p2.on('pageerror', (e) => errs.push(e.message));
+      await p2.goto(url);
+      await p2.locator('.shared pre.code-block').waitFor();
+      assert((await p2.locator('.shared pre.code-block').textContent()).includes('åäö'));
+      await p2.locator('.shared .lab-input summary').click();
+      await p2.locator('#sh-stdin').fill('Ali');
+      await p2.locator('[data-sh-run]').click();
+      await p2.locator('.shared .output pre').filter({ hasText: 'Hej' }).waitFor();
+      eq((await p2.locator('.shared .output pre').textContent()).trim(), 'Namn? Hej Ali åäö');
+      eq(await p2.locator('[data-sh-open]').count(), 0, 'utan konto finns ingen öppna-knapp');
+      await p2.goto(url.replace(/kod=.*/, 'kod=zAAA'));
+      await p2.locator('.shared .notice.bad').waitFor();
+      eq(errs.length, 0, errs.join('\n'));
+      await other.close();
+      // Inloggad: öppna i Kodlabbet ersätter koden efter fråga.
+      page.once('dialog', (d) => d.accept());
+      await page.locator('.editor textarea').first().fill('print(1)\n');
+      await page.waitForTimeout(1000);
+      await page.goto(url);
+      await page.locator('[data-sh-open]').click();
+      await page.locator('#lab-h').waitFor();
+      assert((await page.locator('#lab-code').inputValue()).includes('åäö'));
+      await context.close();
+    });
+
     await check('Repetition: klarad lektion kommer tillbaka dagen efter, passet ger XP en gång', async () => {
       const { context, page } = await newGuest(browser);
       await finishLesson(page, 'py-print');
@@ -646,7 +685,7 @@ async function main() {
       await page.waitForFunction(() => document.querySelector('#milo-panel .msg.bot:last-child')?.textContent.includes('Låtsassvar 2'));
       sent = await page.evaluate(() => JSON.stringify(window.__miloCalls[1]));
       assert(sent.includes('hemlig kod'), 'koden skickades när den valdes');
-      assert(await page.locator('#milo-panel .tag:has-text("Kod bifogad")').count() === 1);
+      assert(await page.locator('#milo-panel .tag:has-text("Bifogat")').count() === 1);
       await page.goto(`${DEV}#/installningar`);
       await page.locator('[data-logout]').click();
       await page.locator('.hero').waitFor();

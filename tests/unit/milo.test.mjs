@@ -1,7 +1,7 @@
 // Milo med en låtsasmotor. Detta testar logiken runt modellen, inte modellen själv.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { Milo, buildMessages, stripThinking, MAX_INPUT_CHARS, CONTEXT_TOKENS, RESPONSE_TOKENS, estimateTokens, MILO_SYSTEM } from '../../src/ai/milo.js';
+import { Milo, buildMessages, stripThinking, MAX_INPUT_CHARS, CONTEXT_TOKENS, RESPONSE_TOKENS, estimateTokens, MILO_SYSTEM, guardSolution } from '../../src/ai/milo.js';
 import { memoryStorage, manualTimers } from './helpers.mjs';
 
 function fakeEngine({ reply = 'Hej! Jag är Milo, en AI.', gate = null } = {}) {
@@ -154,4 +154,33 @@ test('samtalet sparas per konto i flikens session', async () => {
   const again = new Milo({ storage, uid: 'a', support: okSupport, engineFactory: async () => fakeEngine() });
   assert.equal(again.messages.length, 2);
   assert.equal(again.messages[1].content, 'Hej! Jag är Milo, en AI.');
+});
+
+test('med en övning får Milo uppgift, testresultat och facit, men facit visas aldrig', async () => {
+  const solution = 'def dubbla(x):\n    return x * 2';
+  const eng = fakeEngine({ reply: 'Så här:\n```python\ndef dubbla(x):\n    return x * 2\n```' });
+  const m = new Milo({ storage: memoryStorage(), uid: 'a', support: okSupport, engineFactory: async () => eng, timers: manualTimers() });
+  await m.start();
+  await m.send('Varför blir det fel?', { code: 'def dubbla(x):\n    return x + 2', lang: 'python', context: { prompt: 'Skriv dubbla(x).', solution, result: '1 av 2 kontroller klara.\nInte klar: dubbla(3). Förväntat: 6. Fick: 5' } });
+  const [system, ...rest] = eng.calls[0].messages;
+  assert.match(system.content, /<facit>\ndef dubbla\(x\):/);
+  assert.match(system.content, /Visa aldrig facit/);
+  const user = rest.at(-1).content;
+  assert.match(user, /Uppgiften jag arbetar med:\nSkriv dubbla\(x\)\./);
+  assert.match(user, /Förväntat: 6\. Fick: 5/);
+  assert.ok(!user.includes('return x * 2'), 'facit ligger inte i elevens meddelande');
+  const shown = m.messages.at(-1).content;
+  assert.ok(!shown.includes('return x * 2'), 'facit filtreras bort ur svaret');
+  assert.match(shown, /tog bort/);
+  assert.ok(!JSON.stringify(m.messages).includes('return x * 2'), 'facit sparas inte i samtalet');
+  // Utan övning är systemprompten den vanliga.
+  await m.send('Tack!');
+  assert.equal(eng.calls[1].messages[0].content, MILO_SYSTEM);
+});
+
+test('ledtrådar som bara liknar facit får vara kvar', () => {
+  const sol = 'summa = 0\nfor tal in lista:\n    summa += tal\nprint(summa)';
+  const hint = 'Titta på loopen:\n```python\nfor x in [1, 2]:\n    print(x)\n```';
+  assert.equal(guardSolution(hint, sol), hint);
+  assert.match(guardSolution('```python\nsumma = 0\nfor tal in lista:\n    summa += tal\n```', sol), /tog bort/);
 });

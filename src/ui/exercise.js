@@ -30,6 +30,7 @@ export function renderExercise(ex, { lang, saved, solved = false, onChange, onSo
   const input = el.querySelector('.ex-input');
   const fb = el.querySelector('.feedback');
   let attempts = 0;
+  let lastRes = null;
   let ladder = null; // { steps, shown }
   let getAnswer;
   let editor = null;
@@ -147,6 +148,7 @@ export function renderExercise(ex, { lang, saved, solved = false, onChange, onSo
     try {
       res = await grade(ex, answer, { lang, runner: runCode, webChecker: checkWeb });
     } finally { btn.disabled = false; }
+    lastRes = res;
     if (res.run) showOutput(res.run);
     setFeedback(res);
     announce(res.ok ? 'Rätt svar.' : 'Inte rätt än. Läs ledtråden och försök igen.');
@@ -255,8 +257,29 @@ export function renderExercise(ex, { lang, saved, solved = false, onChange, onSo
       if (t) t.focus({ preventScroll: false });
     },
     code: () => (editor ? editor.value : null),
+    // Det Milo får veta om övningen när eleven själv väljer att ta med den.
+    context: () => ({ prompt: ex.prompt, solution: solutionText(ex), result: summarize(lastRes, getAnswer(), ex) }),
     destroy() { clearTimeout(pt); cleanups.forEach((f) => f()); },
   };
+}
+
+function solutionText(ex) {
+  if (ex.type === 'choice') return ex.options[ex.answer];
+  if (ex.type === 'fill') return ex.answers.map((a) => a[0]).join('  ·  ');
+  if (ex.type === 'order') return ex.lines.join('\n');
+  return ex.solution || '';
+}
+
+// Kort sammanfattning av senaste kontrollen: rubrik, fel och de första testerna som inte gick igenom.
+function summarize(res, answer, ex) {
+  if (!res) return 'Eleven har inte kontrollerat sitt svar än.';
+  const out = [res.ok ? 'Rätt.' : res.title];
+  if (ex.type === 'choice' && answer !== null && answer !== undefined) out.push(`Eleven valde: ${ex.options[answer]}`);
+  if (ex.type === 'fill' && Array.isArray(answer)) out.push(`Elevens luckor: ${answer.join(' · ')}`);
+  if (ex.type === 'order' && Array.isArray(answer)) out.push(`Elevens ordning:\n${answer.join('\n')}`);
+  if (res.error) out.push(`Fel: ${res.error.kind}${res.error.line ? ` på rad ${res.error.line}` : ''}: ${res.error.message}`);
+  for (const t of (res.tests || []).filter((x) => !x.ok).slice(0, 3)) out.push(`Inte klar: ${t.label}${t.expected !== undefined ? `. Förväntat: ${t.expected}. Fick: ${t.got}` : ''}`);
+  return out.join('\n');
 }
 
 // Visar vilken indata övningen körs med, så att eleven vet vad input()/ReadLine() får.

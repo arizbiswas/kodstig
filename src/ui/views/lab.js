@@ -4,6 +4,7 @@ import { h, esc, on, codeEditor, announce } from '../dom.js';
 import { setLab } from '../../state/model.js';
 import { runCode, traceCode, previewFor } from '../../engine/runner.js';
 import { getHints } from '../../engine/hints.js';
+import { shareUrl } from '../../state/share.js';
 
 export const LAB_LANGS = [
   { id: 'python', name: 'Python', starter: '# Skriv din Python-kod här\nnamn = "Kodare"\nfor i in range(3):\n    print(f"Hej {namn}! Varv {i + 1}")\n' },
@@ -58,8 +59,10 @@ export function render(ctx, params = {}) {
           <button class="btn secondary" type="button" data-trace>Kör steg för steg</button>
           <button class="btn secondary" type="button" data-hint>Fastnat? Få en ledtråd</button>
           <button class="btn ghost" type="button" data-ask>Fråga Milo</button>
+          <button class="btn ghost small" type="button" data-share>Dela med länk</button>
           <button class="btn ghost small push" type="button" data-restore>Återställ exemplet</button>
         </div>
+        <div class="share-slot" aria-live="polite"></div>
         <details class="lab-input"><summary>Indata till input() och ReadLine()</summary>
           <label class="tiny muted" for="lab-stdin">En rad per gång programmet läser. Raderna används uppifrån och ner.</label>
           <textarea id="lab-stdin" class="stdin" rows="3" spellcheck="false" autocapitalize="off" autocomplete="off"></textarea>
@@ -192,6 +195,7 @@ export function render(ctx, params = {}) {
         // Tipsen gäller koden de skapades för; när koden ändras börjar de om.
         if (hint && hint.code !== editor.value) { hint = null; renderHint(); }
         if (trace) { trace = null; showResult(); }
+        el.querySelector('.share-slot').replaceChildren();
         if (lang === 'web') { clearTimeout(previewTimer); previewTimer = setTimeout(showResult, 300); }
       },
     });
@@ -199,6 +203,7 @@ export function render(ctx, params = {}) {
     el.querySelectorAll('[data-lang]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.lang === lang)));
     el.querySelector('[data-run]').hidden = lang === 'web';
     el.querySelector('[data-trace]').hidden = lang === 'web';
+    el.querySelector('.share-slot').replaceChildren();
     trace = null;
     el.querySelector('.limits p').textContent = LIMITS[lang];
     el.querySelector('.lab-input').hidden = lang === 'web';
@@ -276,6 +281,28 @@ export function render(ctx, params = {}) {
     }),
     on(el, 'click', '[data-hint-close]', () => { hint = null; renderHint(); el.querySelector('[data-hint]').focus(); }),
     on(el, 'click', '[data-ask]', () => ctx.openMilo()),
+    on(el, 'click', '[data-share]', async () => {
+      const slot = el.querySelector('.share-slot');
+      try {
+        const url = await shareUrl(lang, editor.value);
+        slot.innerHTML = `<section class="share-box card" aria-label="Dela koden">
+          <p class="tiny"><strong>Allt i koden syns för den som får länken.</strong> Skriv inte ditt namn, din adress, telefonnummer eller lösenord i koden. Koden ligger bara i själva länken och sparas inte hos Kodstig.</p>
+          <label class="sr-only" for="share-url">Länk till koden</label>
+          <div class="row gap"><input id="share-url" class="share-url" readonly value="${esc(url)}"><button class="btn secondary small" type="button" data-share-copy>Kopiera</button></div>
+          <p class="tiny muted share-msg" role="status"></p>
+        </section>`;
+        const input = slot.querySelector('input');
+        input.focus();
+        input.select();
+      } catch (err) {
+        slot.innerHTML = `<p class="notice bad" role="alert">${esc(err.message)}</p>`;
+      }
+    }),
+    on(el, 'click', '[data-share-copy]', async () => {
+      const input = el.querySelector('#share-url');
+      const msg = el.querySelector('.share-msg');
+      try { await navigator.clipboard.writeText(input.value); msg.textContent = 'Länken är kopierad.'; } catch { input.select(); msg.textContent = 'Markera länken och kopiera den med Ctrl+C eller Cmd+C.'; }
+    }),
     on(el, 'click', '[data-download]', () => {
       const home = HOME[lang];
       const url = URL.createObjectURL(new Blob([editor.value], { type: `${home.type};charset=utf-8` }));

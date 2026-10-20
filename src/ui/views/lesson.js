@@ -65,7 +65,7 @@ export function render(ctx, lessonId) {
     bar.querySelector('span').style.width = `${(state.step / (total + 1)) * 100}%`;
   };
 
-  ctx.app.codeSource = () => (current && current.code && current.code() ? { code: current.code(), lang: lesson.lang, from: 'lektion' } : null);
+  ctx.app.codeSource = () => (current && current.context ? { code: (current.code && current.code()) || '', lang: lesson.lang, from: 'lektion', context: current.context() } : null);
 
   const showRead = () => {
     if (current && current.destroy) current.destroy();

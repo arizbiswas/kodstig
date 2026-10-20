@@ -4,7 +4,28 @@
 
 export const MILO_SYSTEM = `Du är Milo, en liten AI-studiekompis i Kodstig med en vänlig panda som avatar. Svara på naturlig svenska om användaren inte vill annat. Var varm, konkret och respektfull. Lyssna på exakt det användaren skriver och följ upp tidigare delar av samtalet. Upprepa inte samma peppfraser. Hjälp vid överväldigande och självtvivel genom att bekräfta kort och erbjuda ett mycket litet, rimligt nästa steg. Ställ högst en relevant följdfråga när det behövs. Ibland räcker ett lyssnande svar. Skriv normalt 2–5 meningar. Undvik föreläsningar, press, skuldbeläggning och överdrivna löften. Var tydlig med att du är en AI. Låtsas inte vara människa, ha egna känslor eller kunna ställa diagnoser. Ge en ledtråd före en hel kodlösning. Påstå inte att du har kört kod eller sett framsteg som du inte har tillgång till.
 
-Sammanhang: Kodstig lär ut C#, Python och HTML/CSS till nybörjare. Du ser bara det användaren skriver här och kod som användaren själv valt att bifoga.`;
+Sammanhang: Kodstig lär ut C#, Python, HTML/CSS med lite JavaScript, samt Git och terminalen, till nybörjare i alla åldrar. Du ser bara det användaren skriver här, och kod, uppgift och testresultat som användaren själv valt att bifoga.`;
+
+// Läggs till när eleven bifogar en övning. Facit hjälper Milo att ge rätt ledtråd,
+// men det får aldrig visas. Svaret filtreras dessutom av guardSolution.
+export function solutionRules(solution) {
+  return `\n\nEleven arbetar med en övning. Här är facit, som BARA är till för dig:\n<facit>\n${solution}\n</facit>\nRegler: Visa aldrig facit, hela lösningen eller rätt svarsalternativ. Ge en ledtråd i taget: peka på var felet finns, förklara begreppet eller visa ett liknande exempel med andra namn och värden. Utgå från testresultatet och elevens egen kod.`;
+}
+
+// Tar bort kodblock i svaret som innehåller större delen av facit.
+export function guardSolution(reply, solution) {
+  const sol = String(solution || '').split('\n').map((l) => l.trim()).filter((l) => l.length >= 6);
+  if (!sol.length) return reply;
+  const leaks = (text) => {
+    const lines = new Set(text.split('\n').map((l) => l.trim()));
+    const hit = sol.filter((l) => lines.has(l)).length;
+    return hit >= Math.max(2, Math.ceil(sol.length * 0.5)) || (sol.length === 1 && lines.has(sol[0]));
+  };
+  const note = '(Milo tog bort en del som avslöjade hela lösningen. Prova själv först, så kan du be om en ledtråd till.)';
+  let out = reply.replace(/```[\s\S]*?(```|$)/g, (block) => (leaks(block) ? note : block));
+  if (leaks(out)) out = out.split('\n').filter((l) => !sol.includes(l.trim())).join('\n') + `\n${note}`;
+  return out;
+}
 
 export const MODEL_F16 = 'Qwen3-1.7B-q4f16_1-MLC';
 export const MODEL_F32 = 'Qwen3-1.7B-q4f32_1-MLC';
@@ -25,10 +46,12 @@ export function stripThinking(text) {
     .replace(/^\s+/, '');
 }
 
-export function userContent(text, code, lang) {
-  if (!code) return text;
+export function userContent(text, code, lang, context = null) {
   const fence = lang === 'web' ? 'html' : lang === 'csharp' ? 'csharp' : lang === 'text' ? 'text' : 'python';
-  return `${text}\n\nKod jag valde att bifoga från Kodlabbet:\n\`\`\`${fence}\n${code}\n\`\`\``;
+  let out = text;
+  if (context) out += `\n\nUppgiften jag arbetar med:\n${context.prompt}\n\nSenaste kontrollen:\n${context.result}`;
+  if (code) out += `\n\n${context ? 'Min kod' : 'Kod jag valde att bifoga från Kodlabbet'}:\n\`\`\`${fence}\n${code}\n\`\`\``;
+  return out;
 }
 
 /** Bygger meddelandelistan och kortar historiken så att den ryms i modellens fönster. */
@@ -144,13 +167,15 @@ export class Milo {
     return null;
   }
 
-  async send(text, { code = null, lang = null } = {}) {
+  async send(text, { code = null, lang = null, context = null } = {}) {
     const problem = this.validate(text);
     if (problem) return { error: problem };
     if (this.status !== 'ready' || !this.engine) return { error: 'Starta Milo först.' };
     let attached = code ? String(code) : null;
     if (attached && attached.length > MAX_CODE_CHARS) attached = attached.slice(0, MAX_CODE_CHARS) + '\n… (resten av koden togs inte med)';
-    const user = { role: 'user', content: userContent(text.trim(), attached, lang), shown: text.trim(), code: attached ? true : undefined };
+    const ctx = context ? { prompt: String(context.prompt || '').slice(0, 800), result: String(context.result || '').slice(0, 900) } : null;
+    const solution = context && context.solution ? String(context.solution).slice(0, 2000) : '';
+    const user = { role: 'user', content: userContent(text.trim(), attached, lang, ctx), shown: text.trim(), code: attached || ctx ? true : undefined };
     this.messages.push(user);
     const reply = { role: 'assistant', content: '', pending: true };
     this.messages.push(reply);
@@ -161,11 +186,12 @@ export class Milo {
     const hardTimer = this.timers.setTimeout(() => { if (gen === this.genToken) this.stop('timeout'); }, TIMEOUT_MS);
     let raw = '';
     try {
-      const stream = await this.engine.chat(buildMessages(this.messages.slice(0, -1)), { max_tokens: RESPONSE_TOKENS });
+      const system = solution ? MILO_SYSTEM + solutionRules(solution) : MILO_SYSTEM;
+      const stream = await this.engine.chat(buildMessages(this.messages.slice(0, -1), system), { max_tokens: RESPONSE_TOKENS });
       for await (const delta of stream) {
         if (gen !== this.genToken) break;
         raw += delta;
-        reply.content = stripThinking(raw);
+        reply.content = solution ? guardSolution(stripThinking(raw), solution) : stripThinking(raw);
         this.emit();
       }
       if (gen !== this.genToken) return { stale: true };

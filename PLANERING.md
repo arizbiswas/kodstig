@@ -29,8 +29,8 @@ Så blev det: varje klarad lektion är ett begrepp i en kö som kommer tillbaka 
 - [x] Grunderna i Git. Nytt spår "Git och terminalen" med tre kapitel: terminalen, Git på datorn, grenar och GitHub.
 
 ## Fas 5: Milo och delning
-- [ ] Milo får uppgiften, facit och testresultatet och ger bara ledtrådar, aldrig hela lösningen (8)
-- [ ] Dela ett projekt med en länk (13)
+- [x] Milo får uppgiften, facit och testresultatet och ger bara ledtrådar, aldrig hela lösningen (8). Bara när eleven själv kryssar i "Ta med uppgiften". Facit sparas inte i samtalet, och svar som avslöjar lösningen filtreras bort.
+- [x] Dela ett projekt med en länk (13). Kodlabbet har "Dela med länk". Koden ligger bara i länken, inget sparas hos Kodstig, och mottagaren behöver inget konto. Varning om att inte skriva personuppgifter i koden.
 - [ ] Anonym statistik över var elever fastnar (14). Bara om zira säger ja
 
 ## Beslut för zira
@@ -60,10 +60,10 @@ Läget efter läroplansutbyggnaden samma dag (commit 1af57c5): 130 lektioner, 72
 | 6 | Jobbigt att skriva kod i mobilen | **Åtgärdat.** Rad med kodtecken på pekskärm (fas 1) och ordningspussel som bara kräver tryck (fas 3). |
 | 7 | Ingen väg ut ur appen | **Åtgärdat i fas 4.** Ladda ner koden, guide för egen dator, Git och terminalen. |
 | 8 | Egna tolkar kan lära ut fel saker | **Delvis.** Tolkarna klarar mycket mer nu och skillnaderna står i Kodlabbet och README. Byte till Pyodide är inte planerat. |
-| 9 | Milo når få och är osäker | Kvar (fas 5). |
+| 9 | Milo når få och är osäker | **Delvis åtgärdat i fas 5.** Milo ser uppgiften, facit och testresultatet och ger träffsäkrare ledtrådar. Kräver fortfarande WebGPU. |
 | 10 | Strikt linjär stig utan nivåtest | **Åtgärdat i fas 3.** Nivåtest per spår och "Testa ut" per låst kapitel. |
 | 11 | Mycket korta lektionstexter | **Delvis.** Snitt 361 tecken (var 221), fortsättningskapitlen har längre texter. Stegrubriker kvar (fas 1). |
-| 12 | Ingen social del | Kvar (fas 5). |
+| 12 | Ingen social del | **Delvis åtgärdat i fas 5.** Dela kod med länk, utan konton eller topplistor. |
 | 13 | Profilen spretar | **Beslutat:** alla åldrar (se Beslut). |
 | 14 | Ingen mätning av var elever fastnar | Kvar, bara om zira säger ja (fas 5). |
 
@@ -78,12 +78,12 @@ Läget efter läroplansutbyggnaden samma dag (commit 1af57c5): 130 lektioner, 72
 | 5 | Förklaring per fel svar | **Gjort** (fas 1) |
 | 6 | Fler övningar och en trappa per lektion | **Gjort** (158 extraövningar i grundlektionerna, trappan förutsäg, pussel, lucka, kod i fas 3) |
 | 7 | Fler kapitel för egna program | **Gjort** (klasser och undantag, sedan inläsning, slump, moduler och lite JavaScript i fas 4). Filer finns inte, eftersom allt körs i webbläsaren. |
-| 8 | Milo får facit och testresultat | Fas 5 |
+| 8 | Milo får facit och testresultat | **Gjort** (fas 5) |
 | 9 | Ta med dig koden | **Gjort** (fas 4) |
 | 10 | Nivåtest och testa ut | **Gjort** (fas 3) |
 | 11 | Bestäm målgrupp | **Beslutat:** alla åldrar |
 | 12 | Förlåtande svit med frysningar | **Gjort** (fas 2) |
-| 13 | Dela projekt med länk | Fas 5 |
+| 13 | Dela projekt med länk | **Gjort** (fas 5) |
 | 14 | Anonym statistik | Fas 5, bara med zira ja |
 | 15 | Stegvis körning | **Gjort** (fas 3) |
 | 16 | Stegetiketter i exemplen | **Gjort** (fas 1) |

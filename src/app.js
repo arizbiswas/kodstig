@@ -22,6 +22,7 @@ import * as progress from './ui/views/progress.js';
 import * as settings from './ui/views/settings.js';
 import * as review from './ui/views/review.js';
 import * as quiz from './ui/views/quiz.js';
+import * as shared from './ui/views/shared.js';
 
 const local = safeStorage('localStorage');
 const session = safeStorage('sessionStorage');
@@ -198,6 +199,7 @@ export class App {
     this.view = null;
     if (!this.user) {
       if (path === '/prova') return this.renderBare(welcome.demo(this.ctx()));
+      if (path === '/delat') return this.renderBare(shared.render(this.ctx(), params, { bare: true }));
       if (path !== '/' && !path.startsWith('/intro')) { history.replaceState(null, '', '#/'); }
       return this.renderBare(welcome.intro(this.ctx()));
     }
@@ -210,6 +212,7 @@ export class App {
     if (m) view = lesson.render(this.ctx(), m[1]);
     else if (path === '/installningar') view = settings.render(this.ctx());
     else if (path === '/repetition') view = review.render(this.ctx());
+    else if (path === '/delat') view = shared.render(this.ctx(), params);
     else if ((m2 = path.match(/^\/testa\/([\w-]+)$/))) view = quiz.testOut(this.ctx(), m2[1]);
     else if ((m2 = path.match(/^\/nivatest\/([\w-]+)$/))) view = quiz.placement(this.ctx(), m2[1]);
     else {

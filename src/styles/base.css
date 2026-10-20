@@ -648,3 +648,10 @@ legend { padding: 0; margin-bottom: .4em; font-weight: 600; }
 .vars td code { word-break: break-word; }
 .vars tr.changed td, .vars tr.changed th { background: var(--warn-soft); }
 .vars.waiting { opacity: .75; }
+
+/* Dela med länk */
+.share-box { margin-top: .8rem; padding: .8rem; box-shadow: none; }
+.share-box p { margin: 0 0 .5rem; }
+.share-url { flex: 1; min-width: 0; font-family: var(--mono); font-size: .85rem; padding: .45rem .6rem; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface-2); color: var(--text); }
+.shared .welcome-top { margin-bottom: 1rem; }
+.shared-actions { margin-top: 1rem; }

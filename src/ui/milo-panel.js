@@ -75,7 +75,7 @@ export class MiloPanel {
 
   codeSource() {
     const src = this.app.codeSource && this.app.codeSource();
-    return src && src.code && src.code.trim() ? src : null;
+    return src && ((src.code && src.code.trim()) || src.context) ? src : null;
   }
 
   send() {
@@ -90,7 +90,7 @@ export class MiloPanel {
     const text = ta.value;
     ta.value = '';
     if (cb) cb.checked = false;
-    this.milo.send(text, src ? { code: src.code, lang: src.lang } : {});
+    this.milo.send(text, src ? { code: src.code, lang: src.lang, context: src.context } : {});
   }
 
   render() {
@@ -148,7 +148,7 @@ export class MiloPanel {
     const hadFocus = prevTa && document.activeElement === prevTa;
     const src = this.codeSource();
     const msgs = m.messages.map((x) => {
-      if (x.role === 'user') return `<li class="msg user"><div class="bubble">${esc(x.shown || x.content)}${x.code ? '<span class="tag">Kod bifogad</span>' : ''}</div></li>`;
+      if (x.role === 'user') return `<li class="msg user"><div class="bubble">${esc(x.shown || x.content)}${x.code ? '<span class="tag">Bifogat</span>' : ''}</div></li>`;
       if (x.role === 'error') return `<li class="msg error"><div class="bubble" role="alert">${esc(x.content)}</div></li>`;
       if (x.role === 'note') return `<li class="msg note"><div class="bubble">${esc(x.content)}</div></li>`;
       return `<li class="msg bot"><div class="bubble">${x.content ? formatReply(x.content) : '<span class="typing" aria-label="Milo skriver"><i></i><i></i><i></i></span>'}</div></li>`;
@@ -158,7 +158,7 @@ export class MiloPanel {
       <form class="composer">
         <label class="sr-only" for="milo-input">Skriv till Milo</label>
         <textarea id="milo-input" rows="2" maxlength="${MAX_INPUT_CHARS + 200}" placeholder="Skriv till Milo…"></textarea>
-        ${src ? `<label class="check"><input type="checkbox" id="milo-attach"> Ta med koden från ${src.from === 'lektion' ? 'lektionen' : 'Kodlabbet'}</label>` : ''}
+        ${src ? `<label class="check"><input type="checkbox" id="milo-attach"> ${src.context ? 'Ta med uppgiften, mitt svar och senaste kontrollen' : 'Ta med koden från Kodlabbet'}</label>` : ''}
         <p class="milo-form-msg tiny" role="status"></p>
         <div class="row gap end">
           ${s === 'busy' ? '<button class="btn secondary" data-stop type="button">Stoppa</button>' : ''}
