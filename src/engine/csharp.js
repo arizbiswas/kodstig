@@ -715,7 +715,8 @@ class Parser {
   eq() { return this.bin(['==', '!='], () => this.rel()); }
   rel() {
     let l = this.bin(['<', '>', '<=', '>='], () => this.add());
-    while (this.isKw('is')) {
+    while (this.isKw('is') || (this.cur.t === 'ID' && this.cur.v === 'as' && this.peek().t === 'ID' && this.classNames.has(this.peek().v))) {
+      if (this.cur.v === 'as') { const line = this.next().line; l = { k: 'As', e: l, type: this.type(), line }; continue; }
       const line = this.next().line;
       let not = false;
       if (this.cur.t === 'ID' && this.cur.v === 'not') { this.next(); not = true; }
@@ -748,6 +749,13 @@ class Parser {
     if (this.isOp('(') && this.peek().t === 'KW' && TYPE_KW.has(this.peek().v) && this.isOp(')', 2)) {
       this.next(); const type = normType(this.next().v); this.next();
       return { k: 'Cast', type, v: this.unary(), line: t.line };
+    }
+    if (this.isOp('(') && this.peek().t === 'ID' && this.classNames.has(this.peek().v) && this.isOp(')', 2)) {
+      const after = this.peek(3);
+      if (after && (after.t === 'ID' || (after.t === 'OP' && after.v === '(') || (after.t === 'KW' && ['this', 'base', 'new'].includes(after.v)))) {
+        this.next(); const type = this.next().v; this.next();
+        return { k: 'Cast', type, v: this.unary(), line: t.line };
+      }
     }
     return this.postfix();
   }
@@ -1029,6 +1037,7 @@ class Interp {
     for (const [name, c] of prog.classes) this.classes.set(name, c);
     for (const c of this.classes.values()) this.link(c);
     for (const c of prog.classes.values()) this.validate(c);
+    for (const c of prog.classes.values()) if (!c.builtin && !c.isInterface && !c.isAbstract) this.checkAbstracts(c, c.line);
   }
   step(line) { if (++this.steps > this.maxSteps) throw new StepLimit(line); }
   write(s) {
@@ -1498,6 +1507,10 @@ class Interp {
     if (tc) {
       if (val.v instanceof CsObject && this.isSub(val.v.cls, tc)) return V(to, val.v);
       const fc = this.classes.get(from);
+      if (explicit && (val.v === null || val.v instanceof CsObject)) {
+        if (val.v === null) return V(to, null);
+        throw rErr('InvalidCastException', `Objektet är en ${val.v.cls.name}, inte en ${to}. Kontrollera först med is, till exempel if (x is ${to} y).`, line, 'type-convert');
+      }
       if (fc && this.isSub(tc, fc)) throw cErr('CS0266', `En ${from} är inte alltid en ${to}. Kontrollera först med is, till exempel if (x is ${to} y).`, line, 'type-convert');
       throw cErr('CS0029', `Ett värde av typen ${svT(from)} kan inte användas som ${to}.`, line, 'type-convert');
     }
@@ -1521,6 +1534,7 @@ class Interp {
       throw cErr('CS0029', `Ett värde av typen ${svT(from)} kan inte sparas i en string. Sätt citattecken runt texten, eller använd .ToString().`, line, 'num-to-string');
     }
     const te = elemOf(to), fe = elemOf(from), tb = genBase(to), fb = genBase(from);
+    if (te && fe === '?' && to.endsWith('[]') === from.endsWith('[]') && (tb === fb || tb === 'IEnumerable')) return V(to, this.seq(val).slice());
     if (te && fe) {
       if (tb === 'IEnumerable' && (te === fe || te === 'object' || (this.classes.get(te) && this.classes.get(fe) && this.isSub(this.classes.get(fe), this.classes.get(te))))) {
         return V(to, this.seq(val).slice());
@@ -1612,6 +1626,11 @@ class Interp {
           if (own) { own.value = v.v; own.type = e.type; own.assigned = true; } else this.declare(scope, e.name, e.type, v.v, e.line);
         }
         return V('bool', ok);
+      }
+      case 'As': {
+        const v = this.eval(e.e, scope);
+        const c = this.classes.get(e.type);
+        return V(e.type, v.v instanceof CsObject && this.isSub(v.v.cls, c) ? v.v : null);
       }
       case 'IsNull': {
         const r = this.eval(e.e, scope).v === null;
@@ -2120,7 +2139,7 @@ class Interp {
       case 'Where': return seqOf(et, items.filter(pred()));
       case 'Select': {
         const res = items.map(fn(0));
-        const rt = res.some((r) => r.t === 'double') && res.every((r) => isNumT(r.t)) ? 'double' : res.length ? res[0].t : 'object';
+        const rt = res.some((r) => r.t === 'double') && res.every((r) => isNumT(r.t)) ? 'double' : res.length ? res[0].t : '?';
         if (rt === 'void') throw cErr('CS0411', 'Lambdan i Select måste ge ett värde.', line, 'lambda');
         return seqOf(rt, res.map((r) => this.convert(r, rt, line).v));
       }

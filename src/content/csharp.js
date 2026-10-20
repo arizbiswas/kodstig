@@ -1,4 +1,5 @@
-// C#-spåret: 25 lektioner, 92 övningar. Nyskrivet innehåll för Kodstig.
+// C#-spåret. Grundkapitlen ligger här, fortsättningen i csharp-pro.js.
+import advanced from './csharp-pro.js';
 const R = (re, msg) => ({ re, msg });
 
 export default {
@@ -506,5 +507,6 @@ export default {
         },
       ],
     },
+    ...advanced,
   ],
 };

@@ -115,3 +115,11 @@ switch (tal.Count) { case 4: Console.WriteLine("fyra"); break; default: Console.
   const loop = runCSharp('try { while (true) { } } catch (Exception) { Console.WriteLine("fångad"); }');
   assert.equal(loop.error.hint, 'infinite-loop', 'stegbegränsningen går inte att fånga i C# heller');
 });
+
+test('c#: tom Select, typomvandling till interface, as och saknade interface-metoder', () => {
+  const r = runCSharp('List<int> t = new List<int>();\nList<string> s = t.Select(x => x.ToString()).ToList();\nConsole.WriteLine(s.Count);\ninterface IF { string Flyg(); }\nclass D { }\nclass F : D, IF { public string Flyg() => "flyger"; }\nD f = new F();\nConsole.WriteLine(((IF)f).Flyg());\nConsole.WriteLine((new D() as IF) == null);');
+  assert.equal(r.error, null, r.error && r.error.message);
+  assert.equal(r.output, '0\nflyger\nTrue\n');
+  assert.equal(runCSharp('class D { }\ninterface IF { }\nIF x = (IF)new D();').error.kind, 'InvalidCastException');
+  assert.equal(runCSharp('interface IA { void M(); }\nclass B : IA { }\nConsole.WriteLine(1);').error.kind, 'CS0535');
+});

@@ -1,4 +1,5 @@
-// HTML/CSS-spåret: 23 lektioner, 86 övningar. Nyskrivet innehåll för Kodstig.
+// HTML/CSS-spåret. Grundkapitlen ligger här, fortsättningen i web-pro.js.
+import advanced from './web-pro.js';
 // Webbuppgifter kontrolleras med `checks` (se engine/html-check.js).
 
 export default {
@@ -373,5 +374,6 @@ export default {
         },
       ],
     },
+    ...advanced,
   ],
 };
