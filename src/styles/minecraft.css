@@ -168,20 +168,46 @@
   border-top: 3px solid #3f7d26;
 }
 .tree { position: absolute; bottom: 44px; left: 6%; width: 96px; height: 96px; }
-.chest, .chicken { position: absolute; bottom: 44px; background: none; border: 0; padding: 4px; cursor: pointer; z-index: 2; }
+.chest, .chicken { position: absolute; bottom: 44px; background: none; border: 0; padding: 4px; cursor: pointer; z-index: 2; transform-origin: 50% 100%; }
 .chest { left: 32%; width: 64px; height: 56px; }
-.chest svg, .chicken svg { width: 100%; height: 100%; display: block; }
-.chest.open svg { transform: translateY(-2px); filter: drop-shadow(0 0 6px #ffe066); }
+.chest svg, .chicken svg { width: 100%; height: 100%; display: block; overflow: visible; }
 .chicken { left: 64%; width: 52px; height: 58px; }
-.chicken.hop { animation: hop .45s ease-out; }
-@keyframes hop { 30% { transform: translateY(-16px) rotate(-6deg); } 60% { transform: translateY(0); } 80% { transform: translateY(-4px); } }
-@media (hover: hover) { .chest:hover svg, .chicken:hover svg { filter: brightness(1.1); } }
+.chest-lid { transform-box: fill-box; transform-origin: 0% 100%; transition: transform .25s cubic-bezier(.3, 1.6, .5, 1); }
+.chest.open .chest-lid { transform: rotate(-24deg) translateY(-1px); }
+.chest.open svg { filter: drop-shadow(0 0 6px #ffe066); }
 .chest:focus-visible, .chicken:focus-visible { outline: 3px solid #ffd34d; outline-offset: 0; }
-.world-tip {
-  position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 3; width: min(440px, calc(100% - 24px));
-  margin: 0; padding: .55rem .8rem; background: #f3f1e6; color: #1b2416; border: 3px solid #121a0e; font-size: .92rem;
-  box-shadow: 0 4px 0 rgb(0 0 0 / 35%);
+
+/* Pratbubblor: poppar fram från sin ägare och krymper bort. */
+.bubble-w {
+  position: absolute; z-index: 5; margin: 0; width: max-content; max-width: min(280px, calc(100% - 16px));
+  padding: .55rem .8rem; background: #f3f1e6; color: #1b2416; border: 3px solid #121a0e; font-size: .92rem; line-height: 1.4;
+  box-shadow: 0 4px 0 rgb(0 0 0 / 35%); transform-origin: var(--tail, 50%) 100%;
 }
+.bubble-w::after {
+  content: ''; position: absolute; top: 100%; left: calc(var(--tail, 50%) - 7px);
+  border: 7px solid transparent; border-top-color: #121a0e; border-bottom: 0;
+}
+.world { overflow: visible; }
+.world .sky { overflow: hidden; }
+.world .ground { overflow: hidden; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .bubble-w.in { animation: bubble-in .22s cubic-bezier(.3, 1.5, .5, 1); }
+  .bubble-w.out { animation: bubble-out .18s ease-in forwards; }
+  .chest.pop { animation: chest-pop .4s ease-out; }
+  .chicken.hop { animation: hop .5s ease-out; }
+  .chest, .chicken { transition: transform .15s ease; }
+  @media (hover: hover) {
+    .chest:hover, .chicken:hover { transform: scale(1.08); }
+    .chest:hover svg, .chicken:hover svg { filter: brightness(1.1); }
+  }
+  .chest:active, .chicken:active { transform: scale(.94); }
+}
+@keyframes bubble-in { from { opacity: 0; transform: scale(.5) translateY(8px); } 70% { opacity: 1; } to { transform: none; } }
+@keyframes bubble-out { to { opacity: 0; transform: scale(.6) translateY(6px); } }
+@keyframes chest-pop { 0% { transform: scale(1); } 30% { transform: scale(1.12, .9); } 60% { transform: scale(.96, 1.06) translateY(-3px); } 100% { transform: scale(1); } }
+@keyframes hop { 0% { transform: none; } 25% { transform: translateY(-18px) rotate(-8deg) scale(1.05); } 50% { transform: translateY(0) scale(1.08, .92); } 70% { transform: translateY(-5px) rotate(4deg); } 100% { transform: none; } }
+
 @media (max-width: 640px) {
   .world { height: 150px; }
   .tree { width: 72px; height: 72px; left: 2%; }

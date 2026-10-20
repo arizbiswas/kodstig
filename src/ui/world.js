@@ -17,18 +17,22 @@ const TIPS = [
 
 const px = (rows, colors, size = 1) => rows.flatMap((row, y) => [...row].map((c, x) => (c === '.' ? '' : `<rect x="${x * size}" y="${y * size}" width="${size}" height="${size}" fill="${colors[c]}"/>`))).join('');
 
-const CHEST = px([
+const CHEST_COLORS = { k: '#3b2410', b: '#8a5a2b', d: '#a8733b', g: '#2b2b2b', y: '#f2d14b' };
+// Locket och lådan ritas var för sig så att locket kan öppnas.
+const CHEST_LID = px([
   'kkkkkkkkkkkk',
   'kbbbbbbbbbbk',
   'kbddddddddbk',
   'kbddddddddbk',
   'kkkkkggkkkkk',
+], CHEST_COLORS);
+const CHEST_BASE = px([
   'kbbbbgybbbbk',
   'kbddddddddbk',
   'kbddddddddbk',
   'kbddddddddbk',
   'kkkkkkkkkkkk',
-], { k: '#3b2410', b: '#8a5a2b', d: '#a8733b', g: '#2b2b2b', y: '#f2d14b' });
+], CHEST_COLORS).replace(/y="(\d+)"/g, (m, y) => `y="${Number(y) + 5}"`);
 
 const CHICKEN = px([
   '...www..',
@@ -58,6 +62,8 @@ export function isNight(d = new Date()) {
   return hr < 6 || hr >= 20;
 }
 
+const BUBBLE_MS = 180;
+
 export function renderWorld() {
   const night = isNight();
   const el = h(`<section class="world ${night ? 'night' : 'day'}" aria-label="Dekorativ värld">
@@ -67,50 +73,113 @@ export function renderWorld() {
       ${night ? '<span class="stars"></span>' : ''}
     </div>
     <svg class="tree" viewBox="0 0 8 8" shape-rendering="crispEdges" aria-hidden="true">${TREE}</svg>
-    <button class="chest" type="button" aria-label="Öppna kistan och få ett tips" aria-expanded="false">
-      <svg viewBox="0 0 12 10" shape-rendering="crispEdges" aria-hidden="true">${CHEST}</svg>
+    <button class="chest" type="button" aria-label="Öppna kistan och få ett tips" aria-expanded="false" aria-controls="chest-bubble">
+        <svg viewBox="0 0 12 10" shape-rendering="crispEdges" aria-hidden="true"><g class="chest-base">${CHEST_BASE}</g><g class="chest-lid">${CHEST_LID}</g></svg>
     </button>
-    <button class="chicken" type="button" aria-label="Klappa hönan">
-      <svg viewBox="0 0 8 9" shape-rendering="crispEdges" aria-hidden="true">${CHICKEN}</svg>
+    <button class="chicken" type="button" aria-label="Klappa hönan" aria-controls="chicken-bubble">
+        <svg viewBox="0 0 8 9" shape-rendering="crispEdges" aria-hidden="true">${CHICKEN}</svg>
     </button>
     <div class="ground" aria-hidden="true"></div>
-    <p class="world-tip" role="status" aria-live="polite" hidden></p>
+    <p class="bubble-w" id="chest-bubble" role="status" aria-live="polite" hidden></p>
+    <p class="bubble-w" id="chicken-bubble" role="status" aria-live="polite" hidden></p>
     <p class="world-time sr-only">${night ? 'Det är natt i världen.' : 'Det är dag i världen.'}</p>
   </section>`);
 
-  const tipEl = el.querySelector('.world-tip');
   const chest = el.querySelector('.chest');
+  const chicken = el.querySelector('.chicken');
+  const bubbles = { chest: el.querySelector('#chest-bubble'), chicken: el.querySelector('#chicken-bubble') };
+  const timers = { chest: null, chicken: null };
   let tipIndex = Math.floor(Math.random() * TIPS.length);
   let clucks = 0;
-  let hideTimer = null;
+  let chickenTimer = null;
+
+  // Startar om en CSS-animation på ett element.
+  const replay = (node, cls) => {
+    node.classList.remove(cls);
+    void node.getBoundingClientRect();
+    node.classList.add(cls);
+  };
+
+  // Placerar bubblan ovanför sin ägare men inom världens kanter, med pilen mot ägaren.
+  const place = (key) => {
+    const b = bubbles[key];
+    const owner = key === 'chest' ? chest : chicken;
+    const w = el.getBoundingClientRect();
+    const o = owner.getBoundingClientRect();
+    const cx = o.left + o.width / 2 - w.left;
+    const bw = b.offsetWidth;
+    const left = Math.max(8, Math.min(w.width - bw - 8, cx - bw / 2));
+    b.style.left = `${left}px`;
+    b.style.bottom = `${w.bottom - o.top + 10}px`;
+    b.style.setProperty('--tail', `${Math.max(14, Math.min(bw - 14, cx - left))}px`);
+  };
+
+  const showBubble = (key, html) => {
+    const b = bubbles[key];
+    clearTimeout(timers[key]);
+    b.innerHTML = html;
+    b.hidden = false;
+    place(key);
+    b.classList.remove('out');
+    replay(b, 'in');
+  };
+  const hideBubble = (key) => {
+    const b = bubbles[key];
+    if (b.hidden || b.classList.contains('out')) return;
+    clearTimeout(timers[key]);
+    b.classList.remove('in');
+    if (reducedMotion()) { b.hidden = true; } else {
+      b.classList.add('out');
+      timers[key] = setTimeout(() => { b.hidden = true; b.classList.remove('out'); }, BUBBLE_MS);
+    }
+    if (key === 'chest') { chest.setAttribute('aria-expanded', 'false'); chest.classList.remove('open'); }
+  };
+  const hideAll = () => { hideBubble('chest'); hideBubble('chicken'); };
 
   const offs = [
     on(el, 'click', '.chest', () => {
-      const open = chest.getAttribute('aria-expanded') === 'true';
-      if (open) {
-        chest.setAttribute('aria-expanded', 'false');
-        chest.classList.remove('open');
-        tipEl.hidden = true;
-        return;
-      }
+      if (chest.getAttribute('aria-expanded') === 'true') { hideBubble('chest'); return; }
+      hideBubble('chicken');
       tipIndex = (tipIndex + 1) % TIPS.length;
       chest.setAttribute('aria-expanded', 'true');
       chest.classList.add('open');
-      tipEl.hidden = false;
-      tipEl.innerHTML = `<strong>Tips från kistan:</strong> ${esc(TIPS[tipIndex])}`;
+      if (!reducedMotion()) replay(chest, 'pop');
+      showBubble('chest', `<strong>Tips från kistan:</strong> ${esc(TIPS[tipIndex])}`);
     }),
-    on(el, 'click', '.chicken', (e, b) => {
+    on(el, 'click', '.chicken', () => {
       clucks++;
-      if (!reducedMotion()) {
-        b.classList.remove('hop');
-        void b.offsetWidth;
-        b.classList.add('hop');
-      }
-      tipEl.hidden = false;
-      tipEl.textContent = clucks === 7 ? 'Kluck! Du har klappat hönan sju gånger. Hon tycker om dig.' : 'Kluck!';
-      clearTimeout(hideTimer);
-      hideTimer = setTimeout(() => { if (chest.getAttribute('aria-expanded') !== 'true') tipEl.hidden = true; }, 1800);
+      hideBubble('chest');
+      if (!reducedMotion()) replay(chicken, 'hop');
+      showBubble('chicken', clucks % 7 === 0 ? 'Kluck! Du har klappat hönan sju gånger. Hon tycker om dig.' : ['Kluck!', 'Kluck kluck!', 'Pip?', 'Kluck! 🥚'][clucks % 4]);
+      clearTimeout(chickenTimer);
+      chickenTimer = setTimeout(() => hideBubble('chicken'), 2200);
     }),
   ];
-  return { el, destroy() { clearTimeout(hideTimer); offs.forEach((f) => f()); } };
+
+  // Ett klick var som helst utanför kistan, hönan och pratbubblorna stänger bubblorna.
+  const onDocDown = (e) => {
+    if (e.target.closest('.chest, .chicken, .bubble-w')) return;
+    hideAll();
+  };
+  const onKey = (e) => {
+    if (e.key === 'Escape' && (!bubbles.chest.hidden || !bubbles.chicken.hidden)) {
+      const wasChest = !bubbles.chest.hidden;
+      hideAll();
+      if (wasChest && el.contains(document.activeElement)) chest.focus();
+    }
+  };
+  document.addEventListener('pointerdown', onDocDown);
+  document.addEventListener('keydown', onKey);
+
+  return {
+    el,
+    destroy() {
+      clearTimeout(chickenTimer);
+      clearTimeout(timers.chest);
+      clearTimeout(timers.chicken);
+      document.removeEventListener('pointerdown', onDocDown);
+      document.removeEventListener('keydown', onKey);
+      offs.forEach((f) => f());
+    },
+  };
 }

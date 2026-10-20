@@ -224,6 +224,36 @@ async function main() {
       await context.close();
     });
 
+    await check('Minecraft-världen: kistan och hönan har bubblor som stängs vid klick utanför', async () => {
+      const { context, page } = await newGuest(browser, { viewport: { width: 375, height: 740 }, hasTouch: true, isMobile: true });
+      await page.evaluate(() => localStorage.setItem('kodstig.theme', 'minecraft'));
+      await page.goto(`${BASE}#/lar`);
+      await page.reload();
+      await page.locator('.chest').click();
+      const cb = page.locator('#chest-bubble');
+      await cb.waitFor({ state: 'visible' });
+      assert((await cb.textContent()).includes('Tips från kistan'));
+      eq(await page.locator('.chest').getAttribute('aria-expanded'), 'true');
+      assert(await noHorizontalScroll(page), 'bubblan ger ingen horisontell scroll');
+      await page.locator('.chicken').click();
+      await page.locator('#chicken-bubble').waitFor({ state: 'visible' });
+      await cb.waitFor({ state: 'hidden' });
+      assert(await noHorizontalScroll(page), 'hönans bubbla ger ingen horisontell scroll');
+      await page.locator('#learn-h').click();
+      await page.locator('#chicken-bubble').waitFor({ state: 'hidden' });
+      await page.locator('.chest').click();
+      await cb.waitFor({ state: 'visible' });
+      await page.mouse.click(5, 400);
+      await cb.waitFor({ state: 'hidden' });
+      eq(await page.locator('.chest').getAttribute('aria-expanded'), 'false');
+      await page.locator('.chest').focus();
+      await page.keyboard.press('Enter');
+      await cb.waitFor({ state: 'visible' });
+      await page.keyboard.press('Escape');
+      await cb.waitFor({ state: 'hidden' });
+      await context.close();
+    });
+
     // 6. Kodlabbet: fel, ledtrådar, oändlig loop, isolering
     await check('Kodlabbet: fel visas och ledtrådarna börjar om när koden ändras', async () => {
       const { context, page } = await newGuest(browser);

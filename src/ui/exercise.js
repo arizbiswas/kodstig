@@ -74,6 +74,10 @@ export function renderExercise(ex, { lang, saved, solved = false, onChange, onSo
     }
     if (res.detail) html += `<p class="fb-detail">${res.ok ? '<strong>Därför fungerar det:</strong> ' : '<strong>Ledtråd:</strong> '}${prompt(res.detail)}</p>`;
     fb.innerHTML = html;
+    // Starta om in-animationen även när samma typ av svar kommer igen.
+    fb.style.animation = 'none';
+    void fb.offsetWidth;
+    fb.style.animation = '';
   };
 
   const showOutput = (run) => {

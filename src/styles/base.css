@@ -546,3 +546,44 @@ legend { padding: 0; margin-bottom: .4em; font-weight: 600; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; scroll-behavior: auto !important; }
 }
+
+/* ---------- Interaktivitet: små rörelser vid hovring, tryck och nya element ----------
+   Bara med mus för hovring, och inget alls när användaren valt minskad rörelse. */
+@media (prefers-reduced-motion: no-preference) {
+  .btn, .track-btn, .chip, .chip-radio span, .station-btn, .theme-opt, .milo-launch, .milo-mini,
+  .theme-toggle, .icon-btn, .choice, .lesson-item, .term, .method-steps li, .nav-link, .bottom-link,
+  .side-stats, .level-badge, .week .dot, .milestones li, .station-node {
+    transition: transform .16s cubic-bezier(.3, 1.4, .5, 1), box-shadow .16s ease, background-color .16s ease, border-color .16s ease, filter .16s ease;
+  }
+  @media (hover: hover) {
+    .btn:hover:not(:disabled), .track-btn:hover, .chip:hover, .chip-radio:hover span, .theme-toggle:hover,
+    .milo-launch:hover, .milo-mini:hover, .icon-btn:hover { transform: scale(1.05); }
+    .station-btn:hover { transform: scale(1.04); }
+    .station-btn:hover .station-node { transform: rotate(-6deg) scale(1.06); }
+    .choice:hover { transform: scale(1.015); }
+    .theme-opt:hover, .term:hover, .method-steps li:hover { transform: translateY(-3px); }
+    .lesson-item:hover { transform: translateX(4px); }
+    .nav-link:hover { transform: translateX(3px); }
+    .bottom-link:hover .ico { transform: translateY(-2px); }
+    .level-badge:hover { transform: rotate(-4deg) scale(1.06); }
+    .milestones li.ok:hover { transform: scale(1.04); }
+  }
+  .btn:active:not(:disabled), .track-btn:active, .chip:active, .station-btn:active, .milo-launch:active,
+  .milo-mini:active, .icon-btn:active, .choice:active, .theme-toggle:active, .bottom-link:active { transform: scale(.95); }
+
+  /* Nytt innehåll glider eller poppar in. */
+  .chapter-panel { animation: slide-in .28s ease-out; }
+  .feedback.good, .feedback.bad, .feedback.info { animation: pop-in .26s cubic-bezier(.3, 1.5, .5, 1); }
+  .feedback.bad { animation: pop-in .26s cubic-bezier(.3, 1.5, .5, 1), nudge .35s ease-in-out .05s; }
+  .exercise.solved .fb-icon { animation: spin-pop .45s ease-out; }
+  .hints li:last-child { animation: slide-in .22s ease-out; }
+  .toast { animation: slide-in .25s ease-out; }
+  .dialog[open] { animation: pop-in .22s cubic-bezier(.3, 1.4, .5, 1); }
+  .lesson-stage > .card { animation: slide-in .25s ease-out; }
+  .station.active .station-node { animation: pulse 1.8s ease-in-out infinite; }
+}
+@keyframes slide-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes pop-in { from { opacity: 0; transform: scale(.92); } to { opacity: 1; transform: none; } }
+@keyframes nudge { 0%, 100% { translate: 0; } 25% { translate: -4px 0; } 75% { translate: 4px 0; } }
+@keyframes spin-pop { 0% { transform: scale(.4) rotate(-90deg); } 70% { transform: scale(1.2) rotate(10deg); } 100% { transform: none; } }
+@keyframes pulse { 0%, 100% { scale: 1; } 50% { scale: 1.07; } }
