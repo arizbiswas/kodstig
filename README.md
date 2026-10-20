@@ -29,6 +29,8 @@ Utan konfiguration startar appen direkt i läget **Fortsätt utan konto**. Frams
 
 Appen publiceras automatiskt på GitHub Pages varje gång `main` uppdateras (se `.github/workflows/pages.yml`): https://arizbiswas.github.io/kodstig/
 
+Kodstig är en installerbar webbapp (PWA). I Chrome eller Edge på datorn installerar du den med installationsikonen i adressfältet. På Android väljer du **Installera app** i webbläsarens meny, och på iPhone trycker du på **Dela → Lägg till på hemskärmen** i Safari. Appen kan starta utan nät. Milos modell och data från andra tjänster sparas aldrig av appens service worker (`public/sw.js`), och sidan hämtas alltid från nätet först så att uppdateringar syns direkt.
+
 Bygger du för en annan sökväg sätter du `BASE_PATH`, till exempel `BASE_PATH=/kodstig/ npm run build`.
 
 ## Konton med Supabase (Google-inloggning)
