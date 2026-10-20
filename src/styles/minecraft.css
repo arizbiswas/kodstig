@@ -1,0 +1,191 @@
+/* Minecraft-temat: blocktexturer, pixeltypsnitt på utvalda ställen och en
+   liten värld på startsidan. Brödtext behåller ett lättläst typsnitt. */
+
+[data-theme="minecraft"] {
+  --bg: #1b2416;
+  --bg-2: #222d1b;
+  --surface: #2b3723;
+  --surface-2: #222d1b;
+  --text: #f3f1e6;
+  --muted: #c0c7ae;
+  --line: #4a5a3d;
+  --accent: #7bd858;
+  --accent-ink: #11210a;
+  --accent-soft: #34492a;
+  --good: #8ee68a;
+  --good-soft: #233f27;
+  --bad: #ff9a8b;
+  --bad-soft: #4a2420;
+  --warn-soft: #463d1d;
+  --done: #5cc548;
+  --locked: #737a6b;
+  --code-bg: #10160c;
+  --code-text: #eef7e3;
+  --focus: #ffd34d;
+  --radius: 4px;
+  --radius-sm: 3px;
+  --shadow: 0 4px 0 rgb(0 0 0 / 35%);
+  --pixel: 'Pixelify Sans', var(--mono);
+  --bevel: inset 3px 3px 0 rgb(255 255 255 / 9%), inset -3px -3px 0 rgb(0 0 0 / 35%);
+  color-scheme: dark;
+}
+
+[data-theme="minecraft"] body {
+  background-color: var(--bg);
+  background-image:
+    linear-gradient(45deg, rgb(255 255 255 / 1.5%) 25%, transparent 25%, transparent 75%, rgb(255 255 255 / 1.5%) 75%),
+    linear-gradient(45deg, rgb(0 0 0 / 8%) 25%, transparent 25%, transparent 75%, rgb(0 0 0 / 8%) 75%);
+  background-size: 32px 32px;
+  background-position: 0 0, 16px 16px;
+}
+
+/* Pixeltypsnitt bara på rubriker, varumärke och knappar. */
+[data-theme="minecraft"] h1,
+[data-theme="minecraft"] .brand,
+[data-theme="minecraft"] .btn.primary,
+[data-theme="minecraft"] .station-num,
+[data-theme="minecraft"] .level-badge,
+[data-theme="minecraft"] .lvl-badge,
+[data-theme="minecraft"] .step-label,
+[data-theme="minecraft"] .big-num {
+  font-family: var(--pixel);
+  font-weight: 600;
+  letter-spacing: .01em;
+}
+[data-theme="minecraft"] .big-num span { font-family: var(--font); font-weight: 500; letter-spacing: 0; }
+[data-theme="minecraft"] h1 { font-size: clamp(1.4rem, 1rem + 1.6vw, 2rem); text-shadow: 3px 3px 0 rgb(0 0 0 / 45%); }
+[data-theme="minecraft"] .hero h1 { font-size: clamp(1.7rem, 1rem + 2.8vw, 2.8rem); line-height: 1.25; }
+[data-theme="minecraft"] .hero h1 span { color: var(--accent); }
+
+[data-theme="minecraft"] code { background: #10160c; color: #c9f5a8; }
+
+[data-theme="minecraft"] .card,
+[data-theme="minecraft"] .method-steps li,
+[data-theme="minecraft"] .more,
+[data-theme="minecraft"] .station-btn,
+[data-theme="minecraft"] .dialog,
+[data-theme="minecraft"] .milo-panel {
+  border: 3px solid #121a0e;
+  box-shadow: var(--bevel), var(--shadow);
+  background-image: linear-gradient(rgb(255 255 255 / 2%), rgb(255 255 255 / 0%));
+}
+[data-theme="minecraft"] .sidebar,
+[data-theme="minecraft"] .topbar,
+[data-theme="minecraft"] .bottom-nav {
+  background:
+    repeating-linear-gradient(90deg, rgb(0 0 0 / 10%) 0 2px, transparent 2px 16px),
+    #26321f;
+  border-color: #121a0e;
+}
+
+/* Knappar som block med fasad kant. */
+[data-theme="minecraft"] .btn {
+  border-radius: 2px;
+  border: 3px solid #0e140a;
+  box-shadow: inset 3px 3px 0 rgb(255 255 255 / 25%), inset -3px -3px 0 rgb(0 0 0 / 30%);
+}
+[data-theme="minecraft"] .btn.primary { background: #5aa83b; color: #0d1a07; text-shadow: 1px 1px 0 rgb(255 255 255 / 25%); }
+[data-theme="minecraft"] .btn.secondary { background: #8b8b8b; color: #111; border-color: #0e140a; }
+[data-theme="minecraft"] .btn.ghost { background: #3a4630; color: var(--text); }
+[data-theme="minecraft"] .btn.danger { background: #b8382c; color: #fff; }
+@media (hover: hover) {
+  [data-theme="minecraft"] .btn.secondary:hover:not(:disabled) { background: #a3a3a3; }
+  [data-theme="minecraft"] .btn.ghost:hover:not(:disabled) { background: #4a5a3d; }
+}
+[data-theme="minecraft"] .btn:active:not(:disabled) { box-shadow: inset -3px -3px 0 rgb(255 255 255 / 20%), inset 3px 3px 0 rgb(0 0 0 / 30%); }
+[data-theme="minecraft"] .brand-mark { border-radius: 2px; background: #5aa83b; color: #0d1a07; box-shadow: inset 0 -8px 0 #7a5230; }
+[data-theme="minecraft"] .track-btn,
+[data-theme="minecraft"] .chip,
+[data-theme="minecraft"] .chip-radio span,
+[data-theme="minecraft"] .choice,
+[data-theme="minecraft"] .theme-opt,
+[data-theme="minecraft"] .theme-toggle,
+[data-theme="minecraft"] .nav-link,
+[data-theme="minecraft"] .milo-launch,
+[data-theme="minecraft"] .side-stats { border-radius: 2px; }
+[data-theme="minecraft"] .nav-link[aria-current="page"] { background: #3d5530; color: #b7f59a; box-shadow: inset 3px 0 0 var(--accent); }
+[data-theme="minecraft"] .lvl-badge { color: #ffe066; }
+
+/* Stigen: stationerna är block, linjen är en grusväg. */
+[data-theme="minecraft"] .station-btn { border-radius: 2px; }
+[data-theme="minecraft"] .station-node {
+  border-radius: 2px;
+  background: #5aa83b;
+  color: #0d1a07;
+  box-shadow: inset 0 -16px 0 #7a5230, inset 3px 3px 0 rgb(255 255 255 / 25%), inset -3px -3px 0 rgb(0 0 0 / 30%);
+}
+[data-theme="minecraft"] .station.s-done .station-node { background: #3fbf5a; box-shadow: inset 3px 3px 0 rgb(255 255 255 / 30%), inset -3px -3px 0 rgb(0 0 0 / 30%); color: #0b2410; }
+[data-theme="minecraft"] .station.s-locked .station-node { background: #7c7c7c; box-shadow: inset 3px 3px 0 rgb(255 255 255 / 20%), inset -3px -3px 0 rgb(0 0 0 / 35%); color: #262626; }
+[data-theme="minecraft"] .path-bg { stroke: #6b5a3e; stroke-linecap: square; stroke-dasharray: 10 6; }
+[data-theme="minecraft"] .path-done { stroke: #3fbf5a; stroke-linecap: square; }
+[data-theme="minecraft"] .lesson-progress, [data-theme="minecraft"] .bar { border-radius: 0; border: 2px solid #0e140a; height: 14px; background: #3a3a3a; }
+[data-theme="minecraft"] .lesson-progress span, [data-theme="minecraft"] .bar span { border-radius: 0; background: repeating-linear-gradient(90deg, #7bd858 0 10px, #5aa83b 10px 12px); }
+[data-theme="minecraft"] .level-badge { border-radius: 2px; background: #3fbf5a; color: #0b2410; box-shadow: var(--bevel); }
+
+[data-theme="minecraft"] .feedback.good { background: var(--good-soft); color: #d9f8d4; }
+[data-theme="minecraft"] .feedback.bad { background: var(--bad-soft); color: #ffe1dc; }
+[data-theme="minecraft"] .feedback.good .fb-icon { color: #0b2410; }
+[data-theme="minecraft"] .t-detail code { background: rgb(0 0 0 / 30%); }
+[data-theme="minecraft"] .blank { background: #eef7e3; color: #10160c; border-color: #7bd858; }
+[data-theme="minecraft"] .preview iframe { border: 3px solid #0e140a; }
+[data-theme="minecraft"] .output pre { background: #10160c; }
+[data-theme="minecraft"] .mp-head { background: #2f4a2a; }
+[data-theme="minecraft"] .milo-launch { background: #2f4a2a; }
+[data-theme="minecraft"] .msg.user .bubble { color: #0d1a07; }
+[data-theme="minecraft"] .advice, [data-theme="minecraft"] .hints, [data-theme="minecraft"] .notice { color: #fff3c4; }
+[data-theme="minecraft"] .toast { background: #f3f1e6; color: #1b2416; }
+[data-theme="minecraft"] .toast-success { background: #3fbf5a; color: #0b2410; }
+[data-theme="minecraft"] .milestones li.ok span:first-child { color: #ffe066; }
+[data-theme="minecraft"] .levels tr.reached th { color: var(--good); }
+[data-theme="minecraft"] .dialog::backdrop { background: rgb(0 0 0 / 65%); }
+
+/* ---------- Världen ---------- */
+.world {
+  position: relative; height: 180px; margin: 0 0 1rem; overflow: hidden;
+  border: 3px solid #121a0e; box-shadow: var(--bevel);
+  image-rendering: pixelated;
+}
+.world .sky { position: absolute; inset: 0; background: linear-gradient(#78c4f2, #c4e9ff); }
+.world.night .sky { background: linear-gradient(#0b1230, #263a6a); }
+.sun-moon { position: absolute; top: 18px; right: 12%; width: 34px; height: 34px; background: #ffe066; box-shadow: 0 0 0 4px #fff3a0; }
+.world.night .sun-moon { background: #e9eef7; box-shadow: 0 0 0 4px #c3cbe0, inset -8px -6px 0 #cfd6e6; }
+.cloud { position: absolute; height: 14px; background: #fff; opacity: .9; box-shadow: 14px -10px 0 #fff, 28px 0 0 #fff; }
+.world.night .cloud { opacity: .25; }
+.cloud.c1 { top: 30px; left: 10%; width: 48px; }
+.cloud.c2 { top: 60px; left: 55%; width: 36px; }
+.stars { position: absolute; inset: 0; background-image: radial-gradient(#fff 1px, transparent 1.5px); background-size: 46px 38px; opacity: .7; }
+@media (prefers-reduced-motion: no-preference) {
+  .cloud { animation: drift 60s linear infinite; }
+  .cloud.c2 { animation-duration: 85s; }
+}
+@keyframes drift { from { transform: translateX(-120px); } to { transform: translateX(110vw); } }
+.ground {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 48px;
+  background:
+    linear-gradient(#5aa83b 0 12px, transparent 12px),
+    repeating-linear-gradient(90deg, #7a5230 0 8px, #6b4727 8px 16px, #85593a 16px 24px),
+    #7a5230;
+  border-top: 3px solid #3f7d26;
+}
+.tree { position: absolute; bottom: 44px; left: 6%; width: 96px; height: 96px; }
+.chest, .chicken { position: absolute; bottom: 44px; background: none; border: 0; padding: 4px; cursor: pointer; z-index: 2; }
+.chest { left: 32%; width: 64px; height: 56px; }
+.chest svg, .chicken svg { width: 100%; height: 100%; display: block; }
+.chest.open svg { transform: translateY(-2px); filter: drop-shadow(0 0 6px #ffe066); }
+.chicken { left: 64%; width: 52px; height: 58px; }
+.chicken.hop { animation: hop .45s ease-out; }
+@keyframes hop { 30% { transform: translateY(-16px) rotate(-6deg); } 60% { transform: translateY(0); } 80% { transform: translateY(-4px); } }
+@media (hover: hover) { .chest:hover svg, .chicken:hover svg { filter: brightness(1.1); } }
+.chest:focus-visible, .chicken:focus-visible { outline: 3px solid #ffd34d; outline-offset: 0; }
+.world-tip {
+  position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 3; width: min(440px, calc(100% - 24px));
+  margin: 0; padding: .55rem .8rem; background: #f3f1e6; color: #1b2416; border: 3px solid #121a0e; font-size: .92rem;
+  box-shadow: 0 4px 0 rgb(0 0 0 / 35%);
+}
+@media (max-width: 640px) {
+  .world { height: 150px; }
+  .tree { width: 72px; height: 72px; left: 2%; }
+  .chest { left: 36%; width: 52px; height: 46px; }
+  .chicken { left: 70%; width: 44px; height: 50px; }
+}
+[data-theme="minecraft"] .milo-panel { border-radius: 2px; }

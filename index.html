@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="sv" data-theme="minecraft">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1f2a1a">
+  <meta name="description" content="Kodstig: lär dig C#, Python och HTML/CSS med korta lektioner på svenska.">
+  <title>Kodstig</title>
+  <link rel="icon" href="/companions/milo.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400..700&display=swap">
+  <script>
+    // Tema före första ritningen, så sidan inte blinkar i fel tema.
+    try { var t = localStorage.getItem('kodstig.theme'); if (t === 'classic' || t === 'minecraft') document.documentElement.dataset.theme = t; } catch (e) {}
+  </script>
+  <script src="/config.js"></script>
+</head>
+<body>
+  <div id="app"></div>
+  <div id="live" class="sr-only" aria-live="polite"></div>
+  <div id="toasts" class="toasts" aria-live="polite"></div>
+  <noscript><p style="padding:1rem">Kodstig behöver JavaScript för att fungera.</p></noscript>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
