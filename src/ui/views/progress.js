@@ -2,33 +2,11 @@
 // spårens framsteg och milstolpar. Detaljerna ligger i utfällbara sektioner.
 import { h, esc, on } from '../dom.js';
 import { TRACKS, LESSONS, TIER_NAMES } from '../../content/index.js';
-import { pref, setPref, activityByDay } from '../../state/model.js';
+import { pref, setPref } from '../../state/model.js';
+import { streakInfo } from '../../state/streak.js';
 import { LEVELS, levelInfo, nextStepAdvice, today, trackProgress, missingReqs, REVIEW_XP, DAILY_XP } from '../../state/progression.js';
 
 const GOALS = [5, 10, 15];
-const DAY_NAMES = ['sön', 'mån', 'tis', 'ons', 'tor', 'fre', 'lör'];
-
-function addDays(d, n) { const x = new Date(d); x.setDate(x.getDate() + n); return x; }
-
-// En dag räknas när dagsmålet nåddes eller en lektion blev klar.
-export function streakInfo(profile, now = new Date()) {
-  const goal = pref(profile, 'goal') * 60;
-  const act = activityByDay(profile);
-  const doneDays = new Set(Object.values(profile.completed || {}).map((c) => today(new Date(c.at))));
-  const counts = (d) => (act[d] || 0) >= goal || doneDays.has(d);
-  const t = today(now);
-  let n = 0;
-  let cursor = counts(t) ? now : addDays(now, -1);
-  while (counts(today(cursor)) && n < 3650) { n++; cursor = addDays(cursor, -1); }
-  const week = Array.from({ length: 7 }, (_, i) => {
-    const d = addDays(now, i - 6);
-    const key = today(d);
-    return { key, name: DAY_NAMES[d.getDay()], ok: counts(key), secs: act[key] || 0, isToday: key === t };
-  });
-  const everActive = Object.keys(act).length > 0 || doneDays.size > 0;
-  return { streak: n, todayDone: counts(t), todaySecs: act[t] || 0, goalSecs: goal, week, everActive };
-}
-
 export function milestones(profile) {
   const done = Object.keys(profile.completed || {}).map((id) => LESSONS.find((l) => l.id === id)).filter(Boolean);
   const info = levelInfo(profile);
@@ -97,9 +75,10 @@ export function render(ctx) {
           <h2 id="streak-h">Din rytm</h2>
           <p class="big-num">${st.streak} <span>${st.streak === 1 ? 'dag i rad' : 'dagar i rad'}</span></p>
           <ol class="week" aria-label="Senaste sju dagarna">
-            ${st.week.map((d) => `<li class="${d.ok ? 'ok' : ''} ${d.isToday ? 'today' : ''}"><span class="dot" aria-hidden="true"></span><span>${d.name}</span><span class="sr-only">${d.ok ? 'övat' : 'inte övat'}${d.isToday ? ' (i dag)' : ''}</span></li>`).join('')}
+            ${st.week.map((d) => `<li class="${d.ok ? 'ok' : ''} ${d.frozen ? 'frozen' : ''} ${d.isToday ? 'today' : ''}"><span class="dot" aria-hidden="true">${d.frozen ? '❄' : ''}</span><span>${d.name}</span><span class="sr-only">${d.ok ? 'övat' : d.frozen ? 'frysning' : 'inte övat'}${d.isToday ? ' (i dag)' : ''}</span></li>`).join('')}
           </ol>
-          <p class="tiny muted">${st.streak === 0 && st.everActive ? 'Välkommen tillbaka! En kort stund i dag räcker för att komma igång igen.' : !st.todayDone && st.streak > 0 ? 'Gör en lektion eller nå dagsmålet i dag så fortsätter rytmen.' : 'Pauser är okej. Det viktiga är att du kommer tillbaka.'}</p>
+          <p class="tiny muted">${st.streak === 0 && st.everActive ? 'Välkommen tillbaka! En kort stund i dag räcker för att komma igång igen.' : !st.todayDone && st.streak > 0 ? 'Gör en lektion, dagens repetition eller nå dagsmålet i dag så fortsätter rytmen.' : 'Pauser är okej. Det viktiga är att du kommer tillbaka.'}</p>
+          <p class="tiny muted freezes">❄ ${st.freezesLeft} av 2 frysningar kvar den här veckan. En missad dag fryses automatiskt, så sviten håller.</p>
         </article>
       </div>
 
@@ -126,10 +105,10 @@ export function render(ctx) {
       <details class="card fold" data-k="xp" ${open('xp')}><summary><h2>Så har du fått dina XP</h2></summary>
         <ul class="xp-parts">
           <li>Avklarade lektioner: <strong>${info.xpParts.lessonXp} XP</strong></li>
-          <li>Repetitionsbonus (${REVIEW_XP} XP, högst en per dag, tidigast dagen efter): <strong>${Object.keys(p.bonuses).filter((k) => k.startsWith('review:')).length * REVIEW_XP} XP</strong></li>
+          <li>Daglig repetition (${REVIEW_XP} XP per dag): <strong>${Object.keys(p.bonuses).filter((k) => k.startsWith('review:')).length * REVIEW_XP} XP</strong></li>
           <li>Dagens utmaning (${DAILY_XP} XP per dag): <strong>${Object.keys(p.bonuses).filter((k) => k.startsWith('daily:')).length * DAILY_XP} XP</strong></li>
         </ul>
-        <p class="tiny muted">Varje lektion ger XP en gång. Att göra om en lektion kostar ingenting och kan ge repetitionsbonus.</p>
+        <p class="tiny muted">Varje lektion ger XP en gång. Att göra om en lektion kostar ingenting och är alltid bra träning.</p>
       </details>
 
       <details class="card fold" data-k="ms" ${open('ms')}><summary><h2>Milstolpar</h2></summary>

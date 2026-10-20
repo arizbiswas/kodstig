@@ -16,6 +16,7 @@ export function emptyProfile(epoch = 0, prefs = {}) {
     lab: {},
     activity: {},
     bonuses: {},
+    review: {},
     levelSeen: 1,
   };
 }
@@ -38,6 +39,7 @@ export function normalize(raw) {
   p.lab = obj(raw.lab);
   p.activity = obj(raw.activity);
   p.bonuses = obj(raw.bonuses);
+  p.review = obj(raw.review);
   p.levelSeen = Number.isInteger(raw.levelSeen) ? raw.levelSeen : 1;
   return p;
 }
@@ -59,6 +61,7 @@ export function merge(a, b) {
   for (const k of new Set([...Object.keys(a.bonuses), ...Object.keys(b.bonuses)])) out.bonuses[k] = earlier(a.bonuses[k], b.bonuses[k]);
   for (const k of new Set([...Object.keys(a.lessons), ...Object.keys(b.lessons)])) out.lessons[k] = newer(a.lessons[k], b.lessons[k]);
   for (const k of new Set([...Object.keys(a.lab), ...Object.keys(b.lab)])) out.lab[k] = newer(a.lab[k], b.lab[k]);
+  for (const k of new Set([...Object.keys(a.review), ...Object.keys(b.review)])) out.review[k] = newer(a.review[k], b.review[k]);
   // Aktivitet sparas per enhet och dag; samma enhet tar max, olika enheter summeras vid visning.
   for (const dev of new Set([...Object.keys(a.activity), ...Object.keys(b.activity)])) {
     const da = a.activity[dev] || {}, db = b.activity[dev] || {};
@@ -80,7 +83,7 @@ export function saveLessonState(p, lessonId, state, ts = Date.now()) {
   for (const [k, v] of Object.entries(state.answers || {})) {
     answers[k] = typeof v === 'string' ? v.slice(0, MAX_DRAFT) : v;
   }
-  p.lessons[lessonId] = { step: state.step || 0, answers, solved: state.solved || {}, ts };
+  p.lessons[lessonId] = { step: state.step || 0, answers, solved: state.solved || {}, missed: state.missed || [], ts };
   return p;
 }
 
@@ -116,7 +119,7 @@ export function setLab(p, lang, code, ts = Date.now()) {
 }
 
 export function hasProgress(p) {
-  return Object.keys(p.completed || {}).length > 0 || Object.keys(p.lessons || {}).length > 0 || Object.keys(p.bonuses || {}).length > 0;
+  return Object.keys(p.completed || {}).length > 0 || Object.keys(p.lessons || {}).length > 0 || Object.keys(p.bonuses || {}).length > 0 || Object.keys(p.review || {}).length > 0;
 }
 
 /** Ny profil efter nollställning: framsteg bort, inställningar kvar. */

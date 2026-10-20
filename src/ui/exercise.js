@@ -12,7 +12,7 @@ const TYPE_LABEL = { choice: 'Flerval', fill: 'Fyll i', code: 'Skriv kod', debug
 // Lösningsförslaget låses upp efter så här många misslyckade försök.
 const SOLUTION_AFTER = 2;
 
-export function renderExercise(ex, { lang, saved, solved = false, onChange, onSolved, soundOn = () => true, idPrefix = 'ex', example = '' }) {
+export function renderExercise(ex, { lang, saved, solved = false, onChange, onSolved, onAttempt, soundOn = () => true, idPrefix = 'ex', example = '' }) {
   const isCode = ex.type === 'code' || ex.type === 'debug';
   const el = h(`<div class="exercise" data-type="${ex.type}">
     <p class="ex-kind">${TYPE_LABEL[ex.type]}</p>
@@ -108,6 +108,7 @@ export function renderExercise(ex, { lang, saved, solved = false, onChange, onSo
     if (res.run) showOutput(res.run);
     setFeedback(res);
     announce(res.ok ? 'Rätt svar.' : 'Inte rätt än. Läs ledtråden och försök igen.');
+    if (onAttempt && !(typeof answer === 'string' && !answer.trim())) onAttempt(res.ok);
     if (res.ok) {
       if (soundOn()) playCorrect();
       btn.hidden = true;

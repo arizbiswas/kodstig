@@ -152,7 +152,7 @@ async function main() {
       await page.locator('#learn-h').waitFor();
       eq((await xpText(page)).trim(), '30 XP');
       await finishLesson(page, 'py-print');
-      assert((await page.locator('dialog.celebrate').textContent()).includes('tidigast dagen efter'));
+      assert((await page.locator('dialog.celebrate').textContent()).includes('XP får du bara första gången'));
       await page.keyboard.press('Escape');
       eq((await xpText(page)).trim(), '30 XP', 'ingen dubbel XP');
       eq(page.errors.length, 0, page.errors.join('\n'));
@@ -209,6 +209,36 @@ async function main() {
       eq(await ta.evaluate((t) => t.selectionStart), 1, 'markören hamnar mellan parenteserna');
       eq(await page.evaluate(() => document.activeElement.tagName), 'TEXTAREA', 'fokus stannar i kodfältet');
       assert(await noHorizontalScroll(page), 'raden ger ingen horisontell scroll');
+      await context.close();
+    });
+
+    await check('Repetition: klarad lektion kommer tillbaka dagen efter, passet ger XP en gång', async () => {
+      const { context, page } = await newGuest(browser);
+      await finishLesson(page, 'py-print');
+      await page.keyboard.press('Escape');
+      await page.goto(`${BASE}#/lar`);
+      eq(await page.locator('.review-card').count(), 0, 'inget att repetera samma dag');
+      const xp0 = parseInt(await xpText(page), 10);
+      await page.clock.setFixedTime(new Date(Date.now() + 2 * 86400000));
+      await page.reload();
+      await page.locator('.review-card a[href="#/repetition"]').click();
+      let n = 0;
+      while (!(await page.locator('.review-done').count())) {
+        const card = page.locator('.review .exercise-card');
+        const lesson = LESSON_BY_ID.get(await card.getAttribute('data-lesson'));
+        const i = Number(await card.getAttribute('data-i'));
+        await solveExercise(page, lesson.exercises[i]);
+        await page.locator('.review [data-next]').click();
+        if (++n > 6) throw new Error('passet tog aldrig slut');
+      }
+      eq(n, 1, 'en klarad lektion ger en fråga');
+      assert((await page.locator('.review-done').textContent()).includes('+10 XP'));
+      eq(parseInt(await xpText(page), 10), xp0 + 10);
+      await page.goto(`${BASE}#/lar`);
+      assert(await page.locator('.review-card.claimed').count(), 'kortet visar klart för i dag');
+      await page.goto(`${BASE}#/repetition`);
+      assert(!(await page.locator('.review-done').textContent()).includes('XP'), 'ingen XP en gång till');
+      eq(page.errors.length, 0, page.errors.join('\n'));
       await context.close();
     });
 

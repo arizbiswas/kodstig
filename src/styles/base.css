@@ -263,6 +263,10 @@ legend { padding: 0; margin-bottom: .4em; font-weight: 600; }
 .advice p { margin: 0 0 .3em; }
 .advice p:last-child { margin: 0; }
 .daily-card h2 { display: flex; align-items: center; gap: .4rem; }
+.side-cards { display: grid; gap: 1rem; align-content: start; }
+.side-cards:empty { display: none; }
+.review-card h2 { display: flex; align-items: center; gap: .4rem; }
+.review-card.claimed h2 .ico { color: var(--done); }
 .daily-card.claimed h2 .ico { color: var(--done); }
 .daily summary { padding: .2rem 0; }
 .daily[open] summary { margin-bottom: .7rem; }
@@ -442,6 +446,7 @@ legend { padding: 0; margin-bottom: .4em; font-weight: 600; }
 .week li { display: flex; flex-direction: column; align-items: center; gap: .2rem; font-size: .78rem; color: var(--muted); flex: 1; }
 .week .dot { width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--line); background: var(--surface); }
 .week .ok .dot { background: var(--done); border-color: var(--done); }
+.week .frozen .dot { display: grid; place-items: center; font-size: .8rem; background: #dff1fb; border-color: #8cc8e8; color: #24678c; }
 .week .today span:not(.dot):not(.sr-only) { font-weight: 800; color: var(--text); }
 .fold summary { list-style: none; display: flex; align-items: center; justify-content: space-between; }
 .fold summary::-webkit-details-marker { display: none; }

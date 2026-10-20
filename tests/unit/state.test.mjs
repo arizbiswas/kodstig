@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { Store } from '../../src/state/store.js';
 import { localBackend } from '../../src/state/backends.js';
 import { completeLesson, claimBonus, saveLessonState, setPref, addActivity, activityByDay, merge, emptyProfile, pref } from '../../src/state/model.js';
-import { levelInfo, xpOf, canClaimReview, canClaimDaily, nextStepAdvice, LEVELS, TIER_XP } from '../../src/state/progression.js';
+import { levelInfo, xpOf, canClaimDaily, nextStepAdvice, LEVELS, TIER_XP } from '../../src/state/progression.js';
 import { LESSONS } from '../../src/content/index.js';
 import { memoryStorage, manualTimers } from './helpers.mjs';
 
@@ -60,19 +60,6 @@ test('nivåtabellen matchar specifikationen', () => {
     [5, 'Kodutforskare', 1380], [6, 'Övande problemlösare', 2160], [7, 'Projektlärling', 3060], [8, 'Målmedveten kodare', 4020],
     [9, 'Självgående kodare', 5000], [10, 'Strukturerad problemlösare', 6000], [11, 'Projektbyggare', 7200], [12, 'Kodstig-examen', 8400],
   ]);
-});
-
-test('repetitionsbonus: tidigast dagen efter, högst en per dag', () => {
-  const p = emptyProfile();
-  completeLesson(p, 'py-print', '2026-10-18T10:00:00');
-  completeLesson(p, 'py-var', '2026-10-18T11:00:00');
-  assert.equal(canClaimReview(p, 'py-print', new Date('2026-10-18T20:00:00')).ok, false);
-  const c = canClaimReview(p, 'py-print', new Date('2026-10-19T09:00:00'));
-  assert.equal(c.ok, true);
-  claimBonus(p, c.key, { lesson: 'py-print' });
-  assert.equal(canClaimReview(p, 'py-var', new Date('2026-10-19T12:00:00')).ok, false, 'max en repetitionsbonus per dag totalt');
-  assert.equal(canClaimReview(p, 'py-var', new Date('2026-10-20T12:00:00')).ok, true);
-  assert.equal(canClaimReview(p, 'py-if', new Date('2026-10-20T12:00:00')).ok, false, 'inte klarad = ingen repetition');
 });
 
 test('dagsutmaning en gång per dag', () => {

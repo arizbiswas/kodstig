@@ -4,7 +4,8 @@ import { h, esc, on, announce, toast } from '../dom.js';
 import { ICONS } from '../icons.js';
 import { TRACKS, TIER_NAMES, trackById } from '../../content/index.js';
 import { pref, setPref, claimBonus } from '../../state/model.js';
-import { TIER_XP, DAILY_XP, today, isUnlocked, availableLessons, nextStepAdvice, canClaimDaily, trackProgress, levelInfo } from '../../state/progression.js';
+import { dueLessons, nextDue, reviewKey, SESSION_MAX } from '../../state/review.js';
+import { TIER_XP, DAILY_XP, REVIEW_XP, today, isUnlocked, availableLessons, nextStepAdvice, canClaimDaily, trackProgress, levelInfo } from '../../state/progression.js';
 import { currentTheme } from '../theme.js';
 import { renderWorld } from '../world.js';
 import { renderExercise } from '../exercise.js';
@@ -54,7 +55,7 @@ export function render(ctx, params = {}) {
     </div>
     <div class="learn-grid">
       <div class="next-slot"></div>
-      <div class="daily-slot"></div>
+      <div class="side-cards"><div class="review-slot"></div><div class="daily-slot"></div></div>
     </div>
     <section class="path-wrap" aria-labelledby="path-h">
       <h2 id="path-h" class="sr-only">Lärstig</h2>
@@ -102,7 +103,7 @@ export function render(ctx, params = {}) {
     }
     if (!next) {
       slot.innerHTML = `<article class="card next-card done"><p class="eyebrow">${esc(track.name)}</p><h2>Hela spåret är klart!</h2>
-        <p>Du kan repetera lektioner för en repetitionsbonus, prova ett annat spår eller bygga något eget i Kodlabbet.</p>${adviceHtml}
+        <p>Fortsätt med den dagliga repetitionen, prova ett annat spår eller bygg något eget i Kodlabbet.</p>${adviceHtml}
         <a class="btn secondary" href="#/labb">Öppna Kodlabbet</a></article>`;
       return;
     }
@@ -115,6 +116,25 @@ export function render(ctx, params = {}) {
       ${adviceHtml}
       <a class="btn primary" href="#/lektion/${next.id}">${ICONS.play}<span>${started ? 'Fortsätt' : 'Starta lektionen'}</span></a>
     </article>`;
+  };
+
+  // Dagens repetition gäller alla spår, eftersom kön innehåller begrepp från alla.
+  const renderReview = () => {
+    const slot = el.querySelector('.review-slot');
+    const due = dueLessons(store.state);
+    const claimed = !!store.state.bonuses[reviewKey()];
+    if (claimed && !due.length) {
+      const next = nextDue(store.state);
+      slot.innerHTML = `<article class="card review-card claimed"><p class="eyebrow">Dagens repetition</p><h2>Klar för i dag ${ICONS.check}</h2>
+        <p class="muted">${next ? 'Nya frågor väntar när det är dags igen.' : 'Klara fler lektioner så fylls repetitionen på.'}</p></article>`;
+      return;
+    }
+    if (!due.length) { slot.replaceChildren(); return; }
+    const n = Math.min(due.length, SESSION_MAX);
+    slot.innerHTML = `<article class="card review-card"><p class="eyebrow">Dagens repetition${claimed ? '' : ` · +${REVIEW_XP} XP`}</p>
+      <h2>${n} ${n === 1 ? 'fråga' : 'frågor'} att repetera</h2>
+      <p class="muted">Några minuter med saker du redan har lärt dig, så att de fastnar på riktigt.</p>
+      <a class="btn secondary" href="#/repetition">Starta repetitionen</a></article>`;
   };
 
   const renderDaily = () => {
@@ -228,7 +248,7 @@ export function render(ctx, params = {}) {
   const setUrl = () => history.replaceState(null, '', `#/lar${openChapter ? `?kapitel=${openChapter}` : ''}`);
 
   const renderAll = () => {
-    renderGreeting(); renderTracks(); renderNext(); renderDaily(); renderStations(); renderChapter();
+    renderGreeting(); renderTracks(); renderNext(); renderReview(); renderDaily(); renderStations(); renderChapter();
   };
 
   const cleanups = [

@@ -124,14 +124,6 @@ export function nextStepAdvice(profile, preferredTrack) {
   };
 }
 
-export function canClaimReview(profile, lessonId, now = new Date()) {
-  const c = profile.completed?.[lessonId];
-  if (!c) return { ok: false, reason: 'not-completed' };
-  const d = today(now);
-  if (dayOf(c.at) >= d) return { ok: false, reason: 'same-day' };
-  if (profile.bonuses?.[`review:${d}`]) return { ok: false, reason: 'already-today' };
-  return { ok: true, key: `review:${d}` };
-}
 export function canClaimDaily(profile, now = new Date()) {
   const key = `daily:${today(now)}`;
   return profile.bonuses?.[key] ? { ok: false, key } : { ok: true, key };

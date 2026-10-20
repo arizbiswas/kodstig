@@ -11,9 +11,11 @@ Utgår från rapporten "Kodstig jämfört med Mimo och andra kodappar" (20 oktob
 - [x] Förklaring till varje fel svar i alla flervalsfrågor (5)
 - [x] Korta stegrubriker i kodexemplen (16)
 
-## Fas 2: Daglig repetition
-- [ ] Repetitionskö per begrepp: fel och gamla begrepp kommer tillbaka efter 1, 3, 7 och 14 dagar i ett kort dagligt pass. Ersätter repetitionsbonusen (1)
-- [ ] Snällare svit med frysningar eller veckomål, där repetitionen räknas (12)
+## Fas 2: Daglig repetition (klar 20 oktober 2026)
+- [x] Repetitionskö per begrepp: fel och gamla begrepp kommer tillbaka efter 1, 3, 7 och 14 dagar i ett kort dagligt pass. Ersätter repetitionsbonusen (1)
+- [x] Snällare svit med frysningar eller veckomål, där repetitionen räknas (12)
+
+Så blev det: varje klarad lektion är ett begrepp i en kö som kommer tillbaka efter 1, 3, 7, 14 och 30 dagar. Övningar som gick fel kommer först. Dagens pass har högst fem frågor och ger 10 XP en gång per dag. Rena projektlektioner utan korta övningar repeteras inte. Sviten räknar lektion, dagsmål, repetition och dagens utmaning, och två missade dagar per vecka fryses automatiskt.
 
 ## Fas 3: Nya sätt att öva
 - [ ] Ordningspussel där man lägger kodrader i rätt ordning, med knappar (3)
@@ -52,7 +54,7 @@ Läget efter läroplansutbyggnaden samma dag (commit 1af57c5): 130 lektioner, 72
 | --- | --- | --- |
 | 1 | Innehållet tar slut för tidigt | **Till stor del åtgärdat.** Python har nu undantag, klasser, samlingar, algoritmer och slutprojekt. C# har undantag, egna klasser, arv, interface, Dictionary, LINQ och slutprojekt. Kvar: `input()`/`ReadLine`, `import`, filer och JavaScript (fas 4). |
 | 2 | För få övningar per begrepp | **Delvis åtgärdat.** 5,6 övningar per lektion (var 3,7). Flerval är 28 % (var 41 %), skriv kod och hitta felet är 45 %. |
-| 3 | Ingen repetition som fungerar | Kvar (fas 2). |
+| 3 | Ingen repetition som fungerar | **Åtgärdat i fas 2.** Daglig repetitionskö med 1, 3, 7, 14 och 30 dagar. |
 | 4 | Svag återkoppling i flerval | **Åtgärdat i fas 1.** Alla 206 flervalsfrågor förklarar varje fel svar, och ett test kräver det för nya frågor. |
 | 5 | Ledtrådstrappan bara i Kodlabbet | **Åtgärdat i fas 1.** Alla lektionsövningar har trappan, lösningen först efter två försök. |
 | 6 | Jobbigt att skriva kod i mobilen | **Delvis åtgärdat i fas 1.** Rad med kodtecken på pekskärm. Ordningspussel kommer i fas 3. |
@@ -69,19 +71,19 @@ Läget efter läroplansutbyggnaden samma dag (commit 1af57c5): 130 lektioner, 72
 
 | # | Förslag | Läge nu |
 | --- | --- | --- |
-| 1 | Daglig repetitionskö | Fas 2 |
-| 2 | Ledtrådstrappan i alla övningar | Fas 1 |
+| 1 | Daglig repetitionskö | **Gjort** (fas 2) |
+| 2 | Ledtrådstrappan i alla övningar | **Gjort** (fas 1) |
 | 3 | Ordningspussel | Fas 3 |
-| 4 | Symbolrad på mobil | Fas 1 |
-| 5 | Förklaring per fel svar | Fas 1 (108 frågor kvar) |
+| 4 | Symbolrad på mobil | **Gjort** (fas 1) |
+| 5 | Förklaring per fel svar | **Gjort** (fas 1) |
 | 6 | Fler övningar och en trappa per lektion | **Delvis gjort** (158 extraövningar i grundlektionerna, minst två skrivövningar i nästan alla). Trappan i fas 3. |
 | 7 | Fler kapitel för egna program | **Delvis gjort** (klasser, undantag). Inläsning, `import random`, filer och JavaScript i fas 4. |
 | 8 | Milo får facit och testresultat | Fas 5 |
 | 9 | Ta med dig koden | Fas 4 |
 | 10 | Nivåtest och testa ut | Fas 3 |
 | 11 | Bestäm målgrupp | **Beslutat:** alla åldrar |
-| 12 | Förlåtande svit med frysningar | Fas 2 |
+| 12 | Förlåtande svit med frysningar | **Gjort** (fas 2) |
 | 13 | Dela projekt med länk | Fas 5 |
 | 14 | Anonym statistik | Fas 5, bara med zira ja |
 | 15 | Stegvis körning | Fas 3 |
-| 16 | Stegetiketter i exemplen | Fas 1 |
+| 16 | Stegetiketter i exemplen | **Gjort** (fas 1) |

@@ -20,6 +20,7 @@ import * as lab from './ui/views/lab.js';
 import * as glossary from './ui/views/glossary.js';
 import * as progress from './ui/views/progress.js';
 import * as settings from './ui/views/settings.js';
+import * as review from './ui/views/review.js';
 
 const local = safeStorage('localStorage');
 const session = safeStorage('sessionStorage');
@@ -206,6 +207,7 @@ export class App {
     const m = path.match(/^\/lektion\/([\w-]+)$/);
     if (m) view = lesson.render(this.ctx(), m[1]);
     else if (path === '/installningar') view = settings.render(this.ctx());
+    else if (path === '/repetition') view = review.render(this.ctx());
     else {
       const item = NAV.find((n) => n.path === path) || NAV[0];
       view = item.view.render(this.ctx(), params);

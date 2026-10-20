@@ -2,8 +2,9 @@
 // man kan lämna och fortsätta senare.
 import { h, esc, rich, on, codeEditor, announce } from '../dom.js';
 import { LESSON_BY_ID, LESSONS, TIER_NAMES, trackById } from '../../content/index.js';
-import { saveLessonState, completeLesson, claimBonus, pref } from '../../state/model.js';
-import { TIER_XP, REVIEW_XP, canClaimReview, isUnlocked } from '../../state/progression.js';
+import { saveLessonState, completeLesson, pref } from '../../state/model.js';
+import { TIER_XP, isUnlocked } from '../../state/progression.js';
+import { scheduleLesson } from '../../state/review.js';
 import { renderExercise } from '../exercise.js';
 import { runCode, previewSrcdoc } from '../../engine/runner.js';
 import { openCelebration } from '../celebrate.js';
@@ -30,6 +31,8 @@ export function render(ctx, lessonId) {
     step: Math.min(saved.step || 0, total),
     answers: { ...(saved.answers || {}) },
     solved: { ...(saved.solved || {}) },
+    // Övningar som gick fel minst en gång. De kommer först i repetitionen.
+    missed: [...(saved.missed || [])],
   };
   if (state.step > 0 && !state.solved[state.step - 1] && state.step - 1 >= 0) { /* fortsätt där man var */ }
 
@@ -98,6 +101,7 @@ export function render(ctx, lessonId) {
       example: lesson.example,
       soundOn: () => pref(store.state, 'sound'),
       onChange: (v) => { state.answers[i] = v; persist(); },
+      onAttempt: (ok) => { if (!ok && !state.missed.includes(i)) { state.missed.push(i); persist(); } },
       onSolved: () => {
         state.solved[i] = true;
         persist(true);
@@ -125,22 +129,15 @@ export function render(ctx, lessonId) {
   const finish = () => {
     const firstTime = !store.state.completed[lesson.id];
     const lines = [];
-    let reviewed = false;
+    const missed = state.missed;
     if (firstTime) {
-      store.update((p) => { completeLesson(p, lesson.id); saveLessonState(p, lesson.id, { step: 0, answers: {}, solved: {} }); });
+      store.update((p) => { completeLesson(p, lesson.id); scheduleLesson(p, lesson.id, missed); saveLessonState(p, lesson.id, { step: 0, answers: {}, solved: {} }); });
       lines.push(`+${TIER_XP[lesson.tier]} XP`);
+      lines.push('Lektionen kommer tillbaka i din dagliga repetition i morgon.');
     } else {
-      const c = canClaimReview(store.state, lesson.id);
-      if (c.ok) {
-        store.update((p) => { claimBonus(p, c.key, { lesson: lesson.id }); saveLessonState(p, lesson.id, { step: 0, answers: {}, solved: {} }); });
-        lines.push(`Repetitionsbonus +${REVIEW_XP} XP`);
-        reviewed = true;
-      } else {
-        store.update((p) => saveLessonState(p, lesson.id, { step: 0, answers: {}, solved: {} }));
-        lines.push(c.reason === 'already-today' ? 'Dagens repetitionsbonus är redan hämtad. Bra att repetera ändå!' : 'Repetitionsbonus kan hämtas tidigast dagen efter att du klarade lektionen.');
-      }
+      store.update((p) => saveLessonState(p, lesson.id, { step: 0, answers: {}, solved: {} }));
+      lines.push('Bra att repetera! XP får du bara första gången, men träningen räknas alltid.');
     }
-    void reviewed;
     const next = LESSONS.find((l) => l.order === lesson.order + 1 && l.trackId === lesson.trackId);
     announce('Lektionen är klar.');
     openCelebration({

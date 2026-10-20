@@ -58,6 +58,7 @@ Vill du bara ha Google kan du sätta `emailEnabled: false` i `config.js`.
 - RLS gör att en användare bara kan läsa och ändra sin egen rad. Det är testat mot en lokal Postgres, se nedan.
 - Sparningar har versionsnummer (`rev`). Om två flikar eller enheter sparar samtidigt slås ändringarna ihop i stället för att skriva över varandra.
 - Avklarade lektioner och bonusar är mängder med nycklar, så samma lektion kan aldrig ge XP två gånger, inte ens när flera enheter slås ihop.
+- Repetitionskön (`review`) sparas per lektion med en tidsstämpel, och den senaste ändringen vinner när enheter slås ihop. Logiken finns i `src/state/review.js`, sviten med frysningar i `src/state/streak.js`.
 - Nollställning höjer ett `epoch`-nummer. En gammal flik som fortfarande har gamla framsteg kan därför inte återställa dem efter en nollställning.
 - Appen fungerar offline. Ändringar sparas lokalt och skickas när anslutningen är tillbaka, med nya försök efter 1, 2, 5, 10 och 30 sekunder.
 - Vid utloggning rensas den lokala kopian av kontot och Milos samtal.
