@@ -44,6 +44,6 @@ test('testfrågor: bara snabba frågor, från olika lektioner, inga miniprojekt'
       assert.equal(lessons.size, Math.min(TEST_OUT.questions, new Set(pool.map((q) => q.lesson.id)).size), `${ch.id}: frågorna sprids över lektionerna`);
       for (const q of qs) assert.equal(LESSON_BY_ID.get(q.lesson.id).exercises[q.i], q.ex);
     }
-    assert.equal(placementChapters(track).length, 6, `${track.id}: nivåtestet täcker grundkapitlen`);
+    assert.equal(placementChapters(track).length, Math.min(6, track.chapters.length), `${track.id}: nivåtestet täcker grundkapitlen`);
   }
 });

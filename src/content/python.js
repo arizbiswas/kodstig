@@ -1,5 +1,6 @@
 // Python-spåret. Grundkapitlen ligger här, fortsättningen i python-pro.js.
 import advanced from './python-pro.js';
+import interactive from './python-io.js';
 
 const R = (re, msg) => ({ re, msg });
 
@@ -462,5 +463,6 @@ export default {
       ],
     },
     ...advanced,
+    ...interactive,
   ],
 };

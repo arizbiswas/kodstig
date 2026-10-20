@@ -8,11 +8,11 @@ import { grade, fillCode, normalizeOutput, orderLines, shuffled } from '../../sr
 
 const runner = async (lang, code, calls, opts = {}) => (lang === 'csharp' ? runCSharp : runPython)(code, { calls, ...opts });
 
-test('omfattning: 130 lektioner, 852 övningar, 17 miniprojekt', () => {
-  assert.deepEqual(STATS, { lessons: 130, exercises: 852, projects: 17 });
+test('omfattning: 163 lektioner, 1085 övningar, 22 miniprojekt', () => {
+  assert.deepEqual(STATS, { lessons: 163, exercises: 1085, projects: 22 });
   const per = Object.fromEntries(TRACKS.map((t) => [t.id, [LESSONS.filter((l) => l.trackId === t.id).length, LESSONS.filter((l) => l.trackId === t.id).reduce((n, l) => n + l.exercises.length, 0)]]));
-  assert.deepEqual(per, { csharp: [49, 327], python: [43, 277], web: [38, 248] });
-  assert.deepEqual(Object.fromEntries(TRACKS.map((t) => [t.id, t.chapters.length])), { csharp: 12, python: 11, web: 10 });
+  assert.deepEqual(per, { csharp: [55, 371], python: [49, 320], web: [44, 282], git: [15, 112] });
+  assert.deepEqual(Object.fromEntries(TRACKS.map((t) => [t.id, t.chapters.length])), { csharp: 13, python: 12, web: 11, git: 3 });
 });
 
 test('unika id:n och förkunskapskrav som pekar på riktiga lektioner', () => {

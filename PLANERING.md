@@ -23,10 +23,10 @@ Så blev det: varje klarad lektion är ett begrepp i en kö som kommer tillbaka 
 - [x] Trappan förutsäg, pussel, lucka, tom editor i lektioner som saknar den (6). Övningarna visas i den ordningen i alla lektioner, och 16 lektioner fick en "Vad skrivs ut?"-fråga.
 - [x] Stegvis körning som visar variablernas värden rad för rad (15). Knappen "Kör steg för steg" i Kodlabbet, för Python och C#.
 
-## Fas 4: Vägen till riktig utvecklare
-- [ ] Ta med dig koden: köra koden i VS Code och terminalen, ladda ner sin kod (9)
-- [ ] Det som fortfarande saknas för egna program, till exempel input()/ReadLine, import random och lite JavaScript (7)
-- [ ] Grunderna i Git
+## Fas 4: Vägen till riktig utvecklare (klar 20 oktober 2026)
+- [x] Ta med dig koden: köra koden i VS Code och terminalen, ladda ner sin kod (9). Kodlabbet har "Ladda ner" och en guide per språk, C#-kapitlet har en lektion om riktiga .NET-projekt.
+- [x] Det som fortfarande saknas för egna program, till exempel input()/ReadLine, import random och lite JavaScript (7). Nya kapitel "Program som pratar med dig" i Python och C#, och "Lite JavaScript" i HTML/CSS. JavaScript körs isolerat i en sandlåda utan nätverk, med loopskydd.
+- [x] Grunderna i Git. Nytt spår "Git och terminalen" med tre kapitel: terminalen, Git på datorn, grenar och GitHub.
 
 ## Fas 5: Milo och delning
 - [ ] Milo får uppgiften, facit och testresultatet och ger bara ledtrådar, aldrig hela lösningen (8)
@@ -58,7 +58,7 @@ Läget efter läroplansutbyggnaden samma dag (commit 1af57c5): 130 lektioner, 72
 | 4 | Svag återkoppling i flerval | **Åtgärdat i fas 1.** Alla 206 flervalsfrågor förklarar varje fel svar, och ett test kräver det för nya frågor. |
 | 5 | Ledtrådstrappan bara i Kodlabbet | **Åtgärdat i fas 1.** Alla lektionsövningar har trappan, lösningen först efter två försök. |
 | 6 | Jobbigt att skriva kod i mobilen | **Åtgärdat.** Rad med kodtecken på pekskärm (fas 1) och ordningspussel som bara kräver tryck (fas 3). |
-| 7 | Ingen väg ut ur appen | Kvar (fas 4). |
+| 7 | Ingen väg ut ur appen | **Åtgärdat i fas 4.** Ladda ner koden, guide för egen dator, Git och terminalen. |
 | 8 | Egna tolkar kan lära ut fel saker | **Delvis.** Tolkarna klarar mycket mer nu och skillnaderna står i Kodlabbet och README. Byte till Pyodide är inte planerat. |
 | 9 | Milo når få och är osäker | Kvar (fas 5). |
 | 10 | Strikt linjär stig utan nivåtest | **Åtgärdat i fas 3.** Nivåtest per spår och "Testa ut" per låst kapitel. |
@@ -77,9 +77,9 @@ Läget efter läroplansutbyggnaden samma dag (commit 1af57c5): 130 lektioner, 72
 | 4 | Symbolrad på mobil | **Gjort** (fas 1) |
 | 5 | Förklaring per fel svar | **Gjort** (fas 1) |
 | 6 | Fler övningar och en trappa per lektion | **Gjort** (158 extraövningar i grundlektionerna, trappan förutsäg, pussel, lucka, kod i fas 3) |
-| 7 | Fler kapitel för egna program | **Delvis gjort** (klasser, undantag). Inläsning, `import random`, filer och JavaScript i fas 4. |
+| 7 | Fler kapitel för egna program | **Gjort** (klasser och undantag, sedan inläsning, slump, moduler och lite JavaScript i fas 4). Filer finns inte, eftersom allt körs i webbläsaren. |
 | 8 | Milo får facit och testresultat | Fas 5 |
-| 9 | Ta med dig koden | Fas 4 |
+| 9 | Ta med dig koden | **Gjort** (fas 4) |
 | 10 | Nivåtest och testa ut | **Gjort** (fas 3) |
 | 11 | Bestäm målgrupp | **Beslutat:** alla åldrar |
 | 12 | Förlåtande svit med frysningar | **Gjort** (fas 2) |

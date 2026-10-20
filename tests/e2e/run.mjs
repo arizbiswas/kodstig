@@ -336,6 +336,27 @@ async function main() {
       await context.close();
     });
 
+    await check('Kodlabbet: input() läser rutan Indata, och Git-spåret visas utan körknapp', async () => {
+      const { context, page } = await newGuest(browser);
+      await page.goto(`${BASE}#/labb?sprak=python`);
+      await page.locator('.editor textarea').first().fill('import random\nnamn = input("Namn? ")\nprint("Hej", namn)\nprint(1 <= random.randint(1, 6) <= 6)\n');
+      await page.locator('.lab-input summary').click();
+      await page.locator('#lab-stdin').fill('Ali');
+      await page.locator('[data-run]').click();
+      await page.locator('.result-slot .output pre').filter({ hasText: 'Hej' }).waitFor();
+      eq((await page.locator('.result-slot .output pre').textContent()).trim(), 'Namn? Hej Ali\nTrue');
+      await page.goto(`${BASE}#/lar`);
+      await page.locator('[data-track="git"]').click();
+      await page.locator('.next-card a.btn.primary').click();
+      await page.locator('.lesson .read').waitFor();
+      eq(await page.locator('[data-run-example]').count(), 0, 'ingen körknapp för terminalexempel');
+      await startPractice(page);
+      const first = LESSON_BY_ID.get('git-terminal');
+      await solveExercise(page, first.exercises[first.sequence[0]]);
+      eq(page.errors.length, 0, page.errors.join('\n'));
+      await context.close();
+    });
+
     await check('Repetition: klarad lektion kommer tillbaka dagen efter, passet ger XP en gång', async () => {
       const { context, page } = await newGuest(browser);
       await finishLesson(page, 'py-print');

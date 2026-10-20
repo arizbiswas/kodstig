@@ -1,5 +1,6 @@
 // HTML/CSS-spåret. Grundkapitlen ligger här, fortsättningen i web-pro.js.
 import advanced from './web-pro.js';
+import scripting from './web-script.js';
 // Webbuppgifter kontrolleras med `checks` (se engine/html-check.js).
 
 export default {
@@ -375,5 +376,6 @@ export default {
       ],
     },
     ...advanced,
+    ...scripting,
   ],
 };

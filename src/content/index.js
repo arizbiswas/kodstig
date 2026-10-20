@@ -2,6 +2,7 @@
 import csharp from './csharp.js';
 import python from './python.js';
 import web from './web.js';
+import git from './git.js';
 import csharpExtra from './csharp-extra.js';
 import pythonExtra from './python-extra.js';
 import webExtra from './web-extra.js';
@@ -14,7 +15,7 @@ const EXTRA = { ...csharpExtra, ...pythonExtra, ...webExtra };
 // Förutsägelsefrågor och ordningspussel (fas 3), också sist i lektionerna.
 const ORDER = { ...csharpOrder, ...pythonOrder, ...webOrder };
 
-export const TRACKS = [csharp, python, web];
+export const TRACKS = [csharp, python, web, git];
 export const TRACK_IDS = TRACKS.map((t) => t.id);
 
 export const TIER_NAMES = {

@@ -2,13 +2,14 @@
 
 Kodstig är en svensk app för nybörjare som vill lära sig C#, Python och HTML/CSS. Den innehåller korta lektioner, en lärstig, ett kodlabb och Milo, en liten AI-studiekompis som körs i webbläsaren.
 
-Allt lektionsinnehåll är **nyskrivet för den här versionen**. Det är inte kopierat från någon tidigare app. Totalt finns 130 lektioner, 852 övningar och 17 miniprojekt:
+Allt lektionsinnehåll är **nyskrivet för den här versionen**. Det är inte kopierat från någon tidigare app. Totalt finns 163 lektioner, 1085 övningar och 22 miniprojekt:
 
 | Spår | Lektioner | Övningar |
 | --- | --- | --- |
-| C# | 49 | 327 |
-| Python | 43 | 277 |
-| HTML/CSS | 38 | 248 |
+| C# | 55 | 371 |
+| Python | 49 | 320 |
+| HTML/CSS | 44 | 282 |
+| Git och terminalen | 15 | 112 |
 
 ## Kom igång
 
