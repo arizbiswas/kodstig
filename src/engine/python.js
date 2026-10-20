@@ -5,9 +5,9 @@
 import { CodeError, StepLimit, MAX_STEPS, MAX_OUTPUT } from './errors.js';
 
 const KEYWORDS = new Set(['if', 'elif', 'else', 'while', 'for', 'in', 'def', 'return', 'pass', 'break', 'continue',
-  'and', 'or', 'not', 'True', 'False', 'None', 'is', 'global', 'lambda', 'import', 'from', 'class', 'try', 'except', 'finally', 'raise', 'with', 'yield', 'async', 'await', 'del']);
+  'and', 'or', 'not', 'True', 'False', 'None', 'is', 'global', 'lambda', 'import', 'from', 'class', 'try', 'except', 'finally', 'raise', 'with', 'yield', 'async', 'await', 'del', 'as']);
 const OPS = ['**=', '//=', '**', '//', '==', '!=', '<=', '>=', '+=', '-=', '*=', '/=', '%=', '->',
-  '+', '-', '*', '/', '%', '<', '>', '=', '(', ')', '[', ']', '{', '}', ',', ':', '.', ';'];
+  '+', '-', '*', '/', '%', '<', '>', '=', '|', '&', '(', ')', '[', ']', '{', '}', ',', ':', '.', ';'];
 
 const syntax = (msg, line, hint = 'syntax') => new CodeError('SyntaxError', msg, line, hint, 'compile');
 
@@ -43,8 +43,9 @@ function tokenize(src) {
     }
     const c = src[i];
     if (c === '\n') {
+      // Inuti parenteser fortsätter uttrycket på nästa rad, så där finns ingen ny rad eller indragning.
       if (depth === 0) push('NEWLINE', null);
-      line++; i++; atLineStart = true; continue;
+      line++; i++; atLineStart = depth === 0; continue;
     }
     if (c === ' ' || c === '\t' || c === '\r') { i++; continue; }
     if (c === '\\' && src[i + 1] === '\n') { i += 2; line++; continue; }
@@ -173,10 +174,13 @@ class Parser {
           return [{ k: 'For', target, iter, body, line: c.line }];
         }
         case 'def': return [this.funcDef()];
+        case 'class': return [this.classDef()];
+        case 'try': return [this.tryStmt()];
         case 'elif': case 'else':
           throw syntax(`${c.v} måste komma direkt efter ett if-block med samma indragning.`, c.line, 'stray-else');
-        case 'import': case 'from': case 'class': case 'lambda': case 'try': case 'except': case 'finally':
-        case 'raise': case 'with': case 'yield': case 'async': case 'await': case 'del':
+        case 'except': case 'finally':
+          throw syntax(`${c.v} måste komma direkt efter ett try-block med samma indragning.`, c.line, 'stray-except');
+        case 'import': case 'from': case 'with': case 'yield': case 'async': case 'await': case 'del':
           throw new CodeError('Stöds inte', `Kodstigs övningsmotor stöder inte ${c.v} ännu.`, c.line, 'unsupported', 'compile');
         default: break;
       }
@@ -210,6 +214,11 @@ class Parser {
         const value = this.is('NEWLINE') || this.isOp(';') || this.is('EOF') ? null : this.exprList();
         return { k: 'Return', value, line: c.line };
       }
+      if (c.v === 'raise') {
+        this.next();
+        const exc = this.is('NEWLINE') || this.isOp(';') || this.is('EOF') ? null : this.expr();
+        return { k: 'Raise', exc, line: c.line };
+      }
       if (c.v === 'global') {
         this.next(); const names = [this.name()];
         while (this.isOp(',')) { this.next(); names.push(this.name()); }
@@ -235,7 +244,7 @@ class Parser {
     return { k: 'Expr', value: e, line: c.line };
   }
   checkTarget(t) {
-    if (t.k === 'Name' || t.k === 'Index') return;
+    if (t.k === 'Name' || t.k === 'Index' || t.k === 'Attr') return;
     if (t.k === 'Tuple' || t.k === 'List') { t.items.forEach((x) => this.checkTarget(x)); return; }
     throw syntax('Det går inte att tilldela ett värde till det här. Vänstersidan av = ska vara ett variabelnamn.', t.line, 'bad-assign');
   }
@@ -286,6 +295,42 @@ class Parser {
     this.inFunc--; this.inLoop = loops;
     return { k: 'Def', name, params, body, line };
   }
+  classDef() {
+    const line = this.next().line;
+    const name = this.name();
+    let base = null;
+    if (this.isOp('(')) {
+      this.next();
+      if (!this.isOp(')')) base = this.expr();
+      this.expectOp(')', 'Det saknas en avslutande parentes ) efter basklassen.', 'parens');
+    }
+    const loops = this.inLoop; this.inLoop = 0;
+    const body = this.block();
+    this.inLoop = loops;
+    return { k: 'Class', name, base, body, line };
+  }
+  tryStmt() {
+    const line = this.next().line;
+    const body = this.block();
+    const handlers = [];
+    let orelse = [], fin = [];
+    const skip = () => { while (this.is('NEWLINE')) this.next(); };
+    skip();
+    while (this.isKw('except')) {
+      const hl = this.next().line;
+      let types = null, name = null;
+      if (!this.isOp(':')) {
+        types = this.expr();
+        if (this.isKw('as')) { this.next(); name = this.name(); }
+      }
+      handlers.push({ types, name, body: this.block(), line: hl });
+      skip();
+    }
+    if (this.isKw('else') && handlers.length) { this.next(); orelse = this.block(); skip(); }
+    if (this.isKw('finally')) { this.next(); fin = this.block(); }
+    if (!handlers.length && !fin.length) throw syntax('Ett try-block behöver minst ett except eller finally efter sig.', line, 'try-without-except');
+    return { k: 'Try', body, handlers, orelse, fin, line };
+  }
   exprList() {
     const first = this.expr();
     if (!this.isOp(',')) return first;
@@ -298,6 +343,21 @@ class Parser {
     return { k: 'Tuple', items, line: first.line };
   }
   expr() {
+    if (this.isKw('lambda')) {
+      const line = this.next().line;
+      const params = [];
+      while (!this.isOp(':')) {
+        const pname = this.name();
+        let def = null;
+        if (this.isOp('=')) { this.next(); def = this.expr(); }
+        params.push({ name: pname, def });
+        if (!this.isOp(',')) break;
+        this.next();
+      }
+      this.expectOp(':', 'En lambda skrivs lambda x: uttryck.');
+      const value = this.expr();
+      return { k: 'Lambda', def: { name: '<lambda>', params, body: [{ k: 'Return', value, line }], line }, line };
+    }
     const e = this.orExpr();
     if (this.isKw('if')) {
       this.next();
@@ -324,7 +384,7 @@ class Parser {
     return this.comparison();
   }
   comparison() {
-    const first = this.sum();
+    const first = this.bitOr();
     const ops = [], rights = [];
     for (;;) {
       let op = null;
@@ -333,10 +393,20 @@ class Parser {
       else if (this.isKw('not') && this.peek().t === 'KW' && this.peek().v === 'in') { this.next(); this.next(); op = 'not in'; }
       else if (this.isKw('is')) { this.next(); op = 'is'; if (this.isKw('not')) { this.next(); op = 'is not'; } }
       if (!op) break;
-      ops.push(op); rights.push(this.sum());
+      ops.push(op); rights.push(this.bitOr());
     }
     if (!ops.length) return first;
     return { k: 'Compare', first, ops, rights, line: first.line };
+  }
+  bitOr() {
+    let l = this.bitAnd();
+    while (this.isOp('|')) { const t = this.next(); l = { k: 'Bin', op: '|', l, r: this.bitAnd(), line: t.line }; }
+    return l;
+  }
+  bitAnd() {
+    let l = this.sum();
+    while (this.isOp('&')) { const t = this.next(); l = { k: 'Bin', op: '&', l, r: this.sum(), line: t.line }; }
+    return l;
   }
   sum() {
     let l = this.term();
@@ -357,6 +427,17 @@ class Parser {
     if (this.isOp('**')) { const t = this.next(); return { k: 'Bin', op: '**', l: base, r: this.factor(), line: t.line }; }
     return base;
   }
+  // Läser "for mål in samling [if villkor]" i en listbyggare.
+  compTail() {
+    this.next();
+    const target = this.target();
+    if (!this.isKw('in')) throw syntax('Här förväntades in.', this.cur.line);
+    this.next();
+    const iter = this.orExpr();
+    let cond = null;
+    if (this.isKw('if')) { this.next(); cond = this.orExpr(); }
+    return { target, iter, cond };
+  }
   postfix() {
     let e = this.atom();
     for (;;) {
@@ -370,6 +451,11 @@ class Parser {
           } else {
             if (kwargs.length) throw syntax('Namngivna argument måste komma efter de vanliga argumenten.', this.cur.line);
             args.push(this.expr());
+            // Generatoruttryck som enda argument, t.ex. sum(x * x for x in tal), körs som en listbyggare.
+            if (this.isKw('for') && args.length === 1 && !kwargs.length) {
+              const c = this.compTail();
+              args[0] = { k: 'ListComp', elt: args[0], ...c, line };
+            }
           }
           if (!this.isOp(',')) break;
           this.next();
@@ -433,6 +519,11 @@ class Parser {
           if (this.isOp(')')) { this.next(); return { k: 'Tuple', items: [], line: t.line }; }
           const first = this.expr();
           if (this.isOp(')')) { this.next(); return first; }
+          if (this.isKw('for')) {
+            const c = this.compTail();
+            this.expectOp(')', 'Det saknas en avslutande parentes ).', 'parens');
+            return { k: 'ListComp', elt: first, ...c, line: t.line };
+          }
           const items = [first];
           while (this.isOp(',')) { this.next(); if (this.isOp(')')) break; items.push(this.expr()); }
           this.expectOp(')', 'Det saknas en avslutande parentes ).', 'parens');
@@ -463,6 +554,36 @@ class Parser {
         if (t.v === '{') {
           this.next();
           const keys = [], values = [];
+          if (!this.isOp('}')) {
+            const first = this.expr();
+            if (!this.isOp(':') && this.isKw('for')) {
+              const c = this.compTail();
+              this.expectOp('}', 'Det saknas en avslutande klammer }.', 'parens');
+              return { k: 'SetComp', elt: first, ...c, line: t.line };
+            }
+            if (!this.isOp(':')) {
+              // Mängd: {1, 2, 3}
+              const items = [first];
+              while (this.isOp(',')) { this.next(); if (this.isOp('}')) break; items.push(this.expr()); }
+              this.expectOp('}', 'Det saknas en avslutande klammer }.', 'parens');
+              return { k: 'Set', items, line: t.line };
+            }
+            this.next();
+            const firstVal = this.expr();
+            if (this.isKw('for')) {
+              this.next();
+              const target = this.target();
+              if (!this.isKw('in')) throw syntax('Här förväntades in.', this.cur.line);
+              this.next();
+              const iter = this.orExpr();
+              let cond = null;
+              if (this.isKw('if')) { this.next(); cond = this.orExpr(); }
+              this.expectOp('}', 'Det saknas en avslutande klammer }.', 'parens');
+              return { k: 'DictComp', key: first, value: firstVal, target, iter, cond, line: t.line };
+            }
+            keys.push(first); values.push(firstVal);
+            if (this.isOp(',')) this.next();
+          }
           while (!this.isOp('}')) {
             keys.push(this.expr());
             this.expectOp(':', 'I en ordbok skrivs nyckel: värde.');
@@ -528,6 +649,8 @@ function findTopColon(s) {
   return -1;
 }
 
+const EXC_NAMES = ['Exception', 'ArithmeticError', 'ValueError', 'TypeError', 'ZeroDivisionError', 'KeyError', 'IndexError', 'NameError', 'AttributeError', 'RuntimeError', 'NotImplementedError'];
+
 // ---------- Värden ----------
 export class PyFloat { constructor(v) { this.v = v; } }
 class Tuple { constructor(items) { this.items = items; } }
@@ -539,13 +662,32 @@ class PyDict {
     if (typeof k === 'number' || typeof k === 'boolean' || k instanceof PyFloat) return 'n:' + num(k);
     if (k === null) return 'none';
     if (k instanceof Tuple) return 't:' + k.items.map((x) => PyDict.key(x, line)).join('|');
+    if (k instanceof PyObject) return 'o:' + k.id;
+    if (k instanceof PyClass) return 'c:' + k.name;
     throw new CodeError('TypeError', `En ${typeName(k)} kan inte användas som nyckel i en ordbok.`, line, 'type');
   }
   get(k, line) { const e = this.map.get(PyDict.key(k, line)); return e; }
   set(k, v, line) { this.map.set(PyDict.key(k, line), [k, v]); }
   has(k, line) { return this.map.has(PyDict.key(k, line)); }
 }
-class PyFunc { constructor(def, interp) { this.def = def; this.name = def.name; this.interp = interp; } }
+class PyFunc { constructor(def, interp, closure = null) { this.def = def; this.name = def.name; this.interp = interp; this.closure = closure; this.owner = null; } }
+class PyClass {
+  constructor(name, base, attrs = new Map(), isExc = false) { this.name = name; this.base = base; this.attrs = attrs; this.isExc = isExc || !!(base && base.isExc); }
+  find(name) { for (let c = this; c; c = c.base) if (c.attrs.has(name)) return c.attrs.get(name); return undefined; }
+  isSub(other) { for (let c = this; c; c = c.base) if (c === other) return true; return false; }
+}
+let objIds = 0;
+class PyObject { constructor(cls, interp) { this.cls = cls; this.attrs = new Map(); this.interp = interp; this.id = ++objIds; } }
+class BoundMethod { constructor(fn, self) { this.fn = fn; this.self = self; this.name = fn.name; } }
+class SuperProxy { constructor(cls, self) { this.cls = cls; this.self = self; } }
+class PySet {
+  constructor(items = [], line) { this.map = new Map(); for (const x of items) this.add(x, line); }
+  add(x, line) { this.map.set(PyDict.key(x, line), x); }
+  has(x, line) { return this.map.has(PyDict.key(x, line)); }
+  items() { return [...this.map.values()]; }
+}
+// Ett undantag som kastats med raise (eller ett motorfel som fångats och kastats vidare).
+class PyRaise { constructor(exc, line) { this.exc = exc; this.line = line; } }
 class Builtin { constructor(name, fn) { this.name = name; this.fn = fn; } }
 class BreakSig {}
 class ContinueSig {}
@@ -566,11 +708,14 @@ export function typeName(v) {
   if (v instanceof Tuple) return 'tuple';
   if (v instanceof PyDict) return 'dict';
   if (v instanceof Range) return 'range';
-  if (v instanceof PyFunc || v instanceof Builtin) return 'function';
+  if (v instanceof PyFunc || v instanceof Builtin || v instanceof BoundMethod) return 'function';
+  if (v instanceof PySet) return 'set';
+  if (v instanceof PyObject) return v.cls.name;
+  if (v instanceof PyClass) return 'type';
   return 'object';
 }
-const SV_TYPE = { int: 'heltal (int)', float: 'decimaltal (float)', str: 'text (str)', bool: 'sanningsvärde (bool)', NoneType: 'None', list: 'lista (list)', tuple: 'tupel (tuple)', dict: 'ordbok (dict)', range: 'range', function: 'funktion' };
-const sv = (v) => SV_TYPE[typeName(v)] || typeName(v);
+const SV_TYPE = { int: 'heltal (int)', float: 'decimaltal (float)', str: 'text (str)', bool: 'sanningsvärde (bool)', NoneType: 'None', list: 'lista (list)', tuple: 'tupel (tuple)', dict: 'ordbok (dict)', range: 'range', function: 'funktion', set: 'mängd (set)', type: 'klass' };
+const sv = (v) => (v instanceof PyObject ? `ett ${v.cls.name}-objekt` : SV_TYPE[typeName(v)] || typeName(v));
 
 function fmtFloat(x) {
   if (Number.isNaN(x)) return 'nan';
@@ -583,6 +728,11 @@ function fmtFloat(x) {
 }
 export function pyStr(v) {
   if (typeof v === 'string') return v;
+  if (v instanceof PyObject) {
+    const m = v.cls.find('__str__');
+    if (m instanceof PyFunc) return v.interp.strResult(v.interp.callFunc(m, [v], {}, null), '__str__');
+    if (v.cls.isExc) { const a = v.attrs.get('args'); const items = a instanceof Tuple ? a.items : []; return items.length === 1 ? pyStr(items[0]) : items.length ? pyRepr(a) : ''; }
+  }
   return pyRepr(v);
 }
 export function pyRepr(v, seen = new Set()) {
@@ -601,6 +751,15 @@ export function pyRepr(v, seen = new Set()) {
   if (v instanceof PyDict) return '{' + [...v.map.values()].map(([k, x]) => `${pyRepr(k, seen)}: ${pyRepr(x, seen)}`).join(', ') + '}';
   if (v instanceof Range) return v.step === 1 ? `range(${v.start}, ${v.stop})` : `range(${v.start}, ${v.stop}, ${v.step})`;
   if (v instanceof PyFunc || v instanceof Builtin) return `<function ${v.name}>`;
+  if (v instanceof BoundMethod) return `<metod ${v.name}>`;
+  if (v instanceof PySet) return v.map.size ? '{' + v.items().map((x) => pyRepr(x, seen)).join(', ') + '}' : 'set()';
+  if (v instanceof PyClass) return `<class '${v.name}'>`;
+  if (v instanceof PyObject) {
+    const m = v.cls.find('__repr__');
+    if (m instanceof PyFunc) return v.interp.strResult(v.interp.callFunc(m, [v], {}, null), '__repr__');
+    if (v.cls.isExc) { const a = v.attrs.get('args'); return `${v.cls.name}(${a instanceof Tuple ? a.items.map((x) => pyRepr(x, seen)).join(', ') : ''})`; }
+    return `<${v.cls.name}-objekt>`;
+  }
   return String(v);
 }
 
@@ -613,6 +772,7 @@ function truthy(v) {
   if (v instanceof Tuple) return v.items.length > 0;
   if (v instanceof PyDict) return v.map.size > 0;
   if (v instanceof Range) return rangeLen(v) > 0;
+  if (v instanceof PySet) return v.map.size > 0;
   return true;
 }
 function rangeLen(r) { return Math.max(0, Math.ceil((r.stop - r.start) / r.step)); }
@@ -623,6 +783,8 @@ function pyEq(a, b) {
   if (a === null || b === null) return a === b;
   if (Array.isArray(a) && Array.isArray(b)) return a.length === b.length && a.every((x, i) => pyEq(x, b[i]));
   if (a instanceof Tuple && b instanceof Tuple) return a.items.length === b.items.length && a.items.every((x, i) => pyEq(x, b.items[i]));
+  if (a instanceof PySet && b instanceof PySet) return a.map.size === b.map.size && [...a.map.keys()].every((k) => b.map.has(k));
+  if (a instanceof PyObject && b instanceof PyObject && a.cls.find('__eq__') instanceof PyFunc) return truthy(a.interp.callFunc(a.cls.find('__eq__'), [a, b], {}, null));
   if (a instanceof PyDict && b instanceof PyDict) {
     if (a.map.size !== b.map.size) return false;
     for (const [k, [, v]] of a.map) { const o = b.map.get(k); if (!o || !pyEq(v, o[1])) return false; }
@@ -649,6 +811,7 @@ function iterate(v, line) {
   if (typeof v === 'string') return [...v];
   if (v instanceof Tuple) return v.items.slice();
   if (v instanceof PyDict) return [...v.map.values()].map(([k]) => k);
+  if (v instanceof PySet) return v.items();
   if (v instanceof Range) {
     const out = [];
     const len = rangeLen(v);
@@ -726,6 +889,7 @@ class Interp {
     this.maxSteps = opts.maxSteps || MAX_STEPS;
     this.depth = 0;
     this.globals = new Map();
+    this.handling = [];
     this.builtins = this.makeBuiltins();
   }
   step(line) { if (++this.steps > this.maxSteps) throw new StepLimit(line); }
@@ -758,6 +922,8 @@ class Interp {
       if (v instanceof Tuple) return v.items.length;
       if (v instanceof PyDict) return v.map.size;
       if (v instanceof Range) return rangeLen(v);
+      if (v instanceof PySet) return v.map.size;
+      if (v instanceof PyObject && v.cls.find('__len__') instanceof PyFunc) return this.callFunc(v.cls.find('__len__'), [v], {}, line);
       throw new CodeError('TypeError', `${sv(v)} har ingen längd.`, line, 'type');
     });
     def('str', (args) => (args.length ? pyStr(args[0]) : ''));
@@ -795,7 +961,10 @@ class Interp {
     });
     const minmax = (name, pick) => (args, kw, line) => {
       let items = args.length === 1 ? iterate(args[0], line) : args;
-      if (!items.length) throw new CodeError('ValueError', `${name}() fick en tom samling.`, line, 'empty');
+      if (!items.length) {
+        if ('default' in kw) return kw.default;
+        throw new CodeError('ValueError', `${name}() fick en tom samling.`, line, 'empty');
+      }
       if (kw.key) items = items.map((x) => [this.callValue(kw.key, [x], {}, line), x]); else items = items.map((x) => [x, x]);
       let best = items[0];
       for (const it of items.slice(1)) if (pick(pyCmp(it[0], best[0], line, '<'))) best = it;
@@ -817,7 +986,20 @@ class Interp {
     });
     def('list', (args, kw, line) => (args.length ? iterate(args[0], line) : []));
     def('tuple', (args, kw, line) => new Tuple(args.length ? iterate(args[0], line) : []));
-    def('dict', () => new PyDict());
+    def('dict', (args, kw, line) => {
+      const d = new PyDict();
+      if (args.length) {
+        const src = args[0];
+        const pairs = src instanceof PyDict ? [...src.map.values()] : iterate(src, line).map((p) => {
+          const kv = iterate(p, line);
+          if (kv.length !== 2) throw new CodeError('ValueError', 'dict() behöver par med exakt två värden: nyckel och värde.', line, 'value');
+          return kv;
+        });
+        for (const [k, v] of pairs) d.set(k, v, line);
+      }
+      for (const [k, v] of Object.entries(kw)) d.set(k, v, line);
+      return d;
+    });
     def('sorted', (args, kw, line) => {
       const items = iterate(args[0], line);
       const keyed = kw.key ? items.map((x) => [this.callValue(kw.key, [x], {}, line), x]) : items.map((x) => [x, x]);
@@ -832,13 +1014,31 @@ class Interp {
       const n = Math.min(...ls.map((l) => l.length));
       return Array.from({ length: n }, (_, i) => new Tuple(ls.map((l) => l[i])));
     });
-    def('type', (args) => `<class '${typeName(args[0])}'>`);
+    def('type', (args) => (args[0] instanceof PyObject ? args[0].cls : `<class '${typeName(args[0])}'>`));
     def('isinstance', (args, kw, line) => {
       const t = args[1];
-      const names = t instanceof Tuple ? t.items.map((x) => x.name) : [t && t.name];
-      const tn = typeName(args[0]);
-      return names.includes(tn) || (tn === 'bool' && names.includes('int'));
+      const types = t instanceof Tuple ? t.items : [t];
+      const v = args[0];
+      return types.some((x) => {
+        if (x instanceof PyClass) return v instanceof PyObject && v.cls.isSub(x);
+        const tn = typeName(v);
+        return x && (x.name === tn || (tn === 'bool' && x.name === 'int'));
+      });
     });
+    // Undantagsklasser som går att fånga med except och kasta med raise.
+    const Exc = new PyClass('Exception', null, new Map(), true);
+    Exc.attrs.set('__init__', new Builtin('__init__', (a) => { a[0].attrs.set('args', new Tuple(a.slice(1))); return null; }));
+    B.set('Exception', Exc);
+    for (const n of EXC_NAMES) if (n !== 'Exception') B.set(n, new PyClass(n, n === 'ZeroDivisionError' ? B.get('ArithmeticError') || Exc : Exc, new Map(), true));
+    def('set', (args, kw, line) => new PySet(args.length ? iterate(args[0], line) : [], line));
+    def('map', (args, kw, line) => iterate(args[1], line).map((x) => this.callValue(args[0], [x], {}, line)));
+    def('filter', (args, kw, line) => iterate(args[1], line).filter((x) => truthy(args[0] === null ? x : this.callValue(args[0], [x], {}, line))));
+    def('divmod', (args, kw, line) => new Tuple([this.binop('//', args[0], args[1], line), this.binop('%', args[0], args[1], line)]));
+    def('pow', (args, kw, line) => this.binop('**', args[0], args[1], line));
+    def('chr', (args) => String.fromCodePoint(num(args[0])));
+    def('ord', (args, kw, line) => { if (typeof args[0] !== 'string' || [...args[0]].length !== 1) throw new CodeError('TypeError', 'ord() behöver exakt ett tecken.', line, 'type'); return args[0].codePointAt(0); });
+    def('hasattr', (args) => args[0] instanceof PyObject && (args[0].attrs.has(args[1]) || args[0].cls.find(args[1]) !== undefined));
+    def('super', (args, kw, line) => { throw new CodeError('TypeError', 'super() kan bara användas inuti en metod i en klass.', line, 'super'); });
     def('any', (args, kw, line) => iterate(args[0], line).some(truthy));
     def('all', (args, kw, line) => iterate(args[0], line).every(truthy));
     return B;
@@ -893,7 +1093,48 @@ class Interp {
         }
         return;
       }
-      case 'Def': this.setVar(s.name, new PyFunc(s, this), scope); return;
+      case 'Def': this.setVar(s.name, new PyFunc(s, this, scope && scope.isClass ? scope.parent : scope), scope); return;
+      case 'Class': {
+        let base = null;
+        if (s.base) {
+          base = this.eval(s.base, scope);
+          if (!(base instanceof PyClass)) throw new CodeError('TypeError', `En klass kan bara ärva från en annan klass, inte ${sv(base)}.`, s.line, 'type');
+        }
+        const cscope = { vars: new Map(), globals: new Set(), parent: scope, isClass: true };
+        this.execBlock(s.body, cscope);
+        const cls = new PyClass(s.name, base, cscope.vars);
+        for (const v of cls.attrs.values()) if (v instanceof PyFunc) v.owner = cls;
+        this.setVar(s.name, cls, scope);
+        return;
+      }
+      case 'Raise': {
+        if (!s.exc) {
+          if (!this.handling.length) throw new CodeError('RuntimeError', 'Ett ensamt raise fungerar bara inuti ett except-block.', s.line, 'raise');
+          throw new PyRaise(this.handling[this.handling.length - 1], s.line);
+        }
+        let exc = this.eval(s.exc, scope);
+        if (exc instanceof PyClass && exc.isExc) exc = this.instantiate(exc, [], {}, s.line);
+        if (!(exc instanceof PyObject && exc.cls.isExc)) throw new CodeError('TypeError', 'raise behöver ett undantag, till exempel raise ValueError("förklaring").', s.line, 'raise');
+        throw new PyRaise(exc, s.line);
+      }
+      case 'Try': {
+        let ok = false;
+        try {
+          try { this.execBlock(s.body, scope); ok = true; } catch (e) {
+            const exc = this.toPyExc(e);
+            if (!exc) throw e;
+            const h = s.handlers.find((hd) => !hd.types || this.excMatches(exc, this.eval(hd.types, scope), hd.line));
+            if (!h) throw e;
+            if (h.name) this.setVar(h.name, exc, scope);
+            this.handling.push(exc);
+            try { this.execBlock(h.body, scope); } finally { this.handling.pop(); }
+          }
+          if (ok) this.execBlock(s.orelse, scope);
+        } finally {
+          if (s.fin.length) this.execBlock(s.fin, scope);
+        }
+        return;
+      }
       case 'Return': throw new ReturnSig(s.value ? this.eval(s.value, scope) : null);
       case 'Break': throw new BreakSig();
       case 'Continue': throw new ContinueSig();
@@ -908,7 +1149,9 @@ class Interp {
     else this.globals.set(name, v);
   }
   lookup(name, scope, line) {
-    if (scope && !scope.globals.has(name) && scope.vars.has(name)) return scope.vars.get(name);
+    if (scope && !scope.globals.has(name)) {
+      for (let sc = scope; sc; sc = sc.parent) if (sc.vars.has(name)) return sc.vars.get(name);
+    }
     if (this.globals.has(name)) return this.globals.get(name);
     if (this.builtins.has(name)) return this.builtins.get(name);
     const typeNames = { int: 1, float: 1, str: 1, bool: 1, list: 1, dict: 1, tuple: 1 };
@@ -928,6 +1171,11 @@ class Interp {
       if (obj instanceof PyDict) { obj.set(idx, v, line); return; }
       if (typeof obj === 'string') throw new CodeError('TypeError', 'Text kan inte ändras tecken för tecken. Skapa en ny text i stället.', line, 'str-immutable');
       throw new CodeError('TypeError', `${sv(obj)} går inte att ändra med index.`, line, 'type');
+    }
+    if (t.k === 'Attr') {
+      const obj = this.eval(t.obj, scope);
+      if (obj instanceof PyObject || obj instanceof PyClass) { obj.attrs.set(t.name, v); return; }
+      throw new CodeError('AttributeError', `Det går inte att sätta egenskapen ${t.name} på ${sv(obj)}.`, line, 'attr');
     }
     if (t.k === 'Tuple' || t.k === 'List') {
       const items = iterate(v, line);
@@ -950,6 +1198,18 @@ class Interp {
         e.keys.forEach((k, i) => d.set(this.eval(k, scope), this.eval(e.values[i], scope), e.line));
         return d;
       }
+      case 'Set': return new PySet(e.items.map((x) => this.eval(x, scope)), e.line);
+      case 'Lambda': return new PyFunc(e.def, this, scope);
+      case 'DictComp': {
+        const d = new PyDict();
+        for (const it of iterate(this.eval(e.iter, scope), e.line)) {
+          this.step(e.line);
+          this.assign(e.target, it, scope, e.line);
+          if (!e.cond || truthy(this.eval(e.cond, scope))) d.set(this.eval(e.key, scope), this.eval(e.value, scope), e.line);
+        }
+        return d;
+      }
+      case 'SetComp': return new PySet(this.eval({ ...e, k: 'ListComp' }, scope), e.line);
       case 'ListComp': {
         const out = [];
         for (const it of iterate(this.eval(e.iter, scope), e.line)) {
@@ -1007,6 +1267,12 @@ class Interp {
       }
       case 'Attr': return this.getAttr(this.eval(e.obj, scope), e.name, e.line);
       case 'Call': {
+        if (e.fn.k === 'Name' && e.fn.name === 'super' && !e.args.length) {
+          let sc = scope;
+          while (sc && !sc.owner) sc = sc.parent;
+          if (!sc) throw new CodeError('TypeError', 'super() kan bara användas inuti en metod i en klass.', e.line, 'super');
+          return new SuperProxy(sc.owner.base, sc.self);
+        }
         const fn = this.eval(e.fn, scope);
         const args = e.args.map((a) => this.eval(a, scope));
         const kw = {};
@@ -1063,6 +1329,11 @@ class Interp {
         default: break;
       }
     }
+    if (a instanceof PySet && b instanceof PySet && ['|', '&', '-'].includes(op)) {
+      if (op === '|') return new PySet([...a.items(), ...b.items()], line);
+      if (op === '&') return new PySet(a.items().filter((x) => b.has(x, line)), line);
+      return new PySet(a.items().filter((x) => !b.has(x, line)), line);
+    }
     if (op === '+') {
       if (typeof a === 'string' && typeof b === 'string') return a + b;
       if (Array.isArray(a) && Array.isArray(b)) return a.concat(b);
@@ -1083,16 +1354,22 @@ class Interp {
   callValue(fn, args, kw, line) {
     if (fn instanceof Builtin) return fn.fn(args, kw, line);
     if (fn instanceof PyFunc) return this.callFunc(fn, args, kw, line);
+    if (fn instanceof BoundMethod) return this.callValue(fn.fn, [fn.self, ...args], kw, line);
+    if (fn instanceof PyClass) return this.instantiate(fn, args, kw, line);
     throw new CodeError('TypeError', `${sv(fn)} går inte att anropa som en funktion.`, line, 'not-callable');
   }
   callFunc(fn, args, kw, line) {
     const d = fn.def;
     const req = d.params.filter((p) => !p.def).length;
     if (args.length > d.params.length || args.length + Object.keys(kw).length < req) {
-      throw new CodeError('TypeError', `${d.name}() tar ${req === d.params.length ? req : `${req}–${d.params.length}`} argument men fick ${args.length + Object.keys(kw).length}.`, line, 'arg-count');
+      if (fn.owner && (!d.params.length || d.params[0].name !== 'self')) {
+        throw new CodeError('TypeError', `Metoden ${d.name}() i klassen ${fn.owner.name} saknar self som första parameter. Skriv def ${d.name}(self${d.params.length ? ', ...' : ''}):`, d.line, 'missing-self');
+      }
+      const off = fn.owner ? 1 : 0;
+      throw new CodeError('TypeError', `${d.name}() tar ${req === d.params.length ? req - off : `${req - off}–${d.params.length - off}`} argument men fick ${args.length + Object.keys(kw).length - off}.`, line, 'arg-count');
     }
     if (++this.depth > 200) throw new CodeError('RecursionError', 'Funktionen anropar sig själv för många gånger.', line, 'recursion');
-    const scope = { vars: new Map(), globals: new Set() };
+    const scope = { vars: new Map(), globals: new Set(), parent: fn.closure, owner: fn.owner, self: fn.owner ? args[0] : undefined };
     d.params.forEach((p, i) => {
       let v;
       if (i < args.length) v = args[i];
@@ -1111,8 +1388,79 @@ class Interp {
     } finally { this.depth--; }
   }
 
+  instantiate(cls, args, kw, line) {
+    const obj = new PyObject(cls, this);
+    if (cls.isExc) obj.attrs.set('args', new Tuple(args));
+    const init = cls.find('__init__');
+    if (init instanceof PyFunc || (init instanceof Builtin && !cls.isExc)) this.callValue(init, [obj, ...args], kw, line);
+    else if (init instanceof Builtin) { /* undantag utan egen __init__: args är redan satta */ }
+    else if (args.length || Object.keys(kw).length) {
+      throw new CodeError('TypeError', `${cls.name}() tar inga argument eftersom klassen saknar __init__. Lägg till def __init__(self, ...):`, line, 'no-init');
+    }
+    return obj;
+  }
+
+  strResult(v, what) {
+    if (typeof v !== 'string') throw new CodeError('TypeError', `${what} måste returnera text, men returnerade ${sv(v)}.`, null, 'type');
+    return v;
+  }
+
+  // Gör om ett fel till ett Python-undantag som except kan fånga. Stegbegränsningar
+  // och fel i själva koden (syntax) går inte att fånga.
+  toPyExc(e) {
+    if (e instanceof PyRaise) return e.exc;
+    if (e instanceof StepLimit || !(e instanceof CodeError) || e.phase === 'compile') return null;
+    const cls = this.builtins.get(e.kind);
+    if (!(cls instanceof PyClass)) return null;
+    const obj = new PyObject(cls, this);
+    obj.attrs.set('args', new Tuple([e.message]));
+    return obj;
+  }
+
+  excMatches(exc, t, line) {
+    const types = t instanceof Tuple ? t.items : [t];
+    return types.some((x) => {
+      if (!(x instanceof PyClass)) throw new CodeError('TypeError', 'Efter except ska det stå en undantagsklass, till exempel except ValueError:', line, 'except-type');
+      return exc.cls.isSub(x);
+    });
+  }
+
   getAttr(obj, name, line) {
     const m = (fn) => new Builtin(name, fn);
+    if (obj instanceof PyObject) {
+      if (obj.attrs.has(name)) return obj.attrs.get(name);
+      const v = obj.cls.find(name);
+      if (v instanceof PyFunc || v instanceof Builtin) return new BoundMethod(v, obj);
+      if (v !== undefined) return v;
+      throw new CodeError('AttributeError', `Objektet av typen ${obj.cls.name} har ingen egenskap eller metod som heter ${name}.${obj.cls.find('__init__') ? '' : ' Klassen saknar __init__, så inga egenskaper har satts.'}`, line, 'attr');
+    }
+    if (obj instanceof PyClass) {
+      if (name === '__name__') return obj.name;
+      const v = obj.find(name);
+      if (v !== undefined) return v;
+      throw new CodeError('AttributeError', `Klassen ${obj.name} har inget som heter ${name}.`, line, 'attr');
+    }
+    if (obj instanceof SuperProxy) {
+      const v = obj.cls ? obj.cls.find(name) : undefined;
+      if (v instanceof PyFunc || v instanceof Builtin) return new BoundMethod(v, obj.self);
+      if (v !== undefined) return v;
+      throw new CodeError('AttributeError', `Basklassen har ingen metod som heter ${name}.`, line, 'attr');
+    }
+    if (obj instanceof PySet) {
+      const T = {
+        add: (a) => { obj.add(a[0], line); return null; },
+        remove: (a) => { if (!obj.has(a[0], line)) throw new CodeError('KeyError', `${pyRepr(a[0])} finns inte i mängden.`, line, 'key'); obj.map.delete(PyDict.key(a[0], line)); return null; },
+        discard: (a) => { obj.map.delete(PyDict.key(a[0], line)); return null; },
+        union: (a) => this.binop('|', obj, new PySet(iterate(a[0], line), line), line),
+        intersection: (a) => this.binop('&', obj, new PySet(iterate(a[0], line), line), line),
+        difference: (a) => this.binop('-', obj, new PySet(iterate(a[0], line), line), line),
+        issubset: (a) => { const o = new PySet(iterate(a[0], line), line); return obj.items().every((x) => o.has(x, line)); },
+        copy: () => new PySet(obj.items(), line),
+        clear: () => { obj.map.clear(); return null; },
+      };
+      if (Object.hasOwn(T, name)) return m((a) => T[name](a));
+      throw new CodeError('AttributeError', `En mängd har ingen metod som heter ${name}.`, line, 'attr');
+    }
     const noAttr = () => new CodeError('AttributeError', `${sv(obj)} har ingen metod eller egenskap som heter ${name}.`, line, 'attr');
     if (typeof obj === 'string') {
       const s = obj;
@@ -1134,6 +1482,10 @@ class Interp {
         isupper: () => /[A-ZÅÄÖ]/.test(s) && s === s.toUpperCase(), islower: () => /[a-zåäö]/.test(s) && s === s.toLowerCase(),
         format: (a) => { let i = 0; return s.replace(/\{\}/g, () => pyStr(a[i++])); },
         center: (a) => formatSpec(s, '^' + num(a[0]), line),
+        ljust: (a) => s.padEnd(num(a[0]), a[1] ?? ' '), rjust: (a) => s.padStart(num(a[0]), a[1] ?? ' '),
+        zfill: (a) => (s.startsWith('-') ? '-' + s.slice(1).padStart(num(a[0]) - 1, '0') : s.padStart(num(a[0]), '0')),
+        isalnum: () => s.length > 0 && /^[A-Za-zÅÄÖåäö0-9]+$/.test(s), isspace: () => s.length > 0 && /^\s+$/.test(s),
+        index: (a) => { const i = s.indexOf(a[0]); if (i < 0) throw new CodeError('ValueError', `${pyRepr(a[0])} finns inte i texten.`, line, 'value'); return i; },
       };
       if (Object.hasOwn(S, name)) return m((a) => S[name](a));
       throw noAttr();
@@ -1180,6 +1532,10 @@ class Interp {
         items: () => [...obj.map.values()].map((p) => new Tuple([p[0], p[1]])),
         pop: (a) => { const g = obj.get(a[0], line); if (!g) throw new CodeError('KeyError', `Nyckeln ${pyRepr(a[0])} finns inte.`, line, 'key'); obj.map.delete(PyDict.key(a[0], line)); return g[1]; },
       };
+      D.setdefault = (a) => { const g = obj.get(a[0], line); if (g) return g[1]; const v = a.length > 1 ? a[1] : null; obj.set(a[0], v, line); return v; };
+      D.update = (a) => { if (a[0] instanceof PyDict) for (const [k, v] of a[0].map.values()) obj.set(k, v, line); return null; };
+      D.copy = () => { const c = new PyDict(); for (const [k, v] of obj.map.values()) c.set(k, v, line); return c; };
+      D.clear = () => { obj.map.clear(); return null; };
       if (Object.hasOwn(D, name)) return m((a) => D[name](a));
       throw noAttr();
     }
@@ -1209,6 +1565,8 @@ export function toJS(v) {
   if (v instanceof PyDict) { const o = {}; for (const [, [k, x]] of v.map) o[pyStr(k)] = toJS(x); return o; }
   if (v instanceof Range) return iterate(v).map(toJS);
   if (v instanceof PyFunc || v instanceof Builtin) return `<function ${v.name}>`;
+  if (v instanceof PySet) return v.items().map(toJS);
+  if (v instanceof PyObject || v instanceof PyClass || v instanceof BoundMethod) return pyStr(v);
   return v;
 }
 
@@ -1249,6 +1607,11 @@ export function runPython(code, { calls = [], maxSteps } = {}) {
 
 function asError(e) {
   if (e instanceof CodeError) return e.toJSON();
+  if (e instanceof PyRaise) {
+    let msg = '';
+    try { msg = pyStr(e.exc); } catch { /* ignore */ }
+    return { kind: e.exc.cls.name, message: msg || `Undantaget ${e.exc.cls.name} kastades utan förklaring.`, line: e.line, hint: 'raised', phase: 'runtime' };
+  }
   if (e instanceof ReturnSig || e instanceof BreakSig || e instanceof ContinueSig) return { kind: 'SyntaxError', message: 'Felplacerad return/break.', line: null, hint: 'syntax', phase: 'compile' };
   if (e instanceof RangeError) return { kind: 'RecursionError', message: 'Programmet gick för djupt i funktionsanrop.', line: null, hint: 'recursion', phase: 'runtime' };
   return { kind: 'Internt fel', message: String(e && e.message || e), line: null, hint: 'internal', phase: 'runtime' };

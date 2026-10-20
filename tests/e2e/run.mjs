@@ -5,7 +5,7 @@
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { chromium } from 'playwright';
-import { LESSON_BY_ID, LESSONS } from '../../src/content/index.js';
+import { LESSON_BY_ID, LESSONS, STATS } from '../../src/content/index.js';
 
 const PORT = 4174;
 const DEV_PORT = 4175;
@@ -91,7 +91,7 @@ async function main() {
       assert(await page.locator('a:has-text("Prova ett första steg")').isVisible());
       assert(await page.locator('.hero button:has-text("Logga in")').isVisible());
       await page.locator('details.more summary').click();
-      assert((await page.locator('details.more').textContent()).includes('71 lektioner'));
+      assert((await page.locator('details.more').textContent()).includes(`${STATS.lessons} lektioner`));
       await page.close();
     });
 

@@ -120,6 +120,41 @@ const PY = {
     'Använd .get(nyckel, standardvärde) eller kontrollera med in innan du läser.',
     { text: 'Läs säkert:', example: 'pris = {"kaffe": 30}\nprint(pris.get("te", 0))' },
   ],
+  raised: (c) => [
+    `Programmet kastade ett undantag på ${L(c.line)}. Var det meningen, och var ska det i så fall fångas?`,
+    'Ett undantag som ingen fångar stoppar programmet. Lägg koden som kan gå fel i ett try-block och fånga felet med except.',
+    { text: 'Kasta och fånga:', example: 'def kolla(ålder):\n    if ålder < 0:\n        raise ValueError("Åldern kan inte vara negativ")\n    return ålder\n\ntry:\n    kolla(-1)\nexcept ValueError as fel:\n    print("Fel:", fel)' },
+  ],
+  'missing-self': (c) => [
+    `Titta på metoden på ${L(c.line)}. Vad står först inom parentesen?`,
+    'Metoder i en klass får alltid objektet själv som första parameter. Den heter self enligt konvention.',
+    { text: 'En metod med self:', example: 'class Katt:\n    def __init__(self, namn):\n        self.namn = namn\n    def jama(self):\n        print(self.namn, "säger mjau")\n\nKatt("Misse").jama()' },
+  ],
+  'no-init': (c) => [
+    `Klassen på ${L(c.line)} får argument. Var tar klassen emot dem?`,
+    'Argument till klassen tas emot av metoden __init__ och sparas ofta på self.',
+    { text: 'Ta emot värden i __init__:', example: 'class Bok:\n    def __init__(self, titel):\n        self.titel = titel\n\nb = Bok("Kodstig")\nprint(b.titel)' },
+  ],
+  'try-without-except': (c) => [
+    `Vad händer efter try-blocket på ${L(c.line)}?`,
+    'Ett try-block följs av minst ett except (eller finally) med samma indragning som try.',
+    { text: 'try med except:', example: 'try:\n    tal = int("12")\nexcept ValueError:\n    tal = 0\nprint(tal)' },
+  ],
+  'stray-except': (c) => [
+    `Står except på ${L(c.line)} på samma indragning som sitt try?`,
+    'except och finally hör till närmaste try ovanför och ska börja lika långt in som det.',
+    { text: 'Samma indragning:', example: 'try:\n    print(10 / 0)\nexcept ZeroDivisionError:\n    print("Inte med noll")' },
+  ],
+  'except-type': (c) => [
+    `Vad står efter except på ${L(c.line)}?`,
+    'Efter except skriver du namnet på en undantagsklass, till exempel ValueError, eller flera inom parentes.',
+    { text: 'Fånga flera sorters fel:', example: 'try:\n    print([1, 2][5])\nexcept (IndexError, KeyError) as fel:\n    print("Hittade inte:", fel)' },
+  ],
+  super: (c) => [
+    `Var används super() på ${L(c.line)}?`,
+    'super() fungerar bara inuti en metod i en klass som ärver från en annan klass.',
+    { text: 'Anropa basklassens __init__:', example: 'class Djur:\n    def __init__(self, namn):\n        self.namn = namn\n\nclass Hund(Djur):\n    def __init__(self, namn):\n        super().__init__(namn)\n        self.ljud = "voff"\n\nprint(Hund("Rex").namn)' },
+  ],
 };
 
 const CS = {

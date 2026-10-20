@@ -2,12 +2,12 @@
 
 Kodstig är en svensk app för nybörjare som vill lära sig C#, Python och HTML/CSS. Den innehåller korta lektioner, en lärstig, ett kodlabb och Milo, en liten AI-studiekompis som körs i webbläsaren.
 
-Allt lektionsinnehåll är **nyskrivet för den här versionen**. Det är inte kopierat från någon tidigare app. Totalt finns 71 lektioner, 264 övningar och 6 miniprojekt:
+Allt lektionsinnehåll är **nyskrivet för den här versionen**. Det är inte kopierat från någon tidigare app. Totalt finns 91 lektioner, 360 övningar och 10 miniprojekt:
 
 | Spår | Lektioner | Övningar |
 | --- | --- | --- |
 | C# | 25 | 92 |
-| Python | 23 | 86 |
+| Python | 43 | 182 |
 | HTML/CSS | 23 | 86 |
 
 ## Kom igång
@@ -91,7 +91,7 @@ Elevens kod körs aldrig med `eval`. Python och C# tolkas av två egna, förenkl
 
 Tolkarna har tydliga gränser, och det står i appen under **Vad klarar Kodlabbet?**:
 
-- **Python:** variabler, if/elif/else, while/for, range, funktioner, listor, ordlistor, tupler, strängmetoder och f-strängar. Följande saknas: `import`, klasser, `try/except`, `with`, filer och `input()`.
+- **Python:** variabler, if/elif/else, while/for, range, funktioner, rekursion, listor, ordlistor, tupler, mängder, listbyggare, lambda och `sorted(key=...)`, klasser med arv och `super()`, `try/except/else/finally` och `raise`, strängmetoder och f-strängar. Följande saknas: `import`, `with`, `*args`, filer och `input()`.
 - **C#:** toppnivåsatser eller `class Program` med `Main`, statiska metoder, int/double/bool/string/char, arrayer, `List<T>`, stränginterpolation med format, `Math`, `int.Parse` och vanliga strängmetoder. Följande saknas: egna klasser/objekt, LINQ, `Console.ReadLine`, generics utöver List.
 
 Felmeddelandena är på svenska och pekar på raden. **Fastnat? Få en ledtråd** ger tre steg (en fråga, en förklaring och ett exempel). Ledtrådarna börjar om när koden ändras.

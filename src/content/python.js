@@ -1,4 +1,6 @@
-// Python-spåret: 23 lektioner, 86 övningar. Nyskrivet innehåll för Kodstig.
+// Python-spåret. Grundkapitlen ligger här, fortsättningen i python-pro.js.
+import advanced from './python-pro.js';
+
 const R = (re, msg) => ({ re, msg });
 
 export default {
@@ -424,5 +426,6 @@ export default {
         },
       ],
     },
+    ...advanced,
   ],
 };

@@ -12,7 +12,7 @@ export const LAB_LANGS = [
 ];
 
 const LIMITS = {
-  python: 'Kodlabbets Python är en egen, förenklad tolk som körs i webbläsaren. Den klarar variabler, if, loopar, funktioner, listor, ordlistor, strängmetoder och f-strängar. Moduler (import), klasser, try/except, filer och input() finns inte. Program som kör för länge stoppas efter några sekunder.',
+  python: 'Kodlabbets Python är en egen, förenklad tolk som körs i webbläsaren. Den klarar variabler, if, loopar, funktioner, listor, ordlistor, mängder, listbyggare, lambda, klasser med arv, try/except/raise, strängmetoder och f-strängar. Moduler (import), with, filer och input() finns inte. Program som kör för länge stoppas efter några sekunder.',
   csharp: 'Kodlabbets C# är en egen, förenklad tolk som körs i webbläsaren, inte en riktig .NET-kompilator. Den klarar variabler, if, loopar, metoder, arrayer, List<T>, strängar och Console.WriteLine. Egna klasser, LINQ, Console.ReadLine och bibliotek utöver det vanligaste finns inte. Program som kör för länge stoppas efter några sekunder.',
   web: 'HTML och CSS visas i en isolerad ram. JavaScript körs inte där, och sidan kan inte nå resten av Kodstig eller ditt konto. Bilder från internet (https) kan visas.',
 };

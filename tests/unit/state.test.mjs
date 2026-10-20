@@ -15,10 +15,10 @@ async function device(backend, cache) {
   return { s, timers };
 }
 
-test('läroplanen ger 4 035 XP och nivå 8 är nåbar', () => {
+test('läroplanen ger 5 835 XP och nivå 8 är nåbar', () => {
   const p = emptyProfile();
   LESSONS.forEach((l) => completeLesson(p, l.id));
-  assert.equal(xpOf(p).total, 4035);
+  assert.equal(xpOf(p).total, 5835);
   assert.equal(levelInfo(p).level, 8);
   assert.equal(levelInfo(p).title, 'Målmedveten kodare');
 });

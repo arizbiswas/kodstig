@@ -31,7 +31,7 @@ test('c#: kompileringsfel visar ingen halv utskrift', () => {
 });
 
 const ERRORS = {
-  python: ['print("hej)', 'if True\n    print(1)', 'print(x)', 'print("a" + 1)', 'print(1/0)', 'l = [1]\nprint(l[3])', 'while True:\n    pass', 'x = 1\nif x = 1:\n    print(x)', 'if True:\nprint(1)', 'def f(a):\n    return a\nf()'],
+  python: ['print("hej)', 'if True\n    print(1)', 'print(x)', 'print("a" + 1)', 'print(1/0)', 'l = [1]\nprint(l[3])', 'while True:\n    pass', 'x = 1\nif x = 1:\n    print(x)', 'if True:\nprint(1)', 'def f(a):\n    return a\nf()', 'raise ValueError("x")', 'class A:\n    def m():\n        pass\nA().m()', 'class B:\n    pass\nB(1)', 'try:\n    x = 1\nprint(x)', 'try:\n    x = 1\nexcept 5:\n    pass\nprint(1/0)', 'super()'],
   csharp: ['Console.WriteLine("hej")', 'Console.WriteLine(x);', 'int x = "a";', 'int y = 2.5;', 'int a = 0;\nConsole.WriteLine(1 / a);', 'int[] t = {1};\nConsole.WriteLine(t[2]);', 'int x = 1;\nif (x = 1) { }', 'Console.Writeline("x");', 'if (true) {\nConsole.WriteLine(1);', 'int x;\nConsole.WriteLine(x);'],
 };
 
@@ -57,4 +57,20 @@ test('tips när koden fungerar och för webben', () => {
   assert.equal(getHints('web', '<style>\nh1 { color: red;\n</style><h1>x</h1>').key, 'css-braces');
   assert.equal(getHints('web', '<style>\nh1 { color: red; }').key, 'style-unclosed');
   assert.equal(getHints('web', '<p>hej').key, 'tag-unclosed');
+});
+
+test('python: undantag, klasser och mängder', () => {
+  const r = runPython('class Konto:\n    def __init__(self, saldo):\n        self.saldo = saldo\n    def ta_ut(self, b):\n        if b > self.saldo:\n            raise ValueError("för lite")\n        self.saldo -= b\nk = Konto(100)\ntry:\n    k.ta_ut(150)\nexcept ValueError as e:\n    print("Fel:", e)\nk.ta_ut(30)\nprint(k.saldo)\nprint(sorted({3, 1, 3}))');
+  assert.equal(r.error, null);
+  assert.equal(r.output, 'Fel: för lite\n70\n[1, 3]\n');
+  const loop = runPython('while True:\n    try:\n        pass\n    except Exception:\n        pass');
+  assert.equal(loop.error.hint, 'infinite-loop', 'stegbegränsningen går inte att fånga');
+  const probe = runPython('class A:\n    pass\na = A()\nprint(hasattr(a, "constructor"), hasattr(a, "__proto__"))');
+  assert.equal(probe.output, 'False False\n');
+});
+
+test('python: listbyggare utan hakparenteser, mängdbyggare, dict() och rader inom parenteser', () => {
+  const r = runPython('elever = [\n    {"namn": "Ada", "p": 9},\n    {"namn": "Bo", "p": 7},\n]\nprint(sum(e["p"] for e in elever))\nprint(sorted({x % 3 for x in range(7)}))\nprint(dict(a=1), dict([("b", 2)]), min([], default=0))\nif True:\n    t = (1 +\n  2)\n    print(t)');
+  assert.equal(r.error, null);
+  assert.equal(r.output, "16\n[0, 1, 2]\n{'a': 1} {'b': 2} 0\n3\n");
 });

@@ -8,11 +8,11 @@ import { grade, fillCode, normalizeOutput } from '../../src/engine/grade.js';
 
 const runner = async (lang, code, calls) => (lang === 'csharp' ? runCSharp : runPython)(code, { calls });
 
-test('omfattning: 71 lektioner, 264 övningar, 6 miniprojekt', () => {
-  assert.deepEqual(STATS, { lessons: 71, exercises: 264, projects: 6 });
+test('omfattning: 91 lektioner, 360 övningar, 10 miniprojekt', () => {
+  assert.deepEqual(STATS, { lessons: 91, exercises: 360, projects: 10 });
   const per = Object.fromEntries(TRACKS.map((t) => [t.id, [LESSONS.filter((l) => l.trackId === t.id).length, LESSONS.filter((l) => l.trackId === t.id).reduce((n, l) => n + l.exercises.length, 0)]]));
-  assert.deepEqual(per, { csharp: [25, 92], python: [23, 86], web: [23, 86] });
-  TRACKS.forEach((t) => assert.equal(t.chapters.length, 6));
+  assert.deepEqual(per, { csharp: [25, 92], python: [43, 182], web: [23, 86] });
+  assert.deepEqual(Object.fromEntries(TRACKS.map((t) => [t.id, t.chapters.length])), { csharp: 6, python: 11, web: 6 });
 });
 
 test('unika id:n och förkunskapskrav som pekar på riktiga lektioner', () => {
