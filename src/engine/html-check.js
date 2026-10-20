@@ -5,7 +5,7 @@ export function parseCss(text) {
   const rules = [];
   const src = text.replace(/\/\*[\s\S]*?\*\//g, '');
   let i = 0;
-  const readBlock = (media) => {
+  const readBlock = (media, at = null) => {
     while (i < src.length) {
       const open = src.indexOf('{', i);
       const close = src.indexOf('}', i);
@@ -13,7 +13,9 @@ export function parseCss(text) {
       if (open === -1) { i = src.length; return; }
       const head = src.slice(i, open).trim();
       i = open + 1;
-      if (head.startsWith('@media')) { readBlock(head.slice(6).trim()); continue; }
+      if (head.startsWith('@media')) { readBlock(head.slice(6).trim(), at); continue; }
+      // Andra block-regler (@supports, @keyframes …) läses också, men räknas inte som media.
+      if (head.startsWith('@')) { readBlock(media, head); continue; }
       const end = src.indexOf('}', i);
       const body = src.slice(i, end === -1 ? src.length : end);
       i = end === -1 ? src.length : end + 1;
@@ -22,7 +24,7 @@ export function parseCss(text) {
         const k = d.indexOf(':');
         if (k > 0) decls[d.slice(0, k).trim().toLowerCase()] = d.slice(k + 1).trim();
       });
-      rules.push({ selectors: head.split(',').map((s) => s.trim().replace(/\s+/g, ' ')), decls, media });
+      rules.push({ selectors: head.split(',').map((s) => s.trim().replace(/\s+/g, ' ')), decls, media, at });
     }
   };
   readBlock(null);
