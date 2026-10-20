@@ -2,6 +2,12 @@
 import csharp from './csharp.js';
 import python from './python.js';
 import web from './web.js';
+import csharpExtra from './csharp-extra.js';
+import pythonExtra from './python-extra.js';
+import webExtra from './web-extra.js';
+
+// Extraövningar läggs sist i sina lektioner, så index för gamla övningar ändras inte.
+const EXTRA = { ...csharpExtra, ...pythonExtra, ...webExtra };
 
 export const TRACKS = [csharp, python, web];
 export const TRACK_IDS = TRACKS.map((t) => t.id);
@@ -27,6 +33,8 @@ for (const track of TRACKS) {
       l.lang = track.lang;
       l.order = LESSONS.length;
       l.numberInChapter = li + 1;
+      l.chapterIndex = ci;
+      if (EXTRA[l.id]) l.exercises = [...l.exercises, ...EXTRA[l.id]];
       // Förkunskapskrav: föregående lektion i spåret, plus eventuella extra krav.
       l.requires = [...new Set([...(prev ? [prev.id] : []), ...(l.requires || [])])];
       LESSONS.push(l);

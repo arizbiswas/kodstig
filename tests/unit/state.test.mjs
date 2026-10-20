@@ -15,12 +15,12 @@ async function device(backend, cache) {
   return { s, timers };
 }
 
-test('läroplanen ger 9 375 XP och nivå 8 är nåbar', () => {
+test('läroplanen ger 9 375 XP och högsta nivån är nåbar', () => {
   const p = emptyProfile();
   LESSONS.forEach((l) => completeLesson(p, l.id));
   assert.equal(xpOf(p).total, 9375);
-  assert.equal(levelInfo(p).level, 8);
-  assert.equal(levelInfo(p).title, 'Målmedveten kodare');
+  assert.equal(levelInfo(p).level, 12);
+  assert.equal(levelInfo(p).title, 'Kodstig-examen');
 });
 
 test('samma lektion ger bara XP en gång', () => {
@@ -58,6 +58,7 @@ test('nivåtabellen matchar specifikationen', () => {
   assert.deepEqual(LEVELS.map((l) => [l.level, l.title, l.xp]), [
     [1, 'Kodnyfiken', 0], [2, 'Nybörjare', 120], [3, 'Kodlärling', 360], [4, 'Kodstudent', 780],
     [5, 'Kodutforskare', 1380], [6, 'Övande problemlösare', 2160], [7, 'Projektlärling', 3060], [8, 'Målmedveten kodare', 4020],
+    [9, 'Självgående kodare', 5000], [10, 'Strukturerad problemlösare', 6000], [11, 'Projektbyggare', 7200], [12, 'Kodstig-examen', 8400],
   ]);
 });
 
@@ -180,4 +181,16 @@ test('omladdning: pågående och avklarad lektion finns kvar', async () => {
   assert.ok(B.s.state.completed['py-print']);
   assert.equal(B.s.state.lessons['py-var'].step, 3);
   assert.equal(B.s.state.lessons['py-var'].answers[3], 'ålder = 12');
+});
+
+test('nivå 9 och uppåt kräver fortsättningskapitlen, inte bara XP', () => {
+  const p = emptyProfile();
+  // Alla grundlektioner i alla spår: mycket XP men inga fortsättningslektioner.
+  LESSONS.filter((l) => l.chapterIndex < 6).forEach((l) => completeLesson(p, l.id));
+  const info = levelInfo(p);
+  assert.ok(info.xp >= 4020, `XP ${info.xp}`);
+  assert.equal(info.level, 8);
+  assert.ok(info.next.reqs.some((r) => r.key === 'pro'));
+  const advice = nextStepAdvice(p);
+  assert.ok(advice.lesson && advice.lesson.chapterIndex >= 6, 'rådet pekar på en fortsättningslektion');
 });

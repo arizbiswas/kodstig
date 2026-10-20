@@ -111,6 +111,7 @@ export function render(ctx) {
           return `<tr class="${L.level <= info.level ? 'reached' : ''}"><th scope="row">${L.level}. ${esc(L.title)}</th><td>${L.xp}</td><td>${esc(L.reqText)}${L.level > info.level && miss.length ? `<br><small class="muted">Saknas: ${esc(miss.map((m) => m.text).join(', '))}</small>` : ''}</td><td>${status}</td></tr>`;
         }).join('')}
         </tbody></table></div>
+        <p class="tiny muted">Nivå 9 till 12 kräver lektioner från fortsättningskapitlen, där du skriver kod som en utvecklare gör: felhantering, klasser, algoritmer och större projekt. Den högsta nivån betyder att du har gått igenom de grunder en juniorutvecklare behöver. För ett jobb behövs sedan egna större projekt, verktyg som Git och vana att samarbeta med andra.</p>
       </details>
 
       <details class="card fold" data-k="tracks" ${open('tracks')}><summary><h2>Spåren</h2></summary>

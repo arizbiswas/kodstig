@@ -15,7 +15,14 @@ export const LEVELS = [
   { level: 6, title: 'Övande problemlösare', xp: 2160, req: { t3: 6, applied: 1 }, reqText: '6 lektioner i funktioner/struktur och 1 tillämpning eller miniprojekt' },
   { level: 7, title: 'Projektlärling', xp: 3060, req: { applied: 5, t5: 1 }, reqText: '5 tillämpningar/miniprojekt, varav minst 1 miniprojekt' },
   { level: 8, title: 'Målmedveten kodare', xp: 4020, req: { applied: 10, t5: 4 }, reqText: '10 tillämpningar/miniprojekt, varav minst 4 miniprojekt' },
+  { level: 9, title: 'Självgående kodare', xp: 5000, req: { applied: 20, pro: 10 }, reqText: '20 tillämpningar/miniprojekt och 10 fortsättningslektioner' },
+  { level: 10, title: 'Strukturerad problemlösare', xp: 6000, req: { pro: 22, t5: 9 }, reqText: '22 fortsättningslektioner och 9 miniprojekt' },
+  { level: 11, title: 'Projektbyggare', xp: 7200, req: { pro: 36, t5: 12 }, reqText: '36 fortsättningslektioner och 12 miniprojekt' },
+  { level: 12, title: 'Kodstig-examen', xp: 8400, req: { pro: 50, t5: 15 }, reqText: '50 fortsättningslektioner och 15 miniprojekt, alltså nästan hela Kodstig' },
 ];
+
+// Fortsättningskapitlen (efter de sex grundkapitlen i varje spår).
+export const BASE_CHAPTERS = 6;
 
 export function today(d = new Date()) {
   const p = (n) => String(n).padStart(2, '0');
@@ -25,13 +32,14 @@ export function dayOf(iso) { return iso ? today(new Date(iso)) : null; }
 
 // Kunskapsunderlag: varje lektion räknas en gång, i sin egen kategori.
 export function knowledge(profile) {
-  const k = { total: 0, t1: 0, t2: 0, t3: 0, t4: 0, t5: 0, applied: 0 };
+  const k = { total: 0, t1: 0, t2: 0, t3: 0, t4: 0, t5: 0, applied: 0, pro: 0 };
   for (const id of Object.keys(profile.completed || {})) {
     const l = LESSON_BY_ID.get(id);
     if (!l) continue;
     k.total++;
     k[`t${l.tier}`]++;
     if (l.tier >= 4) k.applied++;
+    if (l.chapterIndex >= BASE_CHAPTERS) k.pro++;
   }
   return k;
 }
@@ -56,6 +64,7 @@ const REQ_LABEL = {
   t3: (n) => `${n} ${n === 1 ? 'lektion' : 'lektioner'} i funktioner/struktur`,
   t5: (n) => `${n} ${n === 1 ? 'miniprojekt' : 'miniprojekt'}`,
   applied: (n) => `${n} ${n === 1 ? 'tillämpning eller miniprojekt' : 'tillämpningar/miniprojekt'}`,
+  pro: (n) => `${n} ${n === 1 ? 'fortsättningslektion' : 'fortsättningslektioner'}`,
 };
 const REQ_TIERS = { total: [1, 2, 3, 4, 5], t2: [2], t3: [3], t5: [5], applied: [4, 5] };
 
@@ -104,9 +113,9 @@ export function nextStepAdvice(profile, preferredTrack) {
   if (!info.next) return null;
   const { reqs, xpMissing } = info.next;
   if (!reqs.length) return null;
-  const want = new Set(reqs.flatMap((r) => REQ_TIERS[r.key]));
+  const wanted = (l) => reqs.some((r) => (r.key === 'pro' ? l.chapterIndex >= BASE_CHAPTERS : REQ_TIERS[r.key].includes(l.tier)));
   const avail = availableLessons(profile);
-  const pick = avail.find((l) => want.has(l.tier) && l.trackId === preferredTrack) || avail.find((l) => want.has(l.tier));
+  const pick = avail.find((l) => wanted(l) && l.trackId === preferredTrack) || avail.find(wanted);
   return {
     enoughXp: xpMissing === 0,
     reqs,
