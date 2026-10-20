@@ -495,15 +495,15 @@ async function main() {
       await page.goto(`${BASE}#/labb`);
       await page.locator('[data-lang="web"]').click();
       await page.evaluate(() => { window.__hacked = false; });
-      await page.locator('#lab-code').fill('<h1 id="t">Hej</h1><script>parent.__hacked = true; document.title = "x"</script><img src=x onerror="parent.__hacked=true">');
+      await page.locator('#lab-code').fill('<h1 id="t">Hej</h1><script>document.querySelector("#t").textContent = "Hej från JS"; try { parent.__hacked = true; } catch (e) {} try { localStorage.setItem("x", "1"); } catch (e) {}</script><img src=x onerror="parent.__hacked=true">');
       await page.waitForTimeout(700);
       const iframe = page.locator('.result-slot iframe');
-      eq(await iframe.getAttribute('sandbox'), '');
+      eq(await iframe.getAttribute('sandbox'), 'allow-scripts', 'skript får köra men utan samma ursprung');
       const access = await iframe.evaluate((f) => { try { return f.contentDocument === null ? 'blockerad' : 'öppen'; } catch { return 'blockerad'; } });
       eq(access, 'blockerad');
       eq(await page.evaluate(() => window.__hacked), false);
       const frame = page.frames().find((f) => f !== page.mainFrame());
-      eq(await frame.locator('#t').textContent(), 'Hej');
+      eq(await frame.locator('#t').textContent(), 'Hej från JS', 'elevens JavaScript kör i ramen');
       await context.close();
     });
 
@@ -672,9 +672,9 @@ async function main() {
         const { checkWeb } = await import('/src/engine/runner.js');
         const out = [];
         for (const { id, ex } of list) {
-          const good = checkWeb(ex, ex.solution);
+          const good = await checkWeb(ex, ex.solution);
           if (!good.ok) out.push(`${id}: lösningen underkänns`);
-          const bad = checkWeb(ex, ex.starter || '');
+          const bad = await checkWeb(ex, ex.starter || '');
           if (bad.ok) out.push(`${id}: startkoden godkänns redan`);
         }
         return out;

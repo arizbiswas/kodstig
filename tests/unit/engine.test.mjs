@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { runPython } from '../../src/engine/python.js';
 import { runCSharp } from '../../src/engine/csharp.js';
 import { getHints } from '../../src/engine/hints.js';
+import { grade } from '../../src/engine/grade.js';
 
 test('python: oändlig loop stoppas av stegbudgeten', () => {
   const r = runPython('while True:\n    x = 1');
@@ -122,4 +123,39 @@ test('c#: tom Select, typomvandling till interface, as och saknade interface-met
   assert.equal(r.output, '0\nflyger\nTrue\n');
   assert.equal(runCSharp('class D { }\ninterface IF { }\nIF x = (IF)new D();').error.kind, 'InvalidCastException');
   assert.equal(runCSharp('interface IA { void M(); }\nclass B : IA { }\nConsole.WriteLine(1);').error.kind, 'CS0535');
+});
+
+test('indata: input() och Console.ReadLine() läser en rad i taget', async () => {
+  const py = runPython('namn = input("Namn? ")\nålder = int(input())\nprint(f"{namn} {ålder + 1}")', { input: 'Ali\n12\n' });
+  assert.equal(py.error, null);
+  assert.equal(py.output, 'Namn? Ali 13\n');
+  const slut = runPython('input()\ninput()', { input: 'bara en' });
+  assert.equal(slut.error.kind, 'EOFError');
+  const cs = runCSharp('string namn = Console.ReadLine();\nint n = int.Parse(Console.ReadLine());\nConsole.WriteLine($"{namn} {n + 1}");\nConsole.WriteLine(Console.ReadLine() == null);', { input: 'Ali\n12' });
+  assert.equal(cs.error, null);
+  assert.equal(cs.output, 'Ali 13\nTrue\n');
+});
+
+test('slump och math: samma frö ger samma tal, talen håller sig inom gränserna', () => {
+  const code = 'import random\nfrom math import sqrt, floor\ntal = [random.randint(1, 6) for _ in range(200)]\nprint(min(tal), max(tal))\nprint(sqrt(9), floor(2.9))\nxs = [1, 2, 3]\nrandom.shuffle(xs)\nprint(sorted(xs))';
+  const a = runPython(code, { seed: 5 });
+  assert.equal(a.error, null);
+  assert.equal(a.output, '1 6\n3.0 2\n[1, 2, 3]\n');
+  assert.equal(runPython('import random\nprint(random.random())', { seed: 9 }).output, runPython('import random\nprint(random.random())', { seed: 9 }).output);
+  assert.equal(runPython('import os').error.kind, 'ModuleNotFoundError');
+  const cs = runCSharp('Random rnd = new Random();\nint lo = 10, hi = 0;\nfor (int i = 0; i < 200; i++) { int t = rnd.Next(1, 7); lo = Math.Min(lo, t); hi = Math.Max(hi, t); }\nConsole.WriteLine($"{lo} {hi}");', { seed: 3 });
+  assert.equal(cs.error, null);
+  assert.equal(cs.output, '1 6\n');
+});
+
+test('rättning med indata och slump: flera körningar, utskrift som mönster', async () => {
+  const runner = async (lang, code, calls, opts = {}) => runPython(code, { calls, ...opts });
+  const ex = { type: 'code', runs: [{ input: '3', output: '6' }, { input: '-1', output: '-2' }] };
+  assert.ok((await grade(ex, 'print(int(input()) * 2)', { lang: 'python', runner })).ok);
+  const bad = await grade(ex, 'print(6)', { lang: 'python', runner });
+  assert.ok(!bad.ok);
+  assert.equal(bad.tests.filter((t) => t.ok).length, 1);
+  const dice = { type: 'code', runs: [{ outputRe: 'Du slog [1-6]', repeat: 20 }] };
+  assert.ok((await grade(dice, 'import random\nprint("Du slog", random.randint(1, 6))', { lang: 'python', runner })).ok);
+  assert.ok(!(await grade(dice, 'import random\nprint("Du slog", random.randint(0, 6))', { lang: 'python', runner })).ok, 'en nolla hittas till slut');
 });

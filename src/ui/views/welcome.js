@@ -39,8 +39,8 @@ print(steg + 2)</code></pre>
       </section>
       <details class="more">
         <summary>Vad finns i Kodstig?</summary>
-        <p>${STATS.lessons} lektioner, ${STATS.exercises} övningar och ${STATS.projects} miniprojekt i tre spår:</p>
-        <ul>${TRACKS.map((t) => `<li><strong>${esc(t.name)}</strong>: ${t.chapters.length} kapitel, från ${esc(t.chapters[0].title.toLowerCase())} till ${esc(t.chapters[5].title.toLowerCase())}.</li>`).join('')}</ul>
+        <p>${STATS.lessons} lektioner, ${STATS.exercises} övningar och ${STATS.projects} miniprojekt i ${['', 'ett', 'två', 'tre', 'fyra', 'fem'][TRACKS.length] || TRACKS.length} spår:</p>
+        <ul>${TRACKS.map((t) => `<li><strong>${esc(t.name)}</strong>: ${t.chapters.length} kapitel, från ${esc(t.chapters[0].title.toLowerCase())} till ${esc(t.chapters[t.chapters.length - 1].title.toLowerCase())}.</li>`).join('')}</ul>
         <p>Du får XP för avklarade lektioner, en lugn lärstig att följa, ett kodlabb för egna experiment och Milo, en liten AI-studiekompis.</p>
       </details>
     </main>

@@ -106,9 +106,14 @@ const PY = {
     { text: 'Komma mellan argumenten:', example: 'namn = "Ada"\nprint("Hej", namn)' },
   ],
   input: () => [
-    'Vilket värde vill du att programmet ska arbeta med?',
-    'Kodlabbet kan inte fråga användaren. Skriv in värdet direkt i en variabel så kan du ändra det och köra igen.',
-    { text: 'Ett värde direkt i koden:', example: 'namn = "Kim"  # byt namnet och kör igen\nprint("Hej", namn)' },
+    'Hur många gånger anropas input(), och hur många rader indata finns det?',
+    'Varje input() läser nästa rad. I Kodlabbet skriver du raderna i rutan Indata, i en övning står indatan i uppgiften. Är indatan slut blir det EOFError.',
+    { text: 'Två input() behöver två rader indata:', example: 'namn = input("Namn? ")\nålder = int(input("Ålder? "))\nprint(namn, ålder)' },
+  ],
+  import: () => [
+    'Vilken modul försöker du importera?',
+    'I Kodstig finns modulerna random och math. På din egen dator med riktig Python finns många fler.',
+    { text: 'Importera från random:', example: 'import random\ntärning = random.randint(1, 6)\nprint(tärning)' },
   ],
   attr: (c) => [
     `Vilken metod anropas på ${L(c.line)}, och vilken typ har värdet?`,
@@ -409,9 +414,9 @@ const CS = {
     { text: 'En lista som växer:', example: 'List<int> tal = new List<int>();\ntal.Add(3);\nConsole.WriteLine(tal.Count);' },
   ],
   input: () => [
-    'Vilket värde vill du att programmet ska arbeta med?',
-    'Kodlabbet kan inte läsa in från tangentbordet. Skriv värdet direkt i en variabel och ändra det mellan körningarna.',
-    { text: 'Ett värde direkt i koden:', example: 'string namn = "Kim"; // byt och kör igen\nConsole.WriteLine("Hej " + namn);' },
+    'Läser programmet med Console.ReadLine()?',
+    'Console.ReadLine() läser en hel rad. ReadKey och Read finns inte i Kodstig. I Kodlabbet skriver du indata i rutan Indata.',
+    { text: 'Läs en rad och gör om den till ett tal:', example: 'string text = Console.ReadLine();\nint tal = int.Parse(text);\nConsole.WriteLine(tal * 2);' },
   ],
   'arg-count': (c) => [
     `Jämför anropet på ${L(c.line)} med metodens parametrar.`,

@@ -6,7 +6,7 @@ import { saveLessonState, completeLesson, pref } from '../../state/model.js';
 import { TIER_XP, isUnlocked } from '../../state/progression.js';
 import { scheduleLesson } from '../../state/review.js';
 import { renderExercise } from '../exercise.js';
-import { runCode, previewSrcdoc } from '../../engine/runner.js';
+import { runCode, previewFor } from '../../engine/runner.js';
 import { openCelebration } from '../celebrate.js';
 
 export function render(ctx, lessonId) {
@@ -74,14 +74,15 @@ export function render(ctx, lessonId) {
     stage.innerHTML = `<article class="card read">
       <h2 class="step-label">Läs</h2>
       <div class="prose">${rich(lesson.text)}</div>
-      <h3 class="ex-h">Exempel</h3>
+      <h3 class="ex-h">${lesson.lang === 'text' ? 'Så här kan det se ut' : 'Exempel'}</h3>
       <pre class="code-block"><code>${esc(lesson.example)}</code></pre>
-      ${isWeb ? `<div class="preview"><span class="output-label">Så här ser det ut</span><iframe title="Exemplets resultat" sandbox="" referrerpolicy="no-referrer"></iframe></div>`
+      ${lesson.exampleInput ? `<p class="tiny muted">Indata när exemplet körs, en rad per läsning: <code>${esc(lesson.exampleInput.replace(/\n$/, '').split('\n').join(' ⏎ '))}</code></p>` : ''}
+      ${lesson.lang === 'text' ? '<p class="tiny muted">Kodstig kan inte köra en riktig terminal. Öva kommandona här och prova dem sedan på din egen dator.</p>' : isWeb ? `<div class="preview"><span class="output-label">Så här ser det ut</span><iframe title="Exemplets resultat" sandbox="" referrerpolicy="no-referrer"></iframe></div>`
         : '<div class="row"><button class="btn secondary small" type="button" data-run-example>Kör exemplet</button></div><div class="output" hidden><span class="output-label">Utskrift</span><pre></pre></div>'}
       <div class="row end"><button class="btn primary" type="button" data-start>${Object.keys(state.solved).length ? 'Fortsätt öva' : 'Börja öva'}</button></div>
     </article>`;
     const ifr = stage.querySelector('iframe');
-    if (ifr) ifr.srcdoc = previewSrcdoc(lesson.example);
+    if (ifr) { const pv = previewFor(lesson.example, true); ifr.setAttribute('sandbox', pv.sandbox); ifr.srcdoc = pv.srcdoc; }
   };
 
   const showExercise = (pos) => {
@@ -165,7 +166,7 @@ export function render(ctx, lessonId) {
     on(el, 'click', '[data-milo-lesson]', () => ctx.openMilo()),
     on(el, 'click', '[data-run-example]', async (e, b) => {
       b.disabled = true;
-      const run = await runCode(lesson.lang, lesson.example, []);
+      const run = await runCode(lesson.lang, lesson.example, [], { input: lesson.exampleInput });
       b.disabled = false;
       const out = stage.querySelector('.output');
       out.hidden = false;

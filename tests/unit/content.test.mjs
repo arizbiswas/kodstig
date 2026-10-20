@@ -6,7 +6,7 @@ import { runCSharp } from '../../src/engine/csharp.js';
 import { runPython } from '../../src/engine/python.js';
 import { grade, fillCode, normalizeOutput, orderLines, shuffled } from '../../src/engine/grade.js';
 
-const runner = async (lang, code, calls) => (lang === 'csharp' ? runCSharp : runPython)(code, { calls });
+const runner = async (lang, code, calls, opts = {}) => (lang === 'csharp' ? runCSharp : runPython)(code, { calls, ...opts });
 
 test('omfattning: 130 lektioner, 852 övningar, 17 miniprojekt', () => {
   assert.deepEqual(STATS, { lessons: 130, exercises: 852, projects: 17 });
@@ -24,28 +24,28 @@ test('unika id:n och förkunskapskrav som pekar på riktiga lektioner', () => {
   }
 });
 
-for (const track of TRACKS.filter((t) => t.lang !== 'web')) {
+for (const track of TRACKS.filter((t) => t.lang === 'python' || t.lang === 'csharp')) {
   test(`${track.name}: exempel, svarsalternativ, luckor och lösningar stämmer med kodmotorn`, async () => {
     for (const les of LESSONS.filter((l) => l.trackId === track.id)) {
-      const ex0 = await runner(track.lang, les.example, []);
+      const ex0 = await runner(track.lang, les.example, [], { input: les.exampleInput });
       assert.equal(ex0.error, null, `${les.id}: exemplet ger fel ${ex0.error && ex0.error.message}`);
       for (const [i, ex] of les.exercises.entries()) {
         const tag = `${les.id}#${i}`;
         if (ex.type === 'choice' && ex.out) {
-          const r = await runner(track.lang, ex.code, []);
+          const r = await runner(track.lang, ex.code, [], { input: ex.input });
           assert.equal(normalizeOutput(r.output), ex.options[ex.answer], `${tag}: rätt alternativ matchar inte verklig utskrift`);
         }
         if (ex.type === 'fill') {
           for (const [bi, acc] of ex.answers.entries()) for (const a of acc) {
             const ans = ex.answers.map((x) => x[0]); ans[bi] = a;
-            const r = await runner(track.lang, fillCode(ex.code, ans), []);
+            const r = await runner(track.lang, fillCode(ex.code, ans), [], { input: ex.input });
             assert.equal(r.error, null, `${tag}: luckan "${a}" ger fel`);
             if (ex.output !== undefined) assert.equal(normalizeOutput(r.output), normalizeOutput(ex.output), `${tag}: "${a}"`);
           }
         }
         if (ex.type === 'order') {
           for (const lines of [ex.lines, ...(ex.alt || [])]) {
-            const r = await runner(track.lang, lines.join('\n'), []);
+            const r = await runner(track.lang, lines.join('\n'), [], { input: ex.input });
             assert.equal(r.error, null, `${tag}: raderna i rätt ordning ger fel ${r.error && r.error.message}`);
             if (ex.output !== undefined) assert.equal(normalizeOutput(r.output), normalizeOutput(ex.output), `${tag}: utskriften stämmer inte`);
           }

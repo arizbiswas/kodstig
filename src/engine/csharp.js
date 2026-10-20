@@ -4,7 +4,7 @@
 // List<T>, Dictionary<K,V>, lambdas och de vanligaste LINQ-metoderna, plus
 // Console, Math och string. Typfel och namnfel rapporteras som kompileringsfel.
 // Ingen JavaScript-eval används.
-import { CodeError, StepLimit, MAX_STEPS, MAX_OUTPUT } from './errors.js';
+import { CodeError, StepLimit, MAX_STEPS, MAX_OUTPUT, inputLines, makeRng } from './errors.js';
 
 const TYPE_KW = new Set(['int', 'double', 'string', 'bool', 'char', 'var', 'decimal', 'float', 'long', 'void', 'object']);
 const KW = new Set([...TYPE_KW, 'if', 'else', 'while', 'for', 'foreach', 'in', 'do', 'return', 'break', 'continue', 'new',
@@ -180,7 +180,7 @@ class Parser {
     this.toks = toks;
     this.p = 0;
     // Klassnamn samlas in först, så att en klass kan användas som typ innan den deklarerats.
-    this.classNames = new Set(Object.keys(EXC_TREE));
+    this.classNames = new Set([...Object.keys(EXC_TREE), 'Random']);
     toks.forEach((t, i) => {
       if (t.t === 'KW' && (t.v === 'class' || t.v === 'interface') && toks[i + 1] && toks[i + 1].t === 'ID') this.classNames.add(toks[i + 1].v);
     });
@@ -1034,8 +1034,11 @@ class Interp {
     for (const [name, base] of Object.entries(EXC_TREE)) {
       this.classes.set(name, { name, builtin: true, baseNames: base ? [base] : [], fields: new Map(), props: new Map(), methods: new Map(), ctors: [], statics: new Map() });
     }
+    this.classes.set('Random', { name: 'Random', builtin: true, isRandom: true, baseNames: [], fields: new Map(), props: new Map(), methods: new Map(), ctors: [], statics: new Map() });
     for (const [name, c] of prog.classes) this.classes.set(name, c);
     for (const c of this.classes.values()) this.link(c);
+    this.stdin = inputLines(opts.input);
+    this.seed = opts.seed;
     for (const c of prog.classes.values()) this.validate(c);
     for (const c of prog.classes.values()) if (!c.builtin && !c.isInterface && !c.isAbstract) this.checkAbstracts(c, c.line);
     this.trace = opts.trace ? [] : null;
@@ -1228,6 +1231,11 @@ class Interp {
     return V(c.name, obj);
   }
   construct(c, obj, args, line, ctx) {
+    if (c.isRandom) {
+      if (args.length > 1 || (args[0] && args[0].t !== 'int')) throw cErr('CS1729', 'new Random() tar inget argument, eller ett heltal som frö: new Random(42).', line, 'no-ctor');
+      obj.rng = makeRng(args[0] ? args[0].v : this.seed !== undefined ? this.seed + this.objCount : undefined);
+      return;
+    }
     if (c.builtin) {
       if (args.length > 2) throw cErr('CS1729', `${c.name} tar högst två argument.`, line, 'no-ctor');
       if (args[0] && args[0].t !== 'string') throw cErr('CS1503', `Meddelandet till ${c.name} ska vara text (string).`, line, 'arg-type');
@@ -1259,6 +1267,7 @@ class Interp {
     const obj = val.v;
     const ts = (this.findMethods(obj.cls, 'ToString') || []).find((k) => !k.params.length && k.body && k.isOverride);
     if (ts) return csStr(this.invoke(ts, [], null, { cls: ts.cls, self: obj }));
+    if (obj.cls.isRandom) return 'System.Random';
     if (this.isExc(obj.cls)) return `${obj.cls.name}: ${obj.fields.get('Message').value}`;
     return obj.cls.name;
   }
@@ -2058,8 +2067,12 @@ class Interp {
         this.write(s + (name === 'WriteLine' ? '\n' : ''));
         return V('void', null);
       }
-      case 'Console.ReadLine': case 'Console.ReadKey': case 'Console.Read':
-        throw rErr('Stöds inte', 'Console.ReadLine() stöds inte i Kodstig. Ge variabeln ett värde direkt i koden i stället.', line, 'input');
+      case 'Console.ReadLine':
+        this.argCount(full, a, 0, 0, line);
+        // Precis som i .NET blir det null när det inte finns mer indata.
+        return V('string', this.stdin.length ? this.stdin.shift() : null);
+      case 'Console.ReadKey': case 'Console.Read':
+        throw rErr('Stöds inte', 'Console.ReadKey() och Console.Read() stöds inte i Kodstig. Använd Console.ReadLine() för att läsa en hel rad.', line, 'input');
       case 'Math.Max': case 'Math.Min': {
         this.argCount(full, a, 2, 2, line);
         const x = num(a[0], full), y = num(a[1], full);
@@ -2245,9 +2258,23 @@ class Interp {
     v.ord = { src, keys };
     return v;
   }
+  randomCall(o, name, a, line) {
+    const int = (v, what) => { if (!v || v.t !== 'int') throw cErr('CS1503', `${what} ska vara ett heltal (int).`, line, 'arg-type'); return v.v; };
+    if (name === 'Next') {
+      if (a.length > 2) throw cErr('CS1501', 'Next tar högst två argument: Next(min, max).', line, 'arg-count');
+      const lo = a.length === 2 ? int(a[0], 'Första argumentet till Next') : 0;
+      const hi = a.length ? int(a[a.length - 1], 'Argumentet till Next') : 2147483647;
+      if (hi < lo) throw rErr('ArgumentOutOfRangeException', `Next(${lo}, ${hi}): det första talet får inte vara större än det andra.`, line, 'index-range');
+      return V('int', lo + Math.floor(o.rng() * (hi - lo)));
+    }
+    if (name === 'NextDouble' && !a.length) return V('double', o.rng());
+    if (name === 'ToString' && !a.length) return V('string', 'System.Random');
+    throw cErr('CS1061', `Random har ingen metod som heter ${name}. Använd Next(min, max) eller NextDouble().`, line, 'unknown-member');
+  }
   instanceCall(obj, name, a, line, ctx) {
     const t = obj.t;
     if (obj.v === null && t !== 'null') throw rErr('NullReferenceException', `Värdet är null, så ${name}() kan inte anropas. Har objektet skapats med new?`, line, 'null');
+    if (obj.v instanceof CsObject && obj.v.cls.isRandom) return this.randomCall(obj.v, name, a, line);
     if (obj.v instanceof CsObject) {
       const o = obj.v;
       const m = this.dispatch(this.classes.get(t) || o.cls, o.cls, name, a, line);
@@ -2452,12 +2479,12 @@ export const TRACE_MAX = 500;
 const LOOP_KINDS = new Set(['While', 'DoWhile', 'For', 'Foreach']);
 const clip = (s) => (s.length > 80 ? `${s.slice(0, 77)}...` : s);
 
-export function runCSharp(code, { calls = [], maxSteps, trace = false } = {}) {
+export function runCSharp(code, { calls = [], maxSteps, trace = false, input, seed } = {}) {
   const res = { output: '', error: null, calls: [] };
   let interp;
   try {
     const prog = parseCSharp(code);
-    interp = new Interp(prog, { maxSteps, trace });
+    interp = new Interp(prog, { maxSteps, trace, input, seed });
     interp.run();
   } catch (e) {
     res.error = asError(e);

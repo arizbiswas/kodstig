@@ -2,7 +2,7 @@
 // kontot. Tipsen fungerar utan AI och börjar om när koden ändras.
 import { h, esc, on, codeEditor, announce } from '../dom.js';
 import { setLab } from '../../state/model.js';
-import { runCode, traceCode, previewSrcdoc } from '../../engine/runner.js';
+import { runCode, traceCode, previewFor } from '../../engine/runner.js';
 import { getHints } from '../../engine/hints.js';
 
 export const LAB_LANGS = [
@@ -12,9 +12,31 @@ export const LAB_LANGS = [
 ];
 
 const LIMITS = {
-  python: 'Kodlabbets Python är en egen, förenklad tolk som körs i webbläsaren. Den klarar variabler, if, loopar, funktioner, listor, ordlistor, mängder, listbyggare, lambda, klasser med arv, try/except/raise, strängmetoder och f-strängar. Moduler (import), with, filer och input() finns inte. Program som kör för länge stoppas efter några sekunder.',
-  csharp: 'Kodlabbets C# är en egen, förenklad tolk som körs i webbläsaren, inte en riktig .NET-kompilator. Den klarar variabler, if, switch, loopar, metoder, arrayer, List<T>, Dictionary<K,V>, egna klasser med arv och interface, undantag med try/catch, lambdas och vanliga LINQ-metoder. Console.ReadLine, async, egna generiska typer och bibliotek utöver det vanligaste finns inte. Program som kör för länge stoppas efter några sekunder.',
-  web: 'HTML och CSS visas i en isolerad ram. JavaScript körs inte där, och sidan kan inte nå resten av Kodstig eller ditt konto. Bilder från internet (https) kan visas.',
+  python: 'Kodlabbets Python är en egen, förenklad tolk som körs i webbläsaren. Den klarar variabler, if, loopar, funktioner, listor, ordlistor, mängder, listbyggare, lambda, klasser med arv, try/except/raise, strängmetoder, f-strängar, input() och modulerna random och math. Andra moduler, with och filer finns inte. Slumptalen blir inte samma som i riktig Python. Program som kör för länge stoppas efter några sekunder.',
+  csharp: 'Kodlabbets C# är en egen, förenklad tolk som körs i webbläsaren, inte en riktig .NET-kompilator. Den klarar variabler, if, switch, loopar, metoder, arrayer, List<T>, Dictionary<K,V>, egna klasser med arv och interface, undantag med try/catch, lambdas, vanliga LINQ-metoder, Console.ReadLine() och Random. Async, egna generiska typer och bibliotek utöver det vanligaste finns inte. Slumptalen blir inte samma som i riktig .NET. Program som kör för länge stoppas efter några sekunder.',
+  web: 'HTML och CSS visas i en isolerad ram. JavaScript i en script-tagg körs också där, men sidan kan inte nå resten av Kodstig, ditt konto eller internet. Loopar som kör väldigt länge stoppas. Bilder från internet (https) kan visas.',
+};
+
+// Så kör man samma kod på sin egen dator. Allt är gratis och fungerar utan konto.
+const HOME = {
+  python: { file: 'program.py', type: 'text/x-python', steps: [
+    'Installera Python från python.org (Windows och Mac) eller med pakethanteraren (Linux). Kryssa i "Add Python to PATH" på Windows.',
+    'Installera Visual Studio Code från code.visualstudio.com och lägg till tillägget Python.',
+    'Ladda ner din kod här nedanför, eller skapa en fil som slutar på .py och klistra in koden.',
+    'Öppna en terminal i mappen och skriv: python program.py (på Mac och Linux ibland python3 program.py). Med input() skriver du svaren direkt i terminalen.',
+  ] },
+  csharp: { file: 'Program.cs', type: 'text/plain', steps: [
+    'Installera .NET SDK från dotnet.microsoft.com (gratis för Windows, Mac och Linux).',
+    'Installera Visual Studio Code från code.visualstudio.com och lägg till tillägget C# Dev Kit.',
+    'Öppna en terminal och skriv: dotnet new console -o MittProgram, och sedan: cd MittProgram',
+    'Byt ut innehållet i Program.cs mot din kod (ladda ner den här nedanför) och skriv: dotnet run. Med Console.ReadLine() skriver du svaren direkt i terminalen.',
+  ] },
+  web: { file: 'index.html', type: 'text/html', steps: [
+    'Ladda ner din sida här nedanför. Filen heter index.html.',
+    'Dubbelklicka på filen så öppnas den i webbläsaren. Mer behövs inte.',
+    'För att ändra: öppna filen i Visual Studio Code (code.visualstudio.com), spara och uppdatera webbläsaren.',
+    'Vill du lägga ut sidan på nätet finns gratistjänster som GitHub Pages. Tänk på att allt du lägger ut kan ses av alla.',
+  ] },
 };
 
 export function render(ctx, params = {}) {
@@ -38,7 +60,12 @@ export function render(ctx, params = {}) {
           <button class="btn ghost" type="button" data-ask>Fråga Milo</button>
           <button class="btn ghost small push" type="button" data-restore>Återställ exemplet</button>
         </div>
+        <details class="lab-input"><summary>Indata till input() och ReadLine()</summary>
+          <label class="tiny muted" for="lab-stdin">En rad per gång programmet läser. Raderna används uppifrån och ner.</label>
+          <textarea id="lab-stdin" class="stdin" rows="3" spellcheck="false" autocapitalize="off" autocomplete="off"></textarea>
+        </details>
         <details class="limits"><summary>Vad klarar Kodlabbet?</summary><p></p></details>
+        <details class="take-home"><summary>Kör koden på din egen dator</summary><div class="take-home-body"></div></details>
       </div>
       <div class="lab-result card">
         <div class="result-slot"></div>
@@ -56,6 +83,8 @@ export function render(ctx, params = {}) {
   let trace = null; // { code, steps, i, result }
 
   const resultSlot = el.querySelector('.result-slot');
+  const stdinEl = el.querySelector('#lab-stdin');
+  const stdin = () => stdinEl.value;
   const hintSlot = el.querySelector('.hint-slot');
 
   const persist = () => {
@@ -125,7 +154,7 @@ export function render(ctx, params = {}) {
     const btn = el.querySelector('[data-trace]');
     btn.disabled = true;
     resultSlot.innerHTML = '<p class="muted" role="status">Förbereder…</p>';
-    const result = await traceCode(lang, code);
+    const result = await traceCode(lang, code, stdin());
     if (token !== runToken) return;
     btn.disabled = false;
     lastRun = { code, result, lang };
@@ -137,7 +166,10 @@ export function render(ctx, params = {}) {
   const showResult = () => {
     if (lang === 'web') {
       resultSlot.innerHTML = '<div class="preview tall"><span class="output-label">Förhandsvisning</span><iframe title="Förhandsvisning av din sida" sandbox="" referrerpolicy="no-referrer"></iframe></div>';
-      resultSlot.querySelector('iframe').srcdoc = previewSrcdoc(editor.value);
+      const ifr = resultSlot.querySelector('iframe');
+      const pv = previewFor(editor.value, true);
+      ifr.setAttribute('sandbox', pv.sandbox);
+      ifr.srcdoc = pv.srcdoc;
       return;
     }
     if (!lastRun) {
@@ -169,6 +201,10 @@ export function render(ctx, params = {}) {
     el.querySelector('[data-trace]').hidden = lang === 'web';
     trace = null;
     el.querySelector('.limits p').textContent = LIMITS[lang];
+    el.querySelector('.lab-input').hidden = lang === 'web';
+    const home = HOME[lang];
+    el.querySelector('.take-home-body').innerHTML = `<ol>${home.steps.map((t) => `<li>${esc(t)}</li>`).join('')}</ol>
+      <button class="btn secondary small" type="button" data-download>Ladda ner ${esc(home.file)}</button>`;
     lastRun = null;
     hint = null;
     renderHint();
@@ -182,7 +218,7 @@ export function render(ctx, params = {}) {
     const btn = el.querySelector('[data-run]');
     btn.disabled = true;
     resultSlot.innerHTML = '<p class="muted" role="status">Kör…</p>';
-    const result = await runCode(lang, code, []);
+    const result = await runCode(lang, code, [], { input: stdin() });
     if (token !== runToken) return;
     btn.disabled = false;
     lastRun = { code, result, lang };
@@ -240,6 +276,18 @@ export function render(ctx, params = {}) {
     }),
     on(el, 'click', '[data-hint-close]', () => { hint = null; renderHint(); el.querySelector('[data-hint]').focus(); }),
     on(el, 'click', '[data-ask]', () => ctx.openMilo()),
+    on(el, 'click', '[data-download]', () => {
+      const home = HOME[lang];
+      const url = URL.createObjectURL(new Blob([editor.value], { type: `${home.type};charset=utf-8` }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = home.file;
+      document.body.append(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      announce(`${home.file} laddades ner.`);
+    }),
     on(el, 'click', '[data-restore]', () => {
       const l = LAB_LANGS.find((x) => x.id === lang);
       if (editor.value !== l.starter && !confirm('Ersätta din kod med exemplet? Din nuvarande kod i det här språket försvinner.')) return;

@@ -2,7 +2,7 @@
 // Stöder variabler, tal, text, f-strängar, villkor, loopar, listor, tupler,
 // ordböcker, funktioner och vanliga inbyggda funktioner. Den kör aldrig
 // JavaScript-eval: koden tolkas steg för steg med en stegbudget.
-import { CodeError, StepLimit, MAX_STEPS, MAX_OUTPUT } from './errors.js';
+import { CodeError, StepLimit, MAX_STEPS, MAX_OUTPUT, inputLines, makeRng } from './errors.js';
 
 const KEYWORDS = new Set(['if', 'elif', 'else', 'while', 'for', 'in', 'def', 'return', 'pass', 'break', 'continue',
   'and', 'or', 'not', 'True', 'False', 'None', 'is', 'global', 'lambda', 'import', 'from', 'class', 'try', 'except', 'finally', 'raise', 'with', 'yield', 'async', 'await', 'del', 'as']);
@@ -180,7 +180,7 @@ class Parser {
           throw syntax(`${c.v} måste komma direkt efter ett if-block med samma indragning.`, c.line, 'stray-else');
         case 'except': case 'finally':
           throw syntax(`${c.v} måste komma direkt efter ett try-block med samma indragning.`, c.line, 'stray-except');
-        case 'import': case 'from': case 'with': case 'yield': case 'async': case 'await': case 'del':
+        case 'with': case 'yield': case 'async': case 'await': case 'del':
           throw new CodeError('Stöds inte', `Kodstigs övningsmotor stöder inte ${c.v} ännu.`, c.line, 'unsupported', 'compile');
         default: break;
       }
@@ -204,6 +204,32 @@ class Parser {
     const c = this.cur;
     if (c.t === 'KW') {
       if (c.v === 'pass') { this.next(); return { k: 'Pass', line: c.line }; }
+      if (c.v === 'import') {
+        this.next();
+        const names = [];
+        do {
+          if (names.length) this.next();
+          const mod = this.name();
+          const as = this.isKw('as') ? (this.next(), this.name()) : mod;
+          names.push({ mod, as });
+        } while (this.isOp(','));
+        return { k: 'Import', names, line: c.line };
+      }
+      if (c.v === 'from') {
+        this.next();
+        const mod = this.name();
+        if (!this.isKw('import')) throw syntax(`Skriv from ${mod} import namn, till exempel from random import randint`, c.line, 'syntax');
+        this.next();
+        const names = [];
+        do {
+          if (names.length) this.next();
+          if (this.isOp('*')) throw syntax('from ... import * stöds inte. Skriv namnen du behöver, till exempel from random import randint, choice', c.line, 'unsupported');
+          const name = this.name();
+          const as = this.isKw('as') ? (this.next(), this.name()) : name;
+          names.push({ name, as });
+        } while (this.isOp(','));
+        return { k: 'ImportFrom', mod, names, line: c.line };
+      }
       if (c.v === 'break' || c.v === 'continue') {
         if (!this.inLoop) throw syntax(`${c.v} kan bara användas inuti en loop.`, c.line);
         this.next(); return { k: c.v === 'break' ? 'Break' : 'Continue', line: c.line };
@@ -689,6 +715,7 @@ class PySet {
 // Ett undantag som kastats med raise (eller ett motorfel som fångats och kastats vidare).
 class PyRaise { constructor(exc, line) { this.exc = exc; this.line = line; } }
 class Builtin { constructor(name, fn) { this.name = name; this.fn = fn; } }
+class PyModule { constructor(name) { this.name = name; this.attrs = new Map(); } }
 class BreakSig {}
 class ContinueSig {}
 class ReturnSig { constructor(v) { this.v = v; } }
@@ -710,6 +737,7 @@ export function typeName(v) {
   if (v instanceof Range) return 'range';
   if (v instanceof PyFunc || v instanceof Builtin || v instanceof BoundMethod) return 'function';
   if (v instanceof PySet) return 'set';
+  if (v instanceof PyModule) return 'module';
   if (v instanceof PyObject) return v.cls.name;
   if (v instanceof PyClass) return 'type';
   return 'object';
@@ -751,6 +779,7 @@ export function pyRepr(v, seen = new Set()) {
   if (v instanceof PyDict) return '{' + [...v.map.values()].map(([k, x]) => `${pyRepr(k, seen)}: ${pyRepr(x, seen)}`).join(', ') + '}';
   if (v instanceof Range) return v.step === 1 ? `range(${v.start}, ${v.stop})` : `range(${v.start}, ${v.stop}, ${v.step})`;
   if (v instanceof PyFunc || v instanceof Builtin) return `<function ${v.name}>`;
+  if (v instanceof PyModule) return `<module '${v.name}'>`;
   if (v instanceof BoundMethod) return `<metod ${v.name}>`;
   if (v instanceof PySet) return v.map.size ? '{' + v.items().map((x) => pyRepr(x, seen)).join(', ') + '}' : 'set()';
   if (v instanceof PyClass) return `<class '${v.name}'>`;
@@ -892,6 +921,9 @@ class Interp {
     this.handling = [];
     this.builtins = this.makeBuiltins();
     this.trace = opts.trace ? [] : null;
+    this.stdin = inputLines(opts.input);
+    this.rng = makeRng(opts.seed);
+    this.modules = new Map();
     this.callStack = [];
     this.cur = null;
   }
@@ -900,7 +932,7 @@ class Interp {
     if (!this.trace) return;
     this.cur = scope;
     if (this.trace.length >= TRACE_MAX) return;
-    const show = (vars) => [...vars].filter(([, v]) => !(v instanceof PyFunc || v instanceof PyClass || v instanceof Builtin)).map(([k, v]) => [k, clip(safeRepr(v))]);
+    const show = (vars) => [...vars].filter(([, v]) => !(v instanceof PyFunc || v instanceof PyClass || v instanceof Builtin || v instanceof PyModule)).map(([k, v]) => [k, clip(safeRepr(v))]);
     // Varje anrop blir en ram: den som körs nu först, sedan de som väntar på den.
     const frame = (sc) => (sc && sc.fname ? { name: `${sc.fname}()`, vars: show(sc.vars) } : null);
     const frames = [frame(scope), ...this.callStack.slice().reverse().map(frame)].filter(Boolean).slice(0, 5);
@@ -929,7 +961,12 @@ class Interp {
       this.write(args.map(pyStr).join(sep) + end);
       return null;
     });
-    def('input', (a, k, line) => { throw new CodeError('Stöds inte', 'input() stöds inte i Kodstig. Ge variabeln ett värde direkt i koden i stället.', line, 'input'); });
+    def('input', (args, kw, line) => {
+      argc('input', args, 0, 1, line);
+      if (args.length) this.write(pyStr(args[0]));
+      if (!this.stdin.length) throw new CodeError('EOFError', 'input() vill läsa en rad, men det finns ingen mer indata. I Kodlabbet skriver du indata i rutan Indata, en rad per input().', line, 'input');
+      return this.stdin.shift();
+    });
     def('len', (args, kw, line) => {
       argc('len', args, 1, 1, line);
       const v = args[0];
@@ -1156,6 +1193,12 @@ class Interp {
       case 'Break': throw new BreakSig();
       case 'Continue': throw new ContinueSig();
       case 'Pass': return;
+      case 'Import': for (const n of s.names) this.setVar(n.as, this.module(n.mod, s.line), scope); return;
+      case 'ImportFrom': {
+        const mod = this.module(s.mod, s.line);
+        for (const n of s.names) this.setVar(n.as, this.getAttr(mod, n.name, s.line), scope);
+        return;
+      }
       case 'Global': if (scope) s.names.forEach((n) => scope.globals.add(n)); return;
       default: throw new CodeError('Internt fel', 'Okänd sats.', s.line);
     }
@@ -1443,8 +1486,78 @@ class Interp {
     });
   }
 
+  // Modulerna random och math. Andra moduler finns inte i Kodstig.
+  module(name, line) {
+    if (this.modules.has(name)) return this.modules.get(name);
+    const F = (v) => new PyFloat(v);
+    const n = (v, fn) => {
+      if (typeof v === 'number') return v;
+      if (v instanceof PyFloat) return v.v;
+      if (typeof v === 'boolean') return +v;
+      throw new CodeError('TypeError', `${fn}() behöver ett tal, inte ${typeName(v)}.`, line, 'type');
+    };
+    const int = (v, fn) => { if (typeof v !== 'number') throw new CodeError('TypeError', `${fn}() behöver heltal, inte ${typeName(v)}.`, line, 'type'); return v; };
+    const seqOf = (v, fn) => {
+      if (typeof v === 'string') return [...v];
+      if (Array.isArray(v)) return v;
+      if (v instanceof Tuple) return v.items;
+      if (v instanceof Range) return [...iterate(v, line)];
+      throw new CodeError('TypeError', `${fn}() behöver en lista, en tupel eller en sträng, inte ${typeName(v)}.`, line, 'type');
+    };
+    const pick = (k) => Math.floor(this.rng() * k);
+    let attrs;
+    if (name === 'random') {
+      attrs = {
+        randint: (a) => { const lo = int(a[0], 'randint'), hi = int(a[1], 'randint'); if (hi < lo) throw new CodeError('ValueError', `randint(${lo}, ${hi}): det första talet får inte vara större än det andra.`, line, 'value'); return lo + pick(hi - lo + 1); },
+        randrange: (a) => {
+          const [lo, hi, st] = a.length === 1 ? [0, int(a[0], 'randrange'), 1] : [int(a[0], 'randrange'), int(a[1], 'randrange'), a[2] === undefined ? 1 : int(a[2], 'randrange')];
+          const count = Math.max(0, Math.ceil((hi - lo) / st));
+          if (!count) throw new CodeError('ValueError', 'randrange() fick ett tomt intervall.', line, 'value');
+          return lo + st * pick(count);
+        },
+        random: () => F(this.rng()),
+        uniform: (a) => { const lo = n(a[0], 'uniform'), hi = n(a[1], 'uniform'); return F(lo + (hi - lo) * this.rng()); },
+        choice: (a) => { const xs = seqOf(a[0], 'choice'); if (!xs.length) throw new CodeError('IndexError', 'choice() kan inte välja från en tom lista.', line, 'index'); return xs[pick(xs.length)]; },
+        shuffle: (a) => {
+          if (!Array.isArray(a[0])) throw new CodeError('TypeError', 'shuffle() blandar en lista på plats. Ge den en lista.', line, 'type');
+          const xs = a[0];
+          for (let i = xs.length - 1; i > 0; i--) { const j = pick(i + 1); [xs[i], xs[j]] = [xs[j], xs[i]]; }
+          return null;
+        },
+        sample: (a) => {
+          const xs = [...seqOf(a[0], 'sample')]; const k = int(a[1], 'sample');
+          if (k > xs.length || k < 0) throw new CodeError('ValueError', `sample() kan inte välja ${k} element ur ${xs.length}.`, line, 'value');
+          for (let i = xs.length - 1; i > 0; i--) { const j = pick(i + 1); [xs[i], xs[j]] = [xs[j], xs[i]]; }
+          return xs.slice(0, k);
+        },
+        seed: (a) => { this.rng = makeRng(a.length ? (a[0] instanceof PyFloat ? a[0].v : a[0]) : undefined); return null; },
+      };
+    } else if (name === 'math') {
+      attrs = {
+        sqrt: (a) => { const x = n(a[0], 'sqrt'); if (x < 0) throw new CodeError('ValueError', 'math.sqrt() fungerar inte på negativa tal.', line, 'value'); return F(Math.sqrt(x)); },
+        floor: (a) => Math.floor(n(a[0], 'floor')),
+        ceil: (a) => Math.ceil(n(a[0], 'ceil')),
+        fabs: (a) => F(Math.abs(n(a[0], 'fabs'))),
+        pow: (a) => F(n(a[0], 'pow') ** n(a[1], 'pow')),
+        gcd: (a) => { let x = Math.abs(int(a[0], 'gcd')), y = Math.abs(int(a[1], 'gcd')); while (y) [x, y] = [y, x % y]; return x; },
+        pi: F(Math.PI),
+        e: F(Math.E),
+      };
+    } else {
+      throw new CodeError('ModuleNotFoundError', `Modulen ${name} finns inte i Kodstig. Här kan du importera random och math. På din egen dator finns många fler.`, line, 'import');
+    }
+    const mod = new PyModule(name);
+    for (const [k, v] of Object.entries(attrs)) mod.attrs.set(k, typeof v === 'function' ? new Builtin(k, (args) => v(args)) : v);
+    this.modules.set(name, mod);
+    return mod;
+  }
+
   getAttr(obj, name, line) {
     const m = (fn) => new Builtin(name, fn);
+    if (obj instanceof PyModule) {
+      if (obj.attrs.has(name)) return obj.attrs.get(name);
+      throw new CodeError('AttributeError', `Modulen ${obj.name} har inget som heter ${name}.`, line, 'attr');
+    }
     if (obj instanceof PyObject) {
       if (obj.attrs.has(name)) return obj.attrs.get(name);
       const v = obj.cls.find(name);
@@ -1596,12 +1709,12 @@ export const TRACE_MAX = 500;
 const clip = (s) => (s.length > 80 ? `${s.slice(0, 77)}...` : s);
 function safeRepr(v) { try { return pyRepr(v); } catch { return '?'; } }
 
-export function runPython(code, { calls = [], maxSteps, trace = false } = {}) {
+export function runPython(code, { calls = [], maxSteps, trace = false, input, seed } = {}) {
   const res = { output: '', error: null, calls: [] };
   let interp;
   try {
     const ast = parsePython(code);
-    interp = new Interp({ maxSteps, trace });
+    interp = new Interp({ maxSteps, trace, input, seed });
     interp.run(ast);
   } catch (e) {
     res.output = interp ? interp.output() : '';

@@ -425,6 +425,12 @@ legend { padding: 0; margin-bottom: .4em; font-weight: 600; }
 .lab-actions { margin-top: .8rem; }
 .limits { margin-top: .8rem; font-size: .92rem; }
 .limits p { margin: .5rem 0 0; color: var(--muted); }
+.lab-input, .take-home { margin-top: .8rem; font-size: .92rem; }
+.lab-input summary, .take-home summary, .limits summary { cursor: pointer; font-weight: 600; }
+.lab-input label { display: block; margin: .4rem 0 .3rem; }
+.stdin { width: 100%; font-family: var(--mono); font-size: .9rem; background: var(--code-bg); color: var(--code-text); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: .5rem .6rem; resize: vertical; }
+.take-home ol { margin: .5rem 0 .7rem; padding-left: 1.3rem; }
+.take-home li { margin-bottom: .3rem; }
 .lab-result .output { margin-top: 0; }
 .hints { margin-top: 1rem; background: var(--warn-soft); border-radius: 12px; padding: .8rem 1rem; }
 .hints ol { margin: .3rem 0 .6rem; padding-left: 1.2rem; }

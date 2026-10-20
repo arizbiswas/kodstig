@@ -64,8 +64,10 @@ const declOk = (r, c) => {
   return v !== undefined && (!c.re || new RegExp(c.re, 'i').test(v));
 };
 
-export function runWebChecks(ex, html, parse) {
-  const doc = parse(html);
+// dom är sidan efter att skripten kört (JavaScript-övningar). Källkodskontroller
+// och CSS läses alltid ur elevens egen kod.
+export function runWebChecks(ex, html, parse, dom) {
+  const doc = parse(dom ?? html);
   const css = styleText(html);
   const rules = parseCss(css);
   const tests = (ex.checks || []).map((c) => {

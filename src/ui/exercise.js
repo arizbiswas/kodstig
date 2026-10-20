@@ -3,7 +3,7 @@
 // begreppet, vad som kan ändras, ett liknande exempel och sist ett lösningsförslag.
 import { h, esc, on, codeEditor, announce } from './dom.js';
 import { grade, show, orderLines, shuffled } from '../engine/grade.js';
-import { runCode, checkWeb, previewSrcdoc } from '../engine/runner.js';
+import { runCode, checkWeb, previewFor } from '../engine/runner.js';
 import { getHints } from '../engine/hints.js';
 import { playCorrect } from './media.js';
 
@@ -18,6 +18,7 @@ export function renderExercise(ex, { lang, saved, solved = false, onChange, onSo
     <p class="ex-kind">${TYPE_LABEL[ex.type]}</p>
     <div class="ex-prompt">${prompt(ex.prompt)}</div>
     ${ex.type === 'choice' && ex.code ? `<pre class="code-block"><code>${esc(ex.code)}</code></pre>` : ''}
+    ${inputNote(ex)}
     <div class="ex-input"></div>
     <div class="feedback" role="status" aria-live="polite"></div>
     <div class="ex-actions row gap wrap">
@@ -106,7 +107,7 @@ export function renderExercise(ex, { lang, saved, solved = false, onChange, onSo
 
   const iframe = el.querySelector('iframe');
   let pt = null;
-  const updatePreview = () => { if (iframe) iframe.srcdoc = previewSrcdoc(editor.value); };
+  const updatePreview = () => { if (iframe) setFrame(iframe, previewFor(editor.value, !!ex.js)); };
   function schedulePreview() { clearTimeout(pt); pt = setTimeout(updatePreview, 300); }
   if (iframe) updatePreview();
 
@@ -240,7 +241,9 @@ export function renderExercise(ex, { lang, saved, solved = false, onChange, onSo
     }),
     on(el, 'click', '[data-run]', async (e, b) => {
       b.disabled = true;
-      try { showOutput(await runCode(lang, editor.value, [])); } finally { b.disabled = false; }
+      // Med indata i övningen körs Kör med första körningens indata.
+      const input = ex.runs ? ex.runs[0].input : ex.input;
+      try { showOutput(await runCode(lang, editor.value, [], { input })); } finally { b.disabled = false; }
     }),
   ];
   if (solved) el.classList.add('was-solved');
@@ -254,6 +257,19 @@ export function renderExercise(ex, { lang, saved, solved = false, onChange, onSo
     code: () => (editor ? editor.value : null),
     destroy() { clearTimeout(pt); cleanups.forEach((f) => f()); },
   };
+}
+
+// Visar vilken indata övningen körs med, så att eleven vet vad input()/ReadLine() får.
+function inputNote(ex) {
+  const runs = ex.runs || (ex.input !== undefined ? [{ input: ex.input }] : []);
+  const shown = runs.filter((r) => r.input).map((r) => `<code>${esc(r.input.replace(/\n$/, '').split('\n').join(' ⏎ '))}</code>`);
+  if (!shown.length) return '';
+  return `<p class="input-note tiny">${shown.length === 1 ? 'Indata, en rad per läsning:' : 'Koden körs flera gånger med olika indata:'} ${shown.join(' · ')}</p>`;
+}
+
+function setFrame(iframe, { srcdoc, sandbox }) {
+  if (iframe.getAttribute('sandbox') !== sandbox) iframe.setAttribute('sandbox', sandbox);
+  iframe.srcdoc = srcdoc;
 }
 
 function prompt(text) {

@@ -15,7 +15,7 @@ export function milestones(profile) {
     { label: 'Första lektionen klar', ok: done.length >= 1 },
     { label: 'Tio lektioner klara', ok: done.length >= 10 },
     { label: 'Första miniprojektet', ok: done.some((l) => l.tier === 5) },
-    { label: 'Provat alla tre spåren', ok: new Set(done.map((l) => l.trackId)).size === 3 },
+    { label: 'Provat C#, Python och HTML/CSS', ok: ['csharp', 'python', 'web'].every((t) => done.some((l) => l.trackId === t)) },
     { label: 'Nådde nivå 5', ok: info.level >= 5 },
     { label: 'Ett helt spår klart', ok: tracksDone.length >= 1 },
   ];

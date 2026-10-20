@@ -27,7 +27,7 @@ export function stripThinking(text) {
 
 export function userContent(text, code, lang) {
   if (!code) return text;
-  const fence = lang === 'web' ? 'html' : lang === 'csharp' ? 'csharp' : 'python';
+  const fence = lang === 'web' ? 'html' : lang === 'csharp' ? 'csharp' : lang === 'text' ? 'text' : 'python';
   return `${text}\n\nKod jag valde att bifoga från Kodlabbet:\n\`\`\`${fence}\n${code}\n\`\`\``;
 }
 

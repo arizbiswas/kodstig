@@ -127,24 +127,70 @@ function gradeOrder(ex, answer) {
   return { ok: false, title: k ? `De ${k === 1 ? 'första raden stämmer' : `första ${k} raderna stämmer`}, men inte resten.` : 'Ordningen stämmer inte än.', detail: ex.hint };
 }
 
+// Körningar med indata (input/ReadLine) och slump. Varje körning får sin egen
+// indata och sitt eget frö. outputRe används när utskriften beror på slumpen.
+function runsOf(ex) {
+  if (ex.runs) return ex.runs;
+  if (ex.input !== undefined) return [{ input: ex.input, output: ex.output }];
+  return null;
+}
+
+function checkSource(ex, code, lang, run) {
+  const plain = stripComments(code, lang);
+  for (const r of ex.require || []) {
+    if (!new RegExp(r.re, r.flags || '').test(plain)) return { ok: false, title: 'Nästan, men en del saknas.', detail: r.msg, run };
+  }
+  for (const r of ex.forbid || []) {
+    if (new RegExp(r.re, r.flags || '').test(plain)) return { ok: false, title: 'Lös det på ett annat sätt.', detail: r.msg, run };
+  }
+  return null;
+}
+
+async function gradeRuns(ex, code, lang, runner, runs) {
+  const tests = [];
+  let last = null;
+  for (const [k, rc] of runs.entries()) {
+    const input = rc.input ?? '';
+    const shown = input ? input.replace(/\n$/, '').split('\n').join(', ') : '';
+    const label = rc.label || (shown ? `Körning ${k + 1} med indata: ${shown}` : `Körning ${k + 1}`);
+    for (let rep = 0; rep < (rc.repeat || 1); rep++) {
+      const run = await runner(lang, code, [], { input, seed: (rc.seed ?? 1000 * (k + 1)) + rep });
+      last = run;
+      if (run.error) {
+        if (run.error.phase === 'compile' || !tests.length) return { ok: false, title: 'Koden gav ett fel.', error: run.error, run, detail: run.error.hint === 'input' ? `${label}. ${ex.hint || ''}`.trim() : ex.hint };
+        tests.push({ label, ok: false, expected: rc.output ?? 'en utskrift utan fel', got: `${run.error.kind}: ${run.error.message}`, kind: 'output' });
+        break;
+      }
+      const got = normalizeOutput(run.output);
+      if (rc.outputRe !== undefined) {
+        const ok = new RegExp(`^(?:${rc.outputRe})$`).test(got);
+        if (!ok || rep === (rc.repeat || 1) - 1) tests.push({ label, ok, expected: rc.expectText || 'en utskrift som följer uppgiften', got, kind: 'output' });
+        if (!ok) break;
+      } else {
+        const want = normalizeOutput(rc.output);
+        tests.push({ label, ok: got === want, expected: want, got, kind: 'output' });
+        break;
+      }
+    }
+  }
+  const src = checkSource(ex, code, lang, last);
+  if (src) return src;
+  const failed = tests.filter((t) => !t.ok);
+  if (!failed.length) return { ok: true, title: 'Alla kontroller gick igenom!', detail: ex.explain, tests, run: last };
+  return { ok: false, title: `${tests.length - failed.length} av ${tests.length} kontroller klara.`, detail: ex.hint, tests, run: last };
+}
+
 async function gradeCode(ex, code, lang, runner) {
   if (!code.trim()) return { ok: false, title: 'Skriv lite kod först.', detail: ex.hint };
+  const runs = runsOf(ex);
+  if (runs) return gradeRuns(ex, code, lang, runner, runs);
   const calls = (ex.tests || []).map((t) => ({ fn: t.fn, args: t.args }));
   const run = await runner(lang, code, calls);
   if (run.error && (run.error.phase === 'compile' || !calls.length || ex.output !== undefined)) {
     return { ok: false, title: 'Koden gav ett fel.', error: run.error, run, detail: ex.hint };
   }
-  const plain = stripComments(code, lang);
-  for (const r of ex.require || []) {
-    if (!new RegExp(r.re, r.flags || '').test(plain)) {
-      return { ok: false, title: 'Nästan, men en del saknas.', detail: r.msg, run };
-    }
-  }
-  for (const r of ex.forbid || []) {
-    if (new RegExp(r.re, r.flags || '').test(plain)) {
-      return { ok: false, title: 'Lös det på ett annat sätt.', detail: r.msg, run };
-    }
-  }
+  const src = checkSource(ex, code, lang, run);
+  if (src) return src;
   const tests = [];
   if (ex.output !== undefined) {
     const got = normalizeOutput(run.output);
