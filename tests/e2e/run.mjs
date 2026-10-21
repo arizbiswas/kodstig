@@ -429,6 +429,12 @@ async function main() {
     // 5. Lärstigen och spårbyte, i båda temana
     await check('Lärstig: kapitel öppnas/stängs, spårbyte stänger, linjen träffar stationerna', async () => {
       const { context, page } = await newGuest(browser);
+      // Ny besökare utan sparat val får Klassisk, ett sparat Minecraft-val behålls.
+      await page.evaluate(() => localStorage.removeItem('kodstig.theme'));
+      await page.goto(`${BASE}#/lar`);
+      await page.reload();
+      eq(await page.evaluate(() => document.documentElement.dataset.theme), 'classic', 'standardtemat är Klassisk');
+      eq(await page.locator('.world').count(), 0);
       for (const theme of ['minecraft', 'classic']) {
         await page.evaluate((t) => { localStorage.setItem('kodstig.theme', t); }, theme);
         await page.goto(`${BASE}#/lar`);

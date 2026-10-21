@@ -37,8 +37,8 @@ export function render(ctx) {
     <section class="card stack">
       <h2>Tema</h2>
       <fieldset class="theme-pick"><legend class="sr-only">Välj tema</legend>
-        <label class="theme-opt"><input type="radio" name="theme" value="minecraft" ${currentTheme() === 'minecraft' ? 'checked' : ''}><span class="swatch mc" aria-hidden="true"></span><span><strong>Minecraft</strong><small>Block, pixelrubriker och en liten värld</small></span></label>
         <label class="theme-opt"><input type="radio" name="theme" value="classic" ${currentTheme() === 'classic' ? 'checked' : ''}><span class="swatch cl" aria-hidden="true"></span><span><strong>Klassisk</strong><small>Lugn och ren</small></span></label>
+        <label class="theme-opt"><input type="radio" name="theme" value="minecraft" ${currentTheme() === 'minecraft' ? 'checked' : ''}><span class="swatch mc" aria-hidden="true"></span><span><strong>Minecraft</strong><small>Block, pixelrubriker och en liten värld</small></span></label>
       </fieldset>
     </section>
 

@@ -28,13 +28,15 @@ Så blev det: varje klarad lektion är ett begrepp i en kö som kommer tillbaka 
 - [x] Det som fortfarande saknas för egna program, till exempel input()/ReadLine, import random och lite JavaScript (7). Nya kapitel "Program som pratar med dig" i Python och C#, och "Lite JavaScript" i HTML/CSS. JavaScript körs isolerat i en sandlåda utan nätverk, med loopskydd.
 - [x] Grunderna i Git. Nytt spår "Git och terminalen" med tre kapitel: terminalen, Git på datorn, grenar och GitHub.
 
-## Fas 5: Milo och delning
+## Fas 5: Milo och delning (klar 21 oktober 2026)
 - [x] Milo får uppgiften, facit och testresultatet och ger bara ledtrådar, aldrig hela lösningen (8). Bara när eleven själv kryssar i "Ta med uppgiften". Facit sparas inte i samtalet, och svar som avslöjar lösningen filtreras bort.
 - [x] Dela ett projekt med en länk (13). Kodlabbet har "Dela med länk". Koden ligger bara i länken, inget sparas hos Kodstig, och mottagaren behöver inget konto. Varning om att inte skriva personuppgifter i koden.
-- [ ] Anonym statistik över var elever fastnar (14). Bara om zira säger ja
+- [x] Anonym statistik över var elever fastnar (14): **nej, inte nu** (zira, 21 oktober 2026). Kodstig samlar ingen statistik.
 
 ## Beslut för zira
 - [x] Målgrupp (11): **alla åldrar** (zira, 20 oktober 2026). Det betyder: enkelt språk som fungerar för både tonåringar och vuxna, projekt som lockar båda (spel och praktiska verktyg), och teman som Minecraft som ett val, inte appens grundidentitet. Allt som rör konton och delning ska fungera för elever under 13 år (GDPR), till exempel utan krav på att visa namn eller e-post för andra.
+- [x] Standardtema: **Klassisk** för nya besökare (zira, 21 oktober 2026). Minecraft finns kvar som val i sidomenyn och under Inställningar, och den som redan valt ett tema behåller det.
+- [x] Anonym statistik (14): **nej, inte nu** (zira, 21 oktober 2026).
 
 ## Behålls hela tiden
 Inga hjärtan eller energi, ingen betalvägg, inga globala topplistor, lokalt först utan spårning, svenska felmeddelanden och testrättning med gränsfall.
@@ -84,6 +86,6 @@ Läget efter läroplansutbyggnaden samma dag (commit 1af57c5): 130 lektioner, 72
 | 11 | Bestäm målgrupp | **Beslutat:** alla åldrar |
 | 12 | Förlåtande svit med frysningar | **Gjort** (fas 2) |
 | 13 | Dela projekt med länk | **Gjort** (fas 5) |
-| 14 | Anonym statistik | Fas 5, bara med zira ja |
+| 14 | Anonym statistik | **Beslutat:** nej, inte nu |
 | 15 | Stegvis körning | **Gjort** (fas 3) |
 | 16 | Stegetiketter i exemplen | **Gjort** (fas 1) |

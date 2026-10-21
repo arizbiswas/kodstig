@@ -94,13 +94,13 @@ Elevens kod körs aldrig med `eval`. Python och C# tolkas av två egna, förenkl
 Tolkarna har tydliga gränser, och det står i appen under **Vad klarar Kodlabbet?**:
 
 - **Python:** variabler, if/elif/else, while/for, range, funktioner, rekursion, listor, ordlistor, tupler, mängder, listbyggare, lambda och `sorted(key=...)`, klasser med arv och `super()`, `try/except/else/finally` och `raise`, strängmetoder och f-strängar. Följande saknas: `import`, `with`, `*args`, filer och `input()`.
-- **C#:** toppnivåsatser eller `class Program` med `Main`, metoder med standardvärden, int/double/bool/string/char, arrayer, `List<T>`, `Dictionary<K,V>`, egna klasser med fält, egenskaper, konstruktorer, arv, `abstract`/`virtual`/`override` och interface, `try`/`catch`/`finally`/`throw`, `switch`, lambdas och vanliga LINQ-metoder (`Where`, `Select`, `OrderBy`, `Sum`, `Count`, `Any`, `First` med flera), `out` med `TryParse`/`TryGetValue`, stränginterpolation med format och `Math`. Följande saknas: `Console.ReadLine`, egna generiska typer, `struct`, `record`, `async`, switch-uttryck och namespaces utöver det enklaste.
+- **C#:** toppnivåsatser eller `class Program` med `Main`, metoder med standardvärden, int/double/bool/string/char, arrayer, `List<T>`, `Dictionary<K,V>`, egna klasser med fält, egenskaper, konstruktorer, arv, `abstract`/`virtual`/`override` och interface, `try`/`catch`/`finally`/`throw`, `switch`, lambdas och vanliga LINQ-metoder (`Where`, `Select`, `OrderBy`, `Sum`, `Count`, `Any`, `First` med flera), `out` med `TryParse`/`TryGetValue`, stränginterpolation med format och `Math`. Följande saknas: egna generiska typer, `struct`, `record`, `async`, switch-uttryck och namespaces utöver det enklaste.
 
 Felmeddelandena är på svenska och pekar på raden. **Fastnat? Få en ledtråd** ger tre steg (en fråga, en förklaring och ett exempel). Ledtrådarna börjar om när koden ändras.
 
 ## Teman
 
-Det finns två teman, **Minecraft** (standard) och **Klassisk**. Byt i sidomenyn eller under Inställningar. Minecraft-temat har blocktexturer, pixeltypsnittet Pixelify Sans på rubriker och knappar (brödtexten är kvar i ett lättläst typsnitt) och en liten värld på startsidan. Världen har dag och natt efter klockan, en kista med tips och en höna man kan klicka på. Pixeltypsnittet hämtas från Google Fonts, och saknas det används ett vanligt typsnitt.
+Det finns två teman, **Klassisk** (standard) och **Minecraft**. Den som redan valt ett tema behåller det. Byt i sidomenyn eller under Inställningar. Minecraft-temat har blocktexturer, pixeltypsnittet Pixelify Sans på rubriker och knappar (brödtexten är kvar i ett lättläst typsnitt) och en liten värld på startsidan. Världen har dag och natt efter klockan, en kista med tips och en höna man kan klicka på. Pixeltypsnittet hämtas från Google Fonts, och saknas det används ett vanligt typsnitt.
 
 ## Projektstruktur
 
