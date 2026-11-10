@@ -71,7 +71,8 @@ export class World {
   itemAt(x, y) { return this.items.find((i) => i.x === x && i.y === y) || null; }
   check(cmd, line) {
     if (this.allowed && !this.allowed.has(cmd)) {
-      throw pixErr(`I den här banan kan hjälten inte använda ${cmd}(). Här finns: ${[...this.allowed].map((c) => `${c}()`).join(', ')}.`, line, 'pixel-allowed');
+      const n = this.host.cmd;
+      throw pixErr(`I den här banan kan hjälten inte använda ${n(cmd)}. Här finns: ${[...this.allowed].map(n).join(', ')}.`, line, 'pixel-allowed');
     }
   }
   blocked(x, y) {
@@ -79,7 +80,7 @@ export class World {
     if (t === 'edge') return 'Jag kan inte gå utanför kartan!';
     if (t === 'wall') return 'Jag kan inte gå in i väggen!';
     if (t === 'water') return 'Jag kan inte simma!';
-    if (t === 'door') return 'Dörren är låst. Ställ dig framför den med en nyckel och använd open().';
+    if (t === 'door') return `Dörren är låst. Ställ dig framför den med en nyckel och använd ${this.host.cmd('open')}.`;
     return null;
   }
   step(dir, line, cmd) {
@@ -99,7 +100,7 @@ export class World {
   }
   move(n, line) {
     this.check('move', line);
-    if (!Number.isInteger(n) || n < 0) throw pixErr('move(n) behöver ett heltal som är 0 eller större, till exempel move(3).', line, 'pixel-arg');
+    if (!Number.isInteger(n) || n < 0) throw pixErr(`${this.host.cmd('move').replace('()', '(n)')} behöver ett heltal som är 0 eller större.`, line, 'pixel-arg');
     for (let i = 0; i < n; i++) this.step(this.hero.dir, line, 'move');
   }
   turnLeft(line) {
@@ -117,7 +118,7 @@ export class World {
     this.check('pick', line);
     const h = this.hero;
     const it = this.itemAt(h.x, h.y);
-    if (!it) throw pixErr(`Det finns inget att plocka upp på (${h.x}, ${h.y}). Använd on_item() för att kolla först.`, line, 'pixel-pick');
+    if (!it) throw pixErr(`Det finns inget att plocka upp på (${h.x}, ${h.y}). Använd ${this.host.cmd('on_item')} för att kolla först.`, line, 'pixel-pick');
     this.items.splice(this.items.indexOf(it), 1);
     h.bag.push(it.item);
     this.host.emit({ t: 'pick', item: it.item, x: h.x, y: h.y, line });
@@ -143,14 +144,14 @@ export class World {
   }
   canMove(dir, line) {
     const d = String(dir).toLowerCase();
-    if (!DIRS[d]) throw pixErr(`can_move behöver en riktning: "up", "down", "left" eller "right", inte ${JSON.stringify(dir)}.`, line, 'pixel-arg');
+    if (!DIRS[d]) throw pixErr(`${this.host.cmd('can_move')} behöver en riktning: ${this.host.lang === 'csharp' ? 'Dir.Up, Dir.Down, Dir.Left eller Dir.Right' : '"up", "down", "left" eller "right"'}.`, line, 'pixel-arg');
     const [dx, dy] = DIRS[d];
     return !this.blocked(this.hero.x + dx, this.hero.y + dy);
   }
   onItem() { return !!this.itemAt(this.hero.x, this.hero.y); }
   atGoal() { return this.tileAt(this.hero.x, this.hero.y) === 'goal'; }
   tile(x, y, line) {
-    if (!Number.isInteger(x) || !Number.isInteger(y)) throw pixErr('world.tile(x, y) behöver två heltal.', line, 'pixel-arg');
+    if (!Number.isInteger(x) || !Number.isInteger(y)) throw pixErr('tile(x, y) behöver två heltal.', line, 'pixel-arg');
     const t = this.tileAt(x, y);
     if (t === 'edge') return 'edge';
     const it = this.itemAt(x, y);
@@ -277,7 +278,7 @@ export class Turtle {
   }
   beginFill(line) { this.filling = [[this.x, this.y]]; this.host.emit({ t: 'tbegin', id: this.id, line }); }
   endFill(line) {
-    if (!this.filling) throw pixErr('end_fill() behöver ett begin_fill() före sig.', line, 'pixel-fill');
+    if (!this.filling) throw pixErr(`${this.host.cmd('end_fill')} behöver ett ${this.host.cmd('begin_fill')} före sig.`, line, 'pixel-fill');
     const pts = this.filling; this.filling = null;
     this.host.fills.push({ id: this.id, pts, c: this.fillColor });
     this.host.emit({ t: 'tfill', id: this.id, pts, c: this.fillColor, line });
@@ -304,7 +305,10 @@ export class Turtle {
 
 // ---------- Allt för en körning ----------
 export class PixelHost {
-  constructor(level = null) {
+  constructor(level = null, lang = 'python') {
+    this.lang = lang;
+    // Kommandots namn som eleven skriver det: move_right() i Python, MoveRight() i C#.
+    this.cmd = (c) => (lang === 'csharp' ? `${c.split('_').map((w) => w[0].toUpperCase() + w.slice(1)).join('')}()` : `${c}()`);
     this.events = [];
     this.world = level && level.map ? new World(level, this) : null;
     this.canvases = [];

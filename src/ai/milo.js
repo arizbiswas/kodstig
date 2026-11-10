@@ -46,6 +46,14 @@ export function stripThinking(text) {
     .replace(/^\s+/, '');
 }
 
+// När koden använder Pixelvärlden får Milo veta vad som finns, så att ledtrådarna
+// använder rätt namn. Det är kort för att rymmas i den lilla modellens fönster.
+export const PIXEL_API = {
+  python: 'Kodstigs Pixelvärld (Python): hjalte.move_right(), move_left(), move_up(), move_down(), move(n) framåt, turn_left() (ingen turn_right, den skriver eleven själv), say(text), pick(), drop(), open(), can_move("up"), on_item(), at_goal(), hjalte.x, hjalte.y, hjalte.items, world.tile(x, y), world.items_left(). Kartan: x åt höger, y nedåt. grid = Canvas(16, 16), grid.set_pixel(x, y, "red"), grid.fill(färg), grid.draw(rader). import turtle som i riktig Python, y uppåt. Månghörning: vrid 360 / n.',
+  csharp: 'Kodstigs Pixelvärld (C#): Hjalte.MoveRight(), MoveLeft(), MoveUp(), MoveDown(), Move(n) framåt, TurnLeft() (ingen TurnRight, den skriver eleven själv), Say(text), Pick(), Drop(), Open(), CanMove(Dir.Up), OnItem(), AtGoal(), Hjalte.X, Hjalte.Y, Hjalte.Items, World.Tile(x, y), World.ItemsLeft(). Kartan: x åt höger, y nedåt. var g = new PixelGrid(16, 16); g.SetPixel(x, y, Color.Red); g.Draw(rader); var t = new Turtle(); t.Forward(100); t.Left(90); y uppåt. Månghörning: vrid 360 / n.',
+};
+export const usesPixel = (code) => /\b(hjalte|Hjalte|world\.|World\.|Canvas\(|PixelGrid|turtle|Turtle)\b/.test(code || '');
+
 export function userContent(text, code, lang, context = null) {
   const fence = lang === 'web' ? 'html' : lang === 'csharp' ? 'csharp' : lang === 'text' ? 'text' : 'python';
   let out = text;
@@ -186,7 +194,8 @@ export class Milo {
     const hardTimer = this.timers.setTimeout(() => { if (gen === this.genToken) this.stop('timeout'); }, TIMEOUT_MS);
     let raw = '';
     try {
-      const system = solution ? MILO_SYSTEM + solutionRules(solution) : MILO_SYSTEM;
+      let system = solution ? MILO_SYSTEM + solutionRules(solution) : MILO_SYSTEM;
+      if (usesPixel(attached) || usesPixel(solution)) system += `\n\n${PIXEL_API[lang === 'csharp' ? 'csharp' : 'python']}`;
       const stream = await this.engine.chat(buildMessages(this.messages.slice(0, -1), system), { max_tokens: RESPONSE_TOKENS });
       for await (const delta of stream) {
         if (gen !== this.genToken) break;

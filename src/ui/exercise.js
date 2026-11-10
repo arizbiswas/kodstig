@@ -2,27 +2,39 @@
 // Obegränsade försök. Vid fel visas en ledtrådstrappa: först var felet är, sedan
 // begreppet, vad som kan ändras, ett liknande exempel och sist ett lösningsförslag.
 import { h, esc, on, codeEditor, announce, reveal } from './dom.js';
-import { grade, show, orderLines, shuffled } from '../engine/grade.js';
-import { runCode, checkWeb, previewFor } from '../engine/runner.js';
+import { grade, show, orderLines, shuffled, worldTarget } from '../engine/grade.js';
+import { runCode, runPixelCode, checkWeb, previewFor } from '../engine/runner.js';
+import { createStage } from './pixel-stage.js';
 import { getHints } from '../engine/hints.js';
 import { playCorrect } from './media.js';
 
-const TYPE_LABEL = { choice: 'Flerval', fill: 'Fyll i', code: 'Skriv kod', debug: 'Hitta felet', web: 'Bygg', order: 'Ordna raderna' };
+const TYPE_LABEL = { choice: 'Flerval', fill: 'Fyll i', code: 'Skriv kod', debug: 'Hitta felet', web: 'Bygg', order: 'Ordna raderna', world: 'Styr hjälten' };
+const pixelRunner = (lang, code, level) => runPixelCode(lang, code, { level });
+// Övningar i Pixelvärlden har en bana (level) eller ritar (draw / pixel).
+const isPixel = (ex) => ex.type === 'world' || !!ex.level || !!ex.pixel;
+const kindLabel = (ex) => {
+  if (ex.type === 'world') return ex.draw ? 'Rita som målbilden' : ex.debug ? 'Rätta buggen' : 'Styr hjälten';
+  if (ex.type === 'choice' && isPixel(ex)) return 'Förutsäg';
+  return TYPE_LABEL[ex.type];
+};
 
 // Lösningsförslaget låses upp efter så här många misslyckade försök.
 const SOLUTION_AFTER = 2;
 
 export function renderExercise(ex, { lang, saved, solved = false, onChange, onSolved, onAttempt, soundOn = () => true, idPrefix = 'ex', example = '' }) {
   const isCode = ex.type === 'code' || ex.type === 'debug';
-  const el = h(`<div class="exercise" data-type="${ex.type}">
-    <p class="ex-kind">${TYPE_LABEL[ex.type]}</p>
+  const isWorld = ex.type === 'world';
+  const el = h(`<div class="exercise${isPixel(ex) ? ' is-pixel' : ''}" data-type="${ex.type}">
+    <p class="ex-kind">${kindLabel(ex)}</p>
     <div class="ex-prompt">${prompt(ex.prompt)}</div>
     ${ex.type === 'choice' && ex.code ? `<pre class="code-block"><code>${esc(ex.code)}</code></pre>` : ''}
     ${inputNote(ex)}
     <div class="ex-input"></div>
+    ${isPixel(ex) ? '<div class="ex-stage"></div>' : ''}
     <div class="feedback" role="status" aria-live="polite"></div>
     <div class="ex-actions row gap wrap">
-      ${isCode ? '<button class="btn secondary" type="button" data-run>Kör</button>' : ''}
+      ${isCode || isWorld ? '<button class="btn secondary" type="button" data-run>Kör</button>' : ''}
+      ${isPixel(ex) && !isWorld ? '<button class="btn secondary" type="button" data-px-see hidden>Kör och se</button>' : ''}
       <button class="btn primary" type="button" data-check>${solved ? 'Kontrollera igen' : 'Kontrollera'}</button>
     </div>
     <div class="ladder-slot"></div>
@@ -34,6 +46,20 @@ export function renderExercise(ex, { lang, saved, solved = false, onChange, onSo
   let ladder = null; // { steps, shown }
   let getAnswer;
   let editor = null;
+  // Scenen i Pixelvärlden: startläget syns direkt, och körningen spelas upp efter Kör.
+  let stage = null;
+  if (isPixel(ex)) {
+    stage = createStage({ onLine: (line) => editor && editor.highlight(line) });
+    el.querySelector('.ex-stage').append(stage.el);
+    stage.setLevel(ex.level || null);
+    if (ex.draw) worldTarget(ex, lang, pixelRunner).then((t) => { if (t && el.isConnected) stage.setTarget(t.canvases.length ? { canvas: t.canvases[t.canvases.length - 1] } : { lines: t.lines }); });
+  }
+  // Koden som spelas upp efter en förutsägelse, ett pussel eller en lucka.
+  const seeCode = () => {
+    if (ex.type === 'order') return ex.lines.join('\n');
+    if (ex.type === 'fill') { let k = 0; return ex.code.replace(/___/g, () => ex.answers[k++][0]); }
+    return ex.code || '';
+  };
 
   if (ex.type === 'choice') {
     const name = `${idPrefix}-choice`;
@@ -52,10 +78,11 @@ export function renderExercise(ex, { lang, saved, solved = false, onChange, onSo
     getAnswer = () => blanks.map((b) => b.value);
     input.addEventListener('input', () => onChange && onChange(getAnswer()));
     input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); check(); } });
-  } else if (isCode) {
+  } else if (isCode || isWorld) {
     editor = codeEditor({ value: typeof saved === 'string' ? saved : ex.starter || '', lang, label: 'Din kod', rows: Math.min(16, Math.max(6, (ex.starter || '').split('\n').length + 3)), onInput: (v) => onChange && onChange(v) });
     input.append(editor.el);
-    input.insertAdjacentHTML('beforeend', '<div class="output" hidden><span class="output-label">Utskrift</span><pre></pre></div>');
+    if (!isWorld) input.insertAdjacentHTML('beforeend', '<div class="output" hidden><span class="output-label">Utskrift</span><pre></pre></div>');
+    else el.querySelector('.ex-stage').insertAdjacentHTML('afterend', '<div class="output" hidden><span class="output-label">Utskrift</span><pre></pre></div>');
     getAnswer = () => editor.value;
   } else if (ex.type === 'order') {
     // Raderna blandas likadant varje gång, men aldrig i rätt ordning från början.
@@ -146,10 +173,14 @@ export function renderExercise(ex, { lang, saved, solved = false, onChange, onSo
     btn.disabled = true;
     let res;
     try {
-      res = await grade(ex, answer, { lang, runner: runCode, webChecker: checkWeb });
+      res = await grade(ex, answer, { lang, runner: runCode, webChecker: checkWeb, pixelRunner });
     } finally { btn.disabled = false; }
     lastRes = res;
-    if (res.run) showOutput(res.run);
+    if (res.run && isWorld) { if (res.run.output) showOutput(res.run); stage.load(res.run); }
+    else if (res.run) showOutput(res.run);
+    // Förutsäg, kör, undersök: efter svaret kan eleven se koden köras.
+    // För pussel och luckor bara när svaret är rätt, annars skulle uppspelningen avslöja lösningen.
+    if (stage && !isWorld && (ex.type === 'choice' || res.ok)) { const see = el.querySelector('[data-px-see]'); if (see) see.hidden = false; }
     setFeedback(res);
     reveal(fb, el.querySelector('.ex-actions'));
     announce(res.ok ? 'Rätt svar.' : 'Inte rätt än. Läs ledtråden och försök igen.');
@@ -172,7 +203,7 @@ export function renderExercise(ex, { lang, saved, solved = false, onChange, onSo
   // Första ledtråden visas direkt i återkopplingen.
   function firstHint(res) {
     if (ex.type === 'choice') return res.detail;
-    if (res.error && (ex.type === 'code' || ex.type === 'debug')) return getHints(lang, getAnswer(), res.run).steps[0];
+    if (res.error && (ex.type === 'code' || ex.type === 'debug' || isWorld)) return getHints(lang, getAnswer(), res.run).steps[0];
     if (ex.type === 'web') {
       const wh = getHints('web', getAnswer());
       if (wh.key !== 'ok' && wh.key !== 'not-run') return wh.steps[0];
@@ -186,7 +217,7 @@ export function renderExercise(ex, { lang, saved, solved = false, onChange, onSo
     const steps = [];
     const add = (title, text, code) => { if (text || code) steps.push({ title, text, code }); };
     const exampleStep = () => example && add('Titta på lektionens exempel', 'Exemplet visar samma idé. Jämför det med din kod rad för rad.', example);
-    if ((ex.type === 'code' || ex.type === 'debug') && res.error) {
+    if ((ex.type === 'code' || ex.type === 'debug' || isWorld) && res.error) {
       const hs = getHints(lang, answer, res.run).steps;
       add('Begreppet', hs[1]);
       if (ex.hint && ex.hint !== hs[1]) add('Vad du kan ändra', ex.hint);
@@ -195,6 +226,10 @@ export function renderExercise(ex, { lang, saved, solved = false, onChange, onSo
       const f = (res.tests || []).find((t) => !t.ok);
       if (f && f.kind === 'output') add('Följ koden', 'Jämför din utskrift med den förväntade rad för rad. Var börjar de skilja sig åt, och vilken rad i koden skriver ut just den raden?');
       else if (f) add('Följ koden', `Gå igenom koden för ${f.label} i huvudet, rad för rad. Vilka värden har variablerna, och var blir det något annat än ${f.expected}?`);
+      if (ex.hint && ex.hint !== res.detail) add('Vad du kan ändra', ex.hint);
+      exampleStep();
+    } else if (isWorld) {
+      add('Följ hjälten', ex.draw ? 'Kör med Steg för steg och titta var din bild börjar skilja sig från den bleka målbilden.' : 'Kör med Steg för steg i scenen. Var tar hjälten slut, och var borde den ha varit? Vilken rad flyttade den fel?');
       if (ex.hint && ex.hint !== res.detail) add('Vad du kan ändra', ex.hint);
       exampleStep();
     } else if (ex.type === 'fill') {
@@ -244,9 +279,21 @@ export function renderExercise(ex, { lang, saved, solved = false, onChange, onSo
     }),
     on(el, 'click', '[data-run]', async (e, b) => {
       b.disabled = true;
+      if (isWorld) {
+        try {
+          const r = await pixelRunner(lang, editor.value, ex.level || null);
+          if (r.output || r.error) showOutput(r);
+          stage.load(r);
+        } finally { b.disabled = false; }
+        return;
+      }
       // Med indata i övningen körs Kör med första körningens indata.
       const input = ex.runs ? ex.runs[0].input : ex.input;
       try { showOutput(await runCode(lang, editor.value, [], { input })); } finally { b.disabled = false; }
+    }),
+    on(el, 'click', '[data-px-see]', async (e, b) => {
+      b.disabled = true;
+      try { stage.load(await pixelRunner(lang, seeCode(), ex.level || null)); } finally { b.disabled = false; }
     }),
   ];
   if (solved) el.classList.add('was-solved');
@@ -260,7 +307,7 @@ export function renderExercise(ex, { lang, saved, solved = false, onChange, onSo
     code: () => (editor ? editor.value : null),
     // Det Milo får veta om övningen när eleven själv väljer att ta med den.
     context: () => ({ prompt: ex.prompt, solution: solutionText(ex), result: summarize(lastRes, getAnswer(), ex) }),
-    destroy() { clearTimeout(pt); cleanups.forEach((f) => f()); },
+    destroy() { clearTimeout(pt); if (stage) stage.destroy(); cleanups.forEach((f) => f()); },
   };
 }
 

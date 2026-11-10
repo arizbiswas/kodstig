@@ -13,7 +13,7 @@ export function levelWorlds(level) {
 export function runPixel(lang, code, { level = null, input, seed, runners } = {}) {
   const run = runners[lang];
   const runs = levelWorlds(level).map((lv) => {
-    const host = new PixelHost(lv);
+    const host = new PixelHost(lv, lang);
     const r = run(code, { host, input, seed });
     r.events = host.events;
     r.final = host.snapshot();
@@ -22,6 +22,7 @@ export function runPixel(lang, code, { level = null, input, seed, runners } = {}
   });
   const main = runs[0];
   main.worlds = runs.length;
+  main.mainOk = !main.error && main.goals.every((g) => g.met);
   if (runs.length > 1) {
     const bad = runs.findIndex((r, i) => i > 0 && (r.error || r.goals.some((g) => !g.met)));
     if (bad > 0) {

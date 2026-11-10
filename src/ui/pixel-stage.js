@@ -134,8 +134,10 @@ export function createStage({ onLine = () => {}, target = null } = {}) {
   function resize() {
     const box = canvas.parentElement.getBoundingClientRect();
     const W = Math.max(200, Math.floor(box.width));
-    const aspect = state.world ? state.world.h / state.world.w : 1;
-    const H = Math.round(Math.min(W * Math.max(aspect, 0.45), 640));
+    // Världen: rutorna blir högst 56 pixlar, så att små banor inte blir jättestora.
+    const H = state.world
+      ? Math.min(state.world.h * Math.min(Math.floor(W / state.world.w), 56), 640)
+      : Math.round(Math.min(W, 480));
     const dpr = window.devicePixelRatio || 1;
     if (canvas.width !== Math.round(W * dpr) || canvas.height !== Math.round(H * dpr)) {
       canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
@@ -147,7 +149,7 @@ export function createStage({ onLine = () => {}, target = null } = {}) {
     const { w, h: H } = size;
     const L = { turtle: { s: Math.min(w, H) / TURTLE_VIEW, cx: w / 2, cy: H / 2 } };
     if (state.world) {
-      const T = Math.floor(Math.min(w / state.world.w, H / state.world.h));
+      const T = Math.min(56, Math.floor(Math.min(w / state.world.w, H / state.world.h)));
       L.world = { T, ox: Math.floor((w - T * state.world.w) / 2), oy: Math.floor((H - T * state.world.h) / 2) };
     }
     const cv = state.canvases[state.canvases.length - 1] || (target && target.canvas);

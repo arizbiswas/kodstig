@@ -1,5 +1,5 @@
 // Banans mål kontrolleras mot världens slutläge, inte mot koden.
-import { ITEM_SV, DIR_SV } from './core.js';
+import { ITEM_SV, DIR_SV, DIRS } from './core.js';
 
 const plural = (item, n) => (item === 'key' ? (n === 1 ? 'nyckel' : 'nycklar') : item === 'gem' ? (n === 1 ? 'ädelsten' : 'ädelstenar') : 'mynt');
 
@@ -14,6 +14,7 @@ export function goalOf(g) {
   }
   if (g && g.say !== undefined) return { text: g.text || `Hjälten säger "${g.say}"`, test: (w) => w.said.includes(String(g.say)) };
   if (g && g.at) return { text: g.text || `Hjälten står på (${g.at[0]}, ${g.at[1]})`, test: (w) => w.hero.x === g.at[0] && w.hero.y === g.at[1] };
+  if (g && g.wall) return { text: g.text || `Hjälten står precis vid väggen ${{ right: 'till höger', left: 'till vänster', up: 'ovanför', down: 'nedanför' }[g.wall]}`, test: (w) => !!w.blocked(w.hero.x + DIRS[g.wall][0], w.hero.y + DIRS[g.wall][1]) };
   if (g && g.facing) return { text: g.text || `Hjälten tittar ${DIR_SV[g.facing]}`, test: (w) => w.hero.dir === g.facing };
   if (g && g.drop) return { text: g.text || `En ${ITEM_SV[g.drop]} ligger på (${g.x}, ${g.y})`, test: (w) => w.items.some((i) => i.item === g.drop && i.x === g.x && i.y === g.y) };
   throw new Error(`Okänt mål: ${JSON.stringify(g)}`);

@@ -2,12 +2,12 @@
 
 Kodstig är en svensk app för nybörjare som vill lära sig C#, Python och HTML/CSS. Den innehåller korta lektioner, en lärstig, ett kodlabb och Milo, en liten AI-studiekompis som körs i webbläsaren.
 
-Allt lektionsinnehåll är **nyskrivet för den här versionen**. Det är inte kopierat från någon tidigare app. Totalt finns 163 lektioner, 1085 övningar och 22 miniprojekt:
+Allt lektionsinnehåll är **nyskrivet för den här versionen**. Det är inte kopierat från någon tidigare app. Totalt finns 183 lektioner, 1181 övningar och 24 miniprojekt:
 
 | Spår | Lektioner | Övningar |
 | --- | --- | --- |
-| C# | 55 | 371 |
-| Python | 49 | 320 |
+| C# | 65 | 419 |
+| Python | 59 | 368 |
 | HTML/CSS | 44 | 282 |
 | Git och terminalen | 15 | 112 |
 
@@ -116,7 +116,7 @@ Tolkarna har tydliga gränser, och det står i appen under **Vad klarar Kodlabbe
 
 En bana är JSON: `{ map: ['#####', '#Sk.G#', '#####'], dir: 'right', goals: ['goal', 'items'], worlds: [...], allowed: [...] }`. På kartan är `#` vägg, `~` vatten, `D` låst dörr, `G` mål, `S` start, `k` nyckel, `g` ädelsten och `c` mynt. x växer åt höger och y nedåt i världen, medan turtle har y uppåt som i riktig Python. Färgerna bygger på Okabe-Ito-paletten så att de går att skilja åt vid färgblindhet.
 
-I Kodlabbet finns Pixelvärlden som en egen flik (`#/pixelvarld`, `src/ui/views/pixel.js`). Scenen (`src/ui/pixel-stage.js`) spelar upp händelserna med upplyst rad, steg för steg och valbar hastighet, och kan återanvändas i lektioner och delade länkar. Grafiken är egen och ritad för Kodstig (`src/ui/pixel-art.js`). Banorna att leka med ligger i `src/content/pixel-sandbox.js`.
+I Kodlabbet finns Pixelvärlden som en egen flik (`#/pixelvarld`, `src/ui/views/pixel.js`). Scenen (`src/ui/pixel-stage.js`) spelar upp händelserna med upplyst rad, steg för steg och valbar hastighet, och kan återanvändas i lektioner och delade länkar. Grafiken är egen och ritad för Kodstig (`src/ui/pixel-art.js`). Banorna att leka med ligger i `src/content/pixel-sandbox.js`. Kapitlet Pixelvärlden (`src/content/pixel-chapter.js`) skrivs en gång och blir både Python och C# med en liten kodbyggare. Övningstypen `world` rättas i `grade.js` mot banans mål i alla startvärldar, eller mot målbilden med `src/engine/pixel/compare.js`.
 
 Felmeddelandena är på svenska och pekar på raden. **Fastnat? Få en ledtråd** ger tre steg (en fråga, en förklaring och ett exempel). Ledtrådarna börjar om när koden ändras.
 
