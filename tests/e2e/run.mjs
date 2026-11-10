@@ -5,7 +5,7 @@
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { chromium } from 'playwright';
-import { LESSON_BY_ID, LESSONS, STATS, TRACKS } from '../../src/content/index.js';
+import { LESSON_BY_ID, LESSONS, STATS, TRACKS } from '../../src/content/full.js';
 
 const PORT = 4174;
 const DEV_PORT = 4175;
@@ -122,15 +122,39 @@ async function main() {
       await page.locator('[data-next]').click();
       await page.locator('.blank').fill('Print');
       await page.locator('[data-check3]').click();
-      assert((await page.locator('.feedback').textContent()).includes('små bokstäver'));
+      await page.locator('.feedback:has-text("små bokstäver")').waitFor();
       await page.locator('.blank').fill('print');
       await page.locator('[data-check3]').click();
+      await page.locator('.feedback.good').waitFor();
       eq((await page.locator('.output pre').textContent()).trim(), 'Hej, kodare!');
       await page.locator('[data-next]').click();
       assert(await page.locator('[data-guest]').isVisible());
       const stored = await page.evaluate(() => localStorage.getItem('kodstig.guest.v1'));
       eq(stored, null, 'demon sparar inget');
       await page.close();
+    });
+
+    await check('Snabb start: lektionerna laddas per spår, resten i bakgrunden', async () => {
+      const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+      const page = await context.newPage();
+      const got = [];
+      page.on('request', (r) => { const m = /\/assets\/(body-\w+|python)-[^/]+\.js$/.exec(r.url()); if (m) got.push(m[1]); });
+      await page.goto(BASE);
+      await page.locator('h1').waitFor();
+      await page.waitForTimeout(500);
+      eq(got.join(','), '', 'introduktionen laddar varken lektioner eller Python-motorn');
+      await page.locator('.hero [data-login]').click();
+      await page.locator('dialog [data-guest]').click();
+      await page.locator('#learn-h').waitFor();
+      const first = got.filter((x) => x.startsWith('body-'));
+      eq(first.length, 1, `bara ett spår vid start, fick ${first.join(',')}`);
+      await page.goto(`${BASE}#/lektion/git-terminal`);
+      await page.locator('[data-start]').waitFor();
+      assert(got.includes('body-git'), 'Git-spåret laddas när en Git-lektion öppnas');
+      for (let i = 0; i < 40 && new Set(got.filter((x) => x.startsWith('body-'))).size < 4; i++) await page.waitForTimeout(500);
+      eq(new Set(got.filter((x) => x.startsWith('body-'))).size, 4, 'resten hämtas i bakgrunden');
+      assert(!page.errors || !page.errors.length);
+      await context.close();
     });
 
     // 2. Inloggning utan konfiguration är ärlig

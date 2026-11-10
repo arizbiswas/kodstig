@@ -3,7 +3,10 @@ import assert from 'node:assert/strict';
 import { emptyProfile, completeLesson, claimBonus, merge, addActivity } from '../../src/state/model.js';
 import { scheduleLesson, dueLessons, sessionFor, recordReview, nextDue, itemOf, addDays, SESSION_MAX } from '../../src/state/review.js';
 import { streakInfo } from '../../src/state/streak.js';
-import { LESSONS } from '../../src/content/index.js';
+import { LESSONS, loadAllTracks } from '../../src/content/index.js';
+
+// Appens läroplan laddar övningarna per spår. Testerna behöver alla.
+await loadAllTracks();
 
 const at = (day) => `${day}T10:00:00`;
 

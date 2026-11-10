@@ -1,69 +1,46 @@
-// Samlar läroplanen och räknar fram det som resten av appen behöver.
-import csharp from './csharp.js';
-import python from './python.js';
-import web from './web.js';
-import git from './git.js';
-import csharpExtra from './csharp-extra.js';
-import pythonExtra from './python-extra.js';
-import webExtra from './web-extra.js';
-import csharpOrder from './csharp-order.js';
-import pythonOrder from './python-order.js';
-import webOrder from './web-order.js';
+// Läroplanen för appen. Innehållsförteckningen (spår, kapitel, lektionstitlar, krav
+// och antal övningar) finns direkt. Texter, exempel och övningar laddas per spår
+// med loadTrack() när de behövs, så att appen startar snabbare.
+import MANIFEST from './manifest.js';
+import { TIER_NAMES, stairOrder, decorate } from './assemble.js';
 
-// Extraövningar läggs sist i sina lektioner, så index för gamla övningar ändras inte.
-const EXTRA = { ...csharpExtra, ...pythonExtra, ...webExtra };
-// Förutsägelsefrågor och ordningspussel (fas 3), också sist i lektionerna.
-const ORDER = { ...csharpOrder, ...pythonOrder, ...webOrder };
+export { TIER_NAMES, stairOrder };
 
-export const TRACKS = [csharp, python, web, git];
+export const TRACKS = MANIFEST;
 export const TRACK_IDS = TRACKS.map((t) => t.id);
-
-export const TIER_NAMES = {
-  1: 'Grund',
-  2: 'Fördjupning',
-  3: 'Funktioner och struktur',
-  4: 'Tillämpning',
-  5: 'Miniprojekt',
-};
-
-// Visningsordning i en lektion: först förutsäga, sedan pussla, fylla i och sist
-// skriva egen kod. Sparade svar använder fortfarande övningens index i listan.
-const STAIR = { choice: 0, order: 1, fill: 2 };
-export function stairOrder(exercises) {
-  return exercises.map((ex, i) => i).sort((a, b) => (STAIR[exercises[a].type] ?? 3) - (STAIR[exercises[b].type] ?? 3) || a - b);
-}
-
-export const LESSONS = [];
-export const LESSON_BY_ID = new Map();
-for (const track of TRACKS) {
-  let prev = null;
-  track.chapters.forEach((ch, ci) => {
-    ch.trackId = track.id;
-    ch.index = ci;
-    ch.lessons.forEach((l, li) => {
-      l.trackId = track.id;
-      l.chapterId = ch.id;
-      l.lang = track.lang;
-      l.order = LESSONS.length;
-      l.numberInChapter = li + 1;
-      l.chapterIndex = ci;
-      if (EXTRA[l.id]) l.exercises = [...l.exercises, ...EXTRA[l.id]];
-      if (ORDER[l.id]) l.exercises = [...l.exercises, ...ORDER[l.id]];
-      l.sequence = stairOrder(l.exercises);
-      // Förkunskapskrav: föregående lektion i spåret, plus eventuella extra krav.
-      l.requires = [...new Set([...(prev ? [prev.id] : []), ...(l.requires || [])])];
-      LESSONS.push(l);
-      LESSON_BY_ID.set(l.id, l);
-      prev = l;
-    });
-  });
-}
+export const { LESSONS, LESSON_BY_ID } = decorate(TRACKS, { keepRequires: true });
 
 export const trackById = (id) => TRACKS.find((t) => t.id === id) || TRACKS[0];
 export const lessonsOfTrack = (id) => LESSONS.filter((l) => l.trackId === id);
 
 export const STATS = {
   lessons: LESSONS.length,
-  exercises: LESSONS.reduce((n, l) => n + l.exercises.length, 0),
+  exercises: LESSONS.reduce((n, l) => n + l.exerciseCount, 0),
   projects: LESSONS.filter((l) => l.tier === 5).length,
 };
+
+// Varje spår är en egen fil i bygget.
+const LOADERS = {
+  csharp: () => import('./body-csharp.js'),
+  python: () => import('./body-python.js'),
+  web: () => import('./body-web.js'),
+  git: () => import('./body-git.js'),
+};
+const pending = new Map();
+const ready = new Set();
+
+export const trackLoaded = (id) => ready.has(id);
+
+/** Laddar texter och övningar för ett spår och lägger dem på lektionerna. */
+export function loadTrack(id) {
+  if (!LOADERS[id]) return Promise.resolve();
+  if (!pending.has(id)) {
+    pending.set(id, LOADERS[id]().then((m) => {
+      for (const l of LESSONS) if (l.trackId === id && m.default[l.id]) Object.assign(l, m.default[l.id]);
+      ready.add(id);
+    }).catch((e) => { pending.delete(id); throw e; }));
+  }
+  return pending.get(id);
+}
+export const loadTracks = (ids) => Promise.all([...new Set(ids)].filter(Boolean).map(loadTrack));
+export const loadAllTracks = () => loadTracks(TRACK_IDS);

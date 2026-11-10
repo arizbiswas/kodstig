@@ -18,7 +18,8 @@ Du behöver Node.js 20 eller senare.
 ```bash
 npm install
 npm run dev        # utvecklingsserver på http://localhost:5173
-npm run build      # bygger till dist/
+npm run build      # bygger till dist/ (bygger först om innehållsförteckningen)
+npm run content    # bygger om src/content/manifest.js efter ändringar i läroplanen
 npm run preview    # visar det byggda resultatet
 npm test           # enhetstester (motorer, innehåll, XP, synk, Milo)
 npm run test:e2e   # webbläsartester (kräver npm run build först och Chromium via Playwright)
@@ -33,6 +34,12 @@ Appen publiceras automatiskt på GitHub Pages varje gång `main` uppdateras (se 
 Kodstig är en installerbar webbapp (PWA). I Chrome eller Edge på datorn installerar du den med installationsikonen i adressfältet. På Android väljer du **Installera app** i webbläsarens meny, och på iPhone trycker du på **Dela → Lägg till på hemskärmen** i Safari. Appen kan starta utan nät. Milos modell och data från andra tjänster sparas aldrig av appens service worker (`public/sw.js`), och sidan hämtas alltid från nätet först så att uppdateringar syns direkt.
 
 Bygger du för en annan sökväg sätter du `BASE_PATH`, till exempel `BASE_PATH=/kodstig/ npm run build`.
+
+### Läroplanen laddas per spår
+
+Allt lektionsinnehåll ligger i `src/content/`. Appen startar med en liten innehållsförteckning (`src/content/manifest.js`: spår, kapitel, lektionstitlar, krav och antal övningar). Texter, exempel och övningar ligger i en fil per spår (`body-csharp.js` med flera) som laddas när spåret öppnas. När appen har startat hämtas resten i bakgrunden, så att lektionerna öppnas direkt och fungerar offline. Det görs inte om webbläsaren ber om att spara data.
+
+Innehållsförteckningen skapas av `scripts/content-manifest.mjs`. Den byggs om automatiskt vid `npm run build`, och ett enhetstest säger till om den är inaktuell. Ändrar du i läroplanen kör du `npm run content`. Testerna och skriptet använder `src/content/full.js`, som har hela läroplanen på en gång.
 
 ## Konton med Supabase (Google-inloggning)
 

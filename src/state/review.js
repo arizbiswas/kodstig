@@ -3,6 +3,7 @@
 // det ett steg längre bort, fel börjar om från en dag. Övningar som gick fel
 // i lektionen eller i repetitionen kommer först nästa gång.
 import { LESSON_BY_ID } from '../content/index.js';
+import { fitsReview as fits } from '../content/assemble.js';
 import { today } from './progression.js';
 
 export const INTERVALS = [1, 3, 7, 14, 30];
@@ -36,17 +37,12 @@ export function scheduleLesson(p, lessonId, missed = [], day = today(), ts = Dat
   return p;
 }
 
-// Korta övningar passar i ett repetitionspass. Stora projektdelar gör det inte.
-function fits(ex, lesson) {
-  if (ex.type === 'choice' || ex.type === 'fill') return true;
-  if (lesson.tier === 5) return false;
-  return (ex.starter || '').split('\n').length <= 12;
-}
+// Om lektionen har korta övningar som passar i ett repetitionspass står i
+// innehållsförteckningen, så det går att räkna utan att ladda övningarna.
+const reviewable = (id) => !!LESSON_BY_ID.get(id)?.reviewable;
 
-const reviewable = (id) => {
-  const l = LESSON_BY_ID.get(id);
-  return !!l && l.exercises.some((ex) => fits(ex, l));
-};
+/** Spåren vars övningar behövs för dagens pass. */
+export const sessionTracks = (profile, day = today()) => dueLessons(profile, day).slice(0, SESSION_MAX).map((id) => LESSON_BY_ID.get(id).trackId);
 
 /** Begrepp som är dags att repetera, äldst först. */
 export function dueLessons(profile, day = today()) {

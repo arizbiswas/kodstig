@@ -38,6 +38,7 @@ Så blev det: varje klarad lektion är ett begrepp i en kö som kommer tillbaka 
 - [x] Python klarar mer: hela formatspråket, `%`-formatering, `str.format`, `*args`/`**kwargs`, `print(*lista)`, `del`, `nonlocal`, `else` efter loopar, stora heltal, `hex`/`bin`/`oct`, `type(x) == int` och `key=str.lower`. Standardvärden räknas ut en gång, som i Python.
 - [x] C#-tolken: `long` räknar med 64 bitar (slog tidigare runt som `int`), `char c; c++` ger nästa tecken (blev `"A1"`), och double skrivs ut som i .NET (`1E+20`). Kodlabbet säger ärligt att `float` och `decimal` räknas som `double`.
 - [x] Mobil: utskriften i Kodlabbet och feedbacken i lektionerna scrollas fram efter Kör och Kontrollera i stället för att hamna under skärmkanten eller bakom bottenmenyn.
+- [x] Snabbare start: lektionsinnehållet laddas per spår i stället för allt på en gång. Det som laddas vid start gick från 1 304 KB till 223 KB (gzip från 358 KB till 73 KB). Python-motorn laddas först i introduktionens demo. Resten hämtas i bakgrunden efter start, så att allt fungerar offline.
 - [ ] Kvar att fundera på: generatorer med `yield` i Python och riktig `decimal` i C#.
 
 ## Beslut för zira

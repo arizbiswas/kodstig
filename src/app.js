@@ -6,6 +6,8 @@ import { watchAuth, signOut, supabase } from './state/auth.js';
 import { startActivity, deviceId } from './state/activity.js';
 import { addActivity, hasProgress, merge, normalize, pref, setPref } from './state/model.js';
 import { levelInfo } from './state/progression.js';
+import { sessionTracks } from './state/review.js';
+import { LESSON_BY_ID, TRACKS, loadTracks, loadAllTracks, trackLoaded, trackById } from './content/index.js';
 import { Milo } from './ai/milo.js';
 import { h, esc, on, openDialog, toast, announce } from './ui/dom.js';
 import { ICONS, MILO_SVG } from './ui/icons.js';
@@ -43,6 +45,7 @@ const STATUS_TEXT = {
 
 export class App {
   constructor(root) {
+    this.routeToken = 0;
     this.root = root;
     this.store = null;
     this.user = null; // { id, email, name, guest }
@@ -92,6 +95,7 @@ export class App {
     this.writeMode(user.guest ? 'guest' : 'account');
     store.on((type) => this.onStore(type));
     this.lastLevel = levelInfo(store.state).level;
+    this.prefetchContent();
     const dev = deviceId(local);
     this.stopActivity = startActivity((day, secs) => this.store && this.store.update((p) => addActivity(p, dev, day, secs)));
     // I utvecklingsläge kan webbläsartesterna byta ut modellen mot en låtsasmotor.
@@ -191,10 +195,55 @@ export class App {
     return { path, params: Object.fromEntries(new URLSearchParams(query)) };
   }
 
+  // När appen har startat hämtas resten av lektionerna i lugn och ro, så att de
+  // öppnas direkt och finns kvar offline. Inte om webbläsaren ber om att spara data.
+  prefetchContent() {
+    if (this.prefetched) return;
+    this.prefetched = true;
+    try { if (navigator.connection && navigator.connection.saveData) return; } catch { /* ignore */ }
+    const go = () => loadAllTracks().catch(() => { this.prefetched = false; });
+    setTimeout(() => (window.requestIdleCallback ? window.requestIdleCallback(go, { timeout: 10000 }) : go()), 3000);
+  }
+
+  // Spåren vars texter och övningar vyn behöver. Innehållsförteckningen finns alltid.
+  contentNeeds(path, params) {
+    let m;
+    if ((m = path.match(/^\/lektion\/([\w-]+)$/))) return [LESSON_BY_ID.get(m[1])?.trackId];
+    if ((m = path.match(/^\/testa\/([\w-]+)$/))) return [TRACKS.find((t) => t.chapters.some((c) => c.id === m[1]))?.id];
+    if ((m = path.match(/^\/nivatest\/([\w-]+)$/))) return [m[1]];
+    if (path === '/repetition') return sessionTracks(this.store.state);
+    if (path === '/lar' || path === '/' || path === '') {
+      const t = params.kapitel && TRACKS.find((x) => x.chapters.some((c) => c.id === params.kapitel));
+      return [(t || trackById(pref(this.store.state, 'track'))).id];
+    }
+    return [];
+  }
+
   route() {
     stopLoop();
     stopConfetti();
     const { path, params } = this.parse();
+    const token = ++this.routeToken;
+    if (this.user && this.store) {
+      const need = this.contentNeeds(path, params).filter((id) => id && !trackLoaded(id));
+      if (need.length) {
+        // Visa en kort laddningsrad och kör routen igen när spåret är laddat.
+        if (this.view && this.view.destroy) this.view.destroy();
+        this.view = null;
+        const wait = h('<section class="page"><p class="boot" role="status">Laddar lektionerna…</p></section>');
+        (this.shell ? this.shell.querySelector('#main') : this.root).replaceChildren(wait);
+        loadTracks(need).then(
+          () => { if (token === this.routeToken) this.route(); },
+          () => {
+            if (token !== this.routeToken) return;
+            const err = h('<section class="page"><div class="card" role="alert"><h1>Lektionerna kunde inte laddas</h1><p>Kontrollera internetanslutningen och försök igen.</p><button class="btn primary" type="button">Försök igen</button></div></section>');
+            err.querySelector('button').addEventListener('click', () => this.route());
+            if (this.shell) this.shell.querySelector('#main').replaceChildren(err); else this.root.replaceChildren(err);
+          },
+        );
+        return;
+      }
+    }
     if (this.view && this.view.destroy) this.view.destroy();
     this.view = null;
     if (!this.user) {

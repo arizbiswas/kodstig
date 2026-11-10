@@ -2,7 +2,6 @@
 import { h, esc, on } from '../dom.js';
 import { MILO_SVG } from '../icons.js';
 import { STATS, TRACKS } from '../../content/index.js';
-import { runPython } from '../../engine/python.js';
 import { squash } from '../../engine/grade.js';
 import { playCorrect } from '../media.js';
 
@@ -50,6 +49,10 @@ print(steg + 2)</code></pre>
 }
 
 export function demo(ctx) {
+  // Python-motorn behövs först i steg 3. Den hämtas direkt i bakgrunden, så att
+  // knappen svarar utan väntan, men ingår inte i det som laddas vid start.
+  const engine = import('../../engine/python.js');
+  engine.catch(() => {});
   const el = h(`<div class="welcome demo">
     <header class="welcome-top">
       <a class="brand" href="#/"><span class="brand-mark" aria-hidden="true">▙</span><span>Kodstig</span></a>
@@ -130,11 +133,13 @@ print(steg + 2)</code></pre>
           : '<strong>Inte riktigt.</strong> Det är ett tal, inte text, så 1 och 2 sätts inte bara ihop. Prova igen.';
       }
     }),
-    on(el, 'click', '[data-check3]', () => {
+    on(el, 'click', '[data-check3]', async () => {
       const inp = stage.querySelector('.blank');
       const fb = stage.querySelector('.feedback');
       const out = stage.querySelector('.output');
       const val = squash(inp.value);
+      const { runPython } = await engine;
+      if (!inp.isConnected) return;
       const r = runPython(`${inp.value.trim()}("Hej, kodare!")`);
       if (val === 'print') {
         out.hidden = false;

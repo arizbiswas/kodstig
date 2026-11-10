@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { TRACKS, LESSON_BY_ID } from '../../src/content/index.js';
+import { TRACKS, LESSON_BY_ID, loadAllTracks } from '../../src/content/index.js';
+
+// Appens läroplan laddar övningarna per spår. Testerna behöver alla.
+await loadAllTracks();
 import { emptyProfile, merge, skipChapters, hasProgress } from '../../src/state/model.js';
 import { isUnlocked, availableLessons, xpOf } from '../../src/state/progression.js';
 import { quizPool, pickQuestions, placementChapters, chaptersThrough, TEST_OUT } from '../../src/state/placement.js';
