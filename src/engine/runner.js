@@ -36,6 +36,10 @@ export function runCode(lang, code, calls = [], { trace = false, input, seed, pi
     let w;
     try { w = ensureWorker(); } catch {
       // Om Web Workers saknas körs tolken i sidan (den är fortfarande utan eval).
+      if (pixel && pixel.game) {
+        Promise.all([import('./pixel/game.js'), import('./python.js'), import('./csharp.js')]).then(([gm, py, cs]) => resolve(gm.simulate(lang, code, { frames: pixel.game.frames, keys: gm.keySchedule(pixel.game.keys), vars: pixel.game.vars || [] }, { python: py.pythonSession, csharp: cs.csharpSession })));
+        return;
+      }
       if (pixel) {
         Promise.all([import('./pixel/run.js'), import('./python.js'), import('./csharp.js')]).then(([p, py, cs]) => resolve(p.runPixel(lang, code, { level: pixel.level || null, input, seed, runners: { python: py.runPython, csharp: cs.runCSharp } })));
         return;
@@ -54,6 +58,9 @@ export function runCode(lang, code, calls = [], { trace = false, input, seed, pi
     w.postMessage({ id, lang, code, calls, trace, input, seed, pixel });
   });
 }
+
+/** Kör ett spel utan skärm i sim.frames bildrutor, för rättning. Ger { error, vars, ops, output }. */
+export const runGameSim = (lang, code, sim) => runCode(lang, code, [], { pixel: { game: sim } });
 
 /** Kör koden i Pixelvärlden. Svaret har också events, goals och final (slutläget). */
 export const runPixelCode = (lang, code, { level = null, input, seed } = {}) => runCode(lang, code, [], { input, seed, pixel: { level } });

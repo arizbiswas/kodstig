@@ -491,6 +491,16 @@ const PIXEL = (cs) => {
       'Hjälten behöver en bana. Välj en bana i Pixelvärlden, eller rita i stället med turtle eller ett pixelrutnät.',
       { text: 'Rita utan bana:', example: cs ? 'var t = new Turtle();\nt.Forward(100);' : 'import turtle\nturtle.forward(100)' },
     ],
+    'game-loop': () => [
+      'Behöver spelet en egen loop som snurrar för alltid?',
+      `Kodstig anropar ${cs ? 'Update() och Draw()' : 'update() och draw()'} ungefär 30 gånger per sekund, som sidorna i ett blädderblock. Varje anrop gör en liten ändring och ritar en bild.`,
+      { text: 'Flytta det som händer i loopen till update:', example: cs ? 'double x = 0;\n\nvoid Update()\n{\n    x += 0.1;\n}\n\nvoid Draw()\n{\n    Screen.Fill(Color.Sky);\n    Screen.Sprite("hero", x, 7);\n}' : 'x = 0\n\ndef update():\n    global x\n    x += 0.1\n\ndef draw():\n    screen.fill("sky")\n    screen.sprite("hero", x, 7)' },
+    ],
+    'game-draw': () => [
+      'Vad ska spelet rita på skärmen i varje bildruta?',
+      `Ett spel behöver ${cs ? 'void Draw()' : 'def draw():'} som ritar allt varje gång. ${cs ? 'Skriv den utan static.' : ''}`.trim(),
+      { text: 'En enkel draw:', example: cs ? 'void Draw()\n{\n    Screen.Fill(Color.Sky);\n}' : 'def draw():\n    screen.fill("sky")' },
+    ],
     'pixel-allowed': () => [
       'Vilka kommandon får hjälten använda i den här banan?',
       'Vissa banor tränar en sak i taget och tillåter bara några kommandon. Listan står i felmeddelandet.',

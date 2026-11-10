@@ -2225,6 +2225,39 @@ export function runPython(code, { calls = [], maxSteps, trace = false, input, se
   return res;
 }
 
+/**
+ * Ett program som lever vidare efter att det körts, för spel i Pixelvärlden.
+ * call(namn, args) anropar en funktion med en egen stegbudget och ger { output, error }.
+ */
+export function pythonSession(code, { host, maxSteps, seed } = {}) {
+  let interp;
+  try {
+    const ast = parsePython(code);
+    interp = new Interp({ maxSteps, host, seed });
+    interp.run(ast);
+  } catch (e) {
+    return { start: { output: interp ? interp.output() : '', error: asError(e) } };
+  }
+  const start = { output: interp.output(), error: null };
+  let printed = interp.out.length;
+  const take = () => { const t = interp.out.slice(printed).join(''); printed = interp.out.length; return t; };
+  take();
+  return {
+    start,
+    has: (name) => interp.globals.get(name) instanceof PyFunc,
+    params: (name) => { const f = interp.globals.get(name); return f instanceof PyFunc ? f.def.params.length : 0; },
+    call(name, args = [], budget) {
+      const fn = interp.globals.get(name);
+      if (!(fn instanceof PyFunc)) return { output: '', error: null, missing: true };
+      interp.steps = 0;
+      interp.maxSteps = budget || interp.maxSteps;
+      interp.depth = 0;
+      try { interp.callFunc(fn, args.map(fromJS), {}, null); return { output: take(), error: null }; } catch (e) { return { output: take(), error: asError(e) }; }
+    },
+    get: (name) => (interp.globals.has(name) ? toJS(interp.globals.get(name)) : undefined),
+  };
+}
+
 function asError(e) {
   if (e instanceof CodeError) return e.toJSON();
   if (e instanceof PyRaise) {

@@ -55,7 +55,7 @@ export function show(v, lang) {
  * Bedömer ett svar.
  * @returns {Promise<{ok:boolean, title:string, detail?:string, tests?:Array, run?:object}>}
  */
-export async function grade(ex, answer, { lang, runner, webChecker, pixelRunner }) {
+export async function grade(ex, answer, { lang, runner, webChecker, pixelRunner, gameRunner }) {
   switch (ex.type) {
     case 'choice': {
       const ok = answer === ex.answer;
@@ -86,6 +86,8 @@ export async function grade(ex, answer, { lang, runner, webChecker, pixelRunner 
       return webChecker(ex, String(answer ?? ''));
     case 'world':
       return gradeWorld(ex, String(answer ?? ''), lang, pixelRunner);
+    case 'game':
+      return gradeGame(ex, String(answer ?? ''), lang, gameRunner);
     default:
       return { ok: false, title: 'Okänd övningstyp.' };
   }
@@ -101,6 +103,35 @@ export async function worldTarget(ex, lang, pixelRunner) {
 }
 /** Antal rader med kod, utan tomma rader och kommentarer. */
 export const codeLines = (code, lang) => stripComments(code, lang).split('\n').filter((l) => l.trim() && !/^\s*[{}]\s*$/.test(l)).length;
+
+// Spel: koden körs utan skärm i ett antal bildrutor med tangenter enligt ett
+// schema, och sedan kontrolleras variablerna. Varje körning har en egen etikett.
+const OPS = { '>': (a, b) => a > b, '>=': (a, b) => a >= b, '<': (a, b) => a < b, '<=': (a, b) => a <= b, '==': (a, b) => a === b, '!=': (a, b) => a !== b };
+async function gradeGame(ex, code, lang, gameRunner) {
+  if (!stripComments(code, lang).trim()) return { ok: false, title: 'Skriv lite kod först.', detail: ex.hint };
+  const tests = [];
+  for (const sim of ex.sims) {
+    const expect = sim.expect || [];
+    const vars = [...new Set(expect.filter((e) => e.var).map((e) => e.var))];
+    const r = await gameRunner(lang, code, { frames: sim.frames, keys: sim.keys || [], vars });
+    if (r.error) return { ok: false, title: 'Spelet stoppades av ett fel.', error: r.error, run: r, detail: ex.hint };
+    if (sim.reacts) {
+      const still = await gameRunner(lang, code, { frames: sim.frames, keys: [], vars: [] });
+      tests.push({ label: sim.label, ok: !still.error && JSON.stringify(still.ops) !== JSON.stringify(r.ops) });
+      continue;
+    }
+    for (const e of expect) {
+      const got = r.vars[e.var];
+      if (got === undefined) return { ok: false, title: 'En variabel saknas.', detail: `Spelet behöver en variabel som heter ${e.var}. Skapa den högst upp i programmet.` };
+      tests.push({ label: `${sim.label}: ${e.text}`, ok: OPS[e.op](got, e.value), expected: e.text, got: `${e.var} = ${typeof got === 'number' ? Math.round(got * 100) / 100 : got}` });
+    }
+  }
+  const src = checkSource(ex, code, lang, null);
+  if (src) return src;
+  const failed = tests.filter((t) => !t.ok);
+  if (!failed.length) return { ok: true, title: 'Spelet fungerar!', detail: ex.explain, tests };
+  return { ok: false, title: `${tests.length - failed.length} av ${tests.length} kontroller klara.`, detail: ex.hint, tests };
+}
 
 // Fria uppgifter utan facit: bara några krav på bilden.
 function freeCheck(check, run) {

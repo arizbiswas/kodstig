@@ -3,6 +3,7 @@
 // inte behöver känna till hur tolken är byggd inuti.
 import { CodeError } from '../errors.js';
 import { Canvas, Turtle } from './core.js';
+import { KEYS, overlaps, GAME_W, GAME_H } from './game.js';
 
 export function pythonPixel(P, interp, host) {
   const { Builtin, PyHost, PyModule, PyFloat, Tuple, num, isNum, isInt, pyStr } = P;
@@ -141,5 +142,21 @@ export function pythonPixel(P, interp, host) {
   mod.attrs.set('Turtle', fn('Turtle', (a, kw, line) => { argc('Turtle', a, 0, 0, line); return turtleObj(new Turtle(host, line)); }));
   mod.attrs.set('Pen', mod.attrs.get('Turtle'));
   mod.attrs.set('Screen', fn('Screen', () => host0('Screen', screen)));
+  // ---------- Spel: screen, keyboard och overlaps ----------
+  if (host.game) {
+    const num = (v, what, line) => n(v, what, line);
+    out.set('screen', host0('skärm', {
+      fill: fn('fill', (a, kw, line) => { argc('fill', a, 1, 1, line); host.fill(colorArg(a, line), line); return null; }),
+      clear: fn('clear', (a, kw, line) => { argc('clear', a, 0, 0, line); host.fill('white', line); return null; }),
+      rect: fn('rect', (a, kw, line) => { argc('rect', a, 5, 5, line); host.rect(num(a[0], 'rect()', line), num(a[1], 'rect()', line), num(a[2], 'rect()', line), num(a[3], 'rect()', line), str(a[4], 'rect()', line), line); return null; }),
+      sprite: fn('sprite', (a, kw, line) => { argc('sprite', a, 3, 3, line); host.sprite(str(a[0], 'sprite()', line), num(a[1], 'sprite()', line), num(a[2], 'sprite()', line), line); return null; }),
+      text: fn('text', (a, kw, line) => { argc('text', a, 3, 4, line); host.text(pyStr(a[0]), num(a[1], 'text()', line), num(a[2], 'text()', line), a.length > 3 ? str(a[3], 'text()', line) : (kw.color ?? null), line); return null; }),
+      width: GAME_W, height: GAME_H,
+    }));
+    const keyTable = {};
+    for (const k of KEYS) keyTable[k] = prop(() => !!host.keys[k]);
+    out.set('keyboard', host0('tangentbord', keyTable));
+    out.set('overlaps', fn('overlaps', (a, kw, line) => { argc('overlaps', a, 4, 4, line); return overlaps(...a.map((v) => num(v, 'overlaps()', line))); }));
+  }
   return { globals: out, turtle: mod };
 }

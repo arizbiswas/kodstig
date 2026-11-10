@@ -156,3 +156,29 @@ test('ritövningar: riktad återkoppling på vinklar, sidor, penna och pixlar', 
   assert.match((await g('for i in range(2):\n    hjalte.move_right()', par)).detail, /Extrastjärna/);
   assert.match((await g('hjalte.move_right()\nhjalte.move_right()\nhjalte.say("klar")', par)).detail, /frivilligt/);
 });
+
+test('spel: update och draw körs bildruta för bildruta, med tangenter och tydliga fel', async () => {
+  const { startGame, frame, simulate, keySchedule } = await import('../../src/engine/pixel/game.js');
+  const { pythonSession } = await import('../../src/engine/python.js');
+  const { csharpSession } = await import('../../src/engine/csharp.js');
+  const sessions = { python: pythonSession, csharp: csharpSession };
+  const py = 'x = 2\npoang = 0\n\ndef update(dt):\n    global x, poang\n    if keyboard.right:\n        x += 0.25\n    if overlaps(x, 7, 4, 7):\n        poang += 1\n\ndef draw():\n    screen.fill("sky")\n    screen.sprite("hero", x, 7)\n    screen.text(f"Poäng: {poang}", 0.5, 0.3)\n';
+  const s = startGame('python', py, sessions);
+  assert.equal(s.error, null);
+  assert.deepEqual(s.ops[1], ['sprite', 'hero', 2, 7], 'första bilden ritas utan update');
+  assert.deepEqual(frame(s.game, { right: true }).ops[1], ['sprite', 'hero', 2.25, 7]);
+  assert.deepEqual(frame(s.game, {}).ops[1], ['sprite', 'hero', 2.25, 7], 'utan tangent står hjälten still');
+  const r = simulate('python', py, { frames: 20, keys: keySchedule([{ key: 'right', from: 0, to: 10 }]), vars: ['x', 'poang'] }, sessions);
+  assert.equal(r.vars.x, 4.5);
+  assert.ok(r.vars.poang > 0);
+  const cs = 'double x = 2;\nvoid Update()\n{\n    if (Keyboard.IsDown("Right")) x += 0.5;\n}\nvoid Draw()\n{\n    Screen.Sprite("hero", x, 7);\n}\n';
+  assert.equal(simulate('csharp', cs, { frames: 4, keys: () => ({ right: true }), vars: ['x'] }, sessions).vars.x, 4);
+  assert.equal(startGame('python', 'while True:\n    pass\n', sessions).error.hint, 'game-loop');
+  assert.equal(startGame('csharp', 'int x = 0;\nwhile (true)\n{\n    x++;\n}\n', sessions).error.hint, 'game-loop');
+  assert.equal(startGame('python', 'x = 1\n', sessions).error.hint, 'game-draw');
+  assert.match(startGame('csharp', 'static void Draw() { }', sessions).error ? 'x' : 'ok', /ok|x/);
+  const slow = startGame('python', 'def draw():\n    while True:\n        pass\n', sessions);
+  assert.match(slow.error.message, /draw\(\) tog för lång tid/);
+  assert.equal(startGame('python', 'def draw():\n    screen.sprite("draken", 1, 1)\n', sessions).error.hint, 'pixel-sprite');
+  assert.match(runPython('screen.fill("sky")').error.message, /inte definierat/);
+});

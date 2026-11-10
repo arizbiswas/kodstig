@@ -728,6 +728,42 @@ async function main() {
       await context.close();
     });
 
+    await check('Pixelvärlden: spel med update och draw, tangenter bara med fokus, och en spellektion', async () => {
+      const { context, page } = await newGuest(browser);
+      await page.goto(`${BASE}#/pixelvarld?bana=spel-samla`);
+      await page.locator('.game-slot:not([hidden]) canvas').waitFor();
+      await page.locator('#px-code').fill('x = 0\n\ndef update():\n    global x\n    if keyboard.right:\n        x += 1\n        print(x)\n\ndef draw():\n    screen.fill("sky")\n    screen.sprite("hero", x, 7)\n');
+      await page.locator('[data-px-run]').click();
+      await page.waitForFunction(() => document.activeElement && document.activeElement.classList.contains('game-canvas'));
+      await page.keyboard.down('ArrowRight');
+      await page.waitForFunction(() => /\b5\b/.test(document.querySelector('.px-output pre').textContent), null, { timeout: 8000 });
+      await page.keyboard.up('ArrowRight');
+      // Utan fokus på spelytan gör tangenterna ingenting.
+      await page.locator('#px-code').focus();
+      const before = await page.locator('.px-output pre').textContent();
+      await page.keyboard.press('ArrowRight');
+      await page.waitForTimeout(300);
+      eq(await page.locator('.px-output pre').textContent(), before, 'pilen i kodfältet styr inte spelet');
+      await page.locator('[data-game-stop]').click();
+      // En egen while True förklaras.
+      await page.locator('#px-code').fill('x = 0\nwhile True:\n    x += 1\n');
+      await page.locator('[data-px-run]').click();
+      await page.locator('.px-error .err').waitFor();
+      assert((await page.locator('.px-error').textContent()).includes('30 gånger per sekund'));
+      // Spellektionen går att klara.
+      await page.evaluate(() => {
+        const p = JSON.parse(localStorage.getItem('kodstig.guest.v1'));
+        for (const id of ['kommandon', 'funktioner', 'loopar', 'villkor', 'while', 'variabler', 'listor', 'pixelkonst', 'turtle', 'projekt']) p.doc.completed[`py-px-${id}`] = { at: new Date().toISOString() };
+        p.rev += 1;
+        localStorage.setItem('kodstig.guest.v1', JSON.stringify(p));
+      });
+      await page.reload();
+      await page.locator('#main h1').waitFor();
+      await finishLesson(page, 'py-px-bildrutor');
+      assert(!page.errors.length, page.errors.join('\n'));
+      await context.close();
+    });
+
     // 8. Tangentbord och fokus
     await check('Tangentbord: hoppa-länk, fokus på rubrik, Esc i kodfält', async () => {
       const { context, page } = await newGuest(browser);

@@ -53,7 +53,24 @@ function kit(lang) {
     tcolor: (c, v = 't') => (py ? `${v}.color("${c}")` : `${v}.PenColor = Color.${pas(c)};`),
     tspeed: (s, v = 't') => (py ? `${v}.speed(${s})` : `${v}.Speed = ${s};`),
     L: (...ls) => ls.filter((l) => l !== null && l !== undefined).join('\n'),
+    // Spel: update och draw. I Python behöver variabler som ändras en global-rad.
+    num: (v, e) => (py ? `${v} = ${e}` : `double ${v} = ${e};`),
+    flag: (v, e) => (py ? `${v} = ${e ? 'True' : 'False'}` : `bool ${v} = ${e ? 'true' : 'false'};`),
+    truth: (e) => (py ? (e ? 'True' : 'False') : (e ? 'true' : 'false')),
+    addTo: (v, e) => (py ? `${v} += ${e}` : `${v} += ${e};`),
+    subFrom: (v, e) => (py ? `${v} -= ${e}` : `${v} -= ${e};`),
+    and: (a, b) => (py ? `${a} and ${b}` : `${a} && ${b}`),
+    update: (globals, body) => (py ? `def update():\n${ind(k2(globals) + body)}` : `void Update()\n{\n${ind(body)}\n}`),
+    drawFn: (body) => (py ? `def draw():\n${ind(body)}` : `void Draw()\n{\n${ind(body)}\n}`),
+    sfill: (c) => (py ? `screen.fill("${c}")` : `Screen.Fill(Color.${pas(c)});`),
+    ssprite: (name, x, y) => (py ? `screen.sprite("${name}", ${x}, ${y})` : `Screen.Sprite("${name}", ${x}, ${y});`),
+    stext: (t, x, y) => (py ? `screen.text(f"${t}", ${x}, ${y})` : `Screen.Text($"${t}", ${x}, ${y});`),
+    key: (name) => (py ? `keyboard.${name}` : `Keyboard.IsDown("${pas(name)}")`),
+    ov: (a, b, c, d) => (py ? `overlaps(${a}, ${b}, ${c}, ${d})` : `Game.Overlaps(${a}, ${b}, ${c}, ${d})`),
+    ret: () => (py ? 'return' : 'return;'),
   };
+  // global-raden i Python: bara om något ska ändras.
+  function k2(globals) { return py && globals ? `global ${globals}\n` : ''; }
   return K;
 }
 const R = (re, msg) => ({ re, msg });
@@ -95,6 +112,10 @@ const M = {
   },
   keyDoor: { map: ['########', '#S.k.DG#', '########'], goals: ['goal'] },
 };
+
+// Spelövningar rättas genom att spelet körs utan skärm i ett antal bildrutor.
+const sim = (label, frames, keys, expect) => ({ label, frames, keys, expect });
+const hold = (key, from = 0, to = 1000) => ({ key, from, to });
 
 function lessons(lang) {
   const k = kit(lang);
@@ -366,6 +387,100 @@ function lessons(lang) {
           starter: k.L(k.turtle(), k.t('forward', '100')),
           solution: k.L(k.turtle(), k.tspeed(0), k.loop(12, k.L(k.ifDo('i % 2 == 0', k.tcolor('blue'), k.tcolor('orange')), k.loop(4, k.L(k.t('forward', '80'), k.t('left', '90')), 'j'), k.t('left', '30')))),
           explain: 'Mönster blir till när en figur upprepas och vrids lite varje gång.', hint: 'Lägg en kvadrat i en loop och vrid 30 grader efter varje kvadrat.' },
+      ],
+    },
+    // 11. Bildrutor
+    {
+      id: id('bildrutor'), title: 'Spel: bildrutor som ett blädderblock', tier: 3, pixel: true, game: true, level: null,
+      text: `Ett spel är som ett blädderblock. Varje sida är en bild, och när du bläddrar snabbt ser det ut som att något rör sig.\n\nI Pixelvärlden skriver du två ${Fs}:\n\n- \`${k.py ? 'def update():' : 'void Update()'}\` ändrar lite i läget, till exempel flyttar hjälten en bit.\n- \`${k.py ? 'def draw():' : 'void Draw()'}\` ritar hela bilden.\n\nKodstig anropar dem ungefär 30 gånger per sekund åt dig, så du behöver **ingen egen while-loop**. Skärmen är 20 × 15 rutor.${k.py ? '\n\nI Python behöver update() raden `global x` för att få ändra variabeln x som finns utanför funktionen.' : '\n\nSkriv Update och Draw utan static, så att de kan använda variablerna högst upp i programmet.'}`,
+      example: k.L(k.num('x', '0'), '', k.update('x', k.addTo('x', '0.1')), '', k.drawFn(k.L(k.sfill('sky'), k.ssprite('hero', 'x', '7')))),
+      exercises: [
+        { type: 'choice', game: true, prompt: 'x börjar på 2. Spelet har ritat den första bilden och sedan gått fyra bildrutor till. Vilket x ritar draw() nu?',
+          code: k.L(k.num('x', '2'), '', k.update('x', k.addTo('x', '0.5')), '', k.drawFn(k.ssprite('hero', 'x', '7'))),
+          options: ['4', '2.5', '6'], answer: 0,
+          explain: 'Varje bildruta kör update() en gång: 2 + 4 · 0.5 = 4.',
+          why: { 1: 'update() körs i varje bildruta, inte bara en gång.', 2: 'x ökar med 0.5 per bildruta, inte med 1.' } },
+        { type: 'game', prompt: 'Få ädelstenen att glida åt höger över skärmen. Ändra update() så att gem_x ökar lite i varje bildruta.',
+          starter: k.L(k.num('gem_x', '0'), '', k.update(null, k.py ? 'pass' : ''), '', k.drawFn(k.L(k.sfill('sky'), k.ssprite('gem', 'gem_x', '5')))).replace('void Update()\n{\n    \n}', 'void Update()\n{\n}'),
+          solution: k.L(k.num('gem_x', '0'), '', k.update('gem_x', k.addTo('gem_x', '0.2')), '', k.drawFn(k.L(k.sfill('sky'), k.ssprite('gem', 'gem_x', '5')))),
+          sims: [sim('Efter 30 bildrutor', 30, [], [{ var: 'gem_x', op: '>', value: 3, text: 'ädelstenen har glidit åt höger' }])],
+          explain: 'En liten ökning i varje bildruta blir en mjuk rörelse.', hint: `Lägg ${k.addTo('gem_x', '0.2')} i update()${k.py ? ', och glöm inte global gem_x' : ''}.` },
+        { type: 'fill', game: true, prompt: 'Fyll i så att x ökar med 0.1 i varje bildruta.', code: k.L(k.num('x', '0'), '', k.update('x', k.py ? 'x ___ 0.1' : 'x ___ 0.1;'), '', k.drawFn(k.ssprite('hero', 'x', '7'))),
+          answers: [['+=']], explain: '+= lägger till värdet till det som redan finns.', hint: 'Plus och likhetstecken.' },
+        { type: 'game', debug: true, prompt: 'Hjälten ska gå åt höger, men går åt fel håll och försvinner. Rätta buggen.',
+          starter: k.L(k.num('x', '5'), '', k.update('x', k.subFrom('x', '0.2')), '', k.drawFn(k.L(k.sfill('sky'), k.ssprite('hero', 'x', '7')))),
+          solution: k.L(k.num('x', '5'), '', k.update('x', k.addTo('x', '0.2')), '', k.drawFn(k.L(k.sfill('sky'), k.ssprite('hero', 'x', '7')))),
+          sims: [sim('Efter 20 bildrutor', 20, [], [{ var: 'x', op: '>', value: 5, text: 'hjälten har gått åt höger' }])],
+          explain: 'Åt höger betyder att x blir större.', hint: 'Ska x bli större eller mindre när hjälten går åt höger?' },
+      ],
+    },
+    // 12. Tangenter
+    {
+      id: id('tangenter'), title: 'Spel: styr med tangenterna', tier: 3, pixel: true, game: true, level: null,
+      text: `\`${k.key('right')}\` är ${k.py ? 'True' : 'true'} så länge högerpilen hålls nere. Kolla tangenterna i update() och flytta hjälten.\n\nTangenterna fungerar bara när spelytan har fokus. Klicka på den, så får den en tydlig ram. På en telefon finns pilknappar under spelytan.\n\nFör att hjälten inte ska gå ut från skärmen kan du kolla kanten också: x ska vara mellan 0 och 19.`,
+      example: k.L(k.num('x', '9'), '', k.update('x', k.L(k.ifDo(k.key('left'), k.subFrom('x', '0.25')), k.ifDo(k.key('right'), k.addTo('x', '0.25')))), '', k.drawFn(k.L(k.sfill('sky'), k.ssprite('hero', 'x', '7')))),
+      exercises: [
+        { type: 'choice', game: true, prompt: 'Vad händer när ingen tangent hålls nere?', code: k.update('x', k.ifDo(k.key('right'), k.addTo('x', '0.25'))),
+          options: ['Hjälten står still', 'Hjälten går åt höger', 'Spelet stannar'], answer: 0,
+          explain: 'Villkoret är falskt, så x ändras inte. draw() ritar hjälten på samma ställe varje bildruta.',
+          why: { 1: 'Hjälten går bara åt höger medan högerpilen hålls nere.', 2: 'update() och draw() fortsätter att anropas även när inget händer.' } },
+        { type: 'game', prompt: 'Hjälten kan gå åt vänster och höger. Lägg till upp och ner också, med variabeln y.',
+          starter: k.L(k.num('x', '9'), k.num('y', '7'), '', k.update('x', k.L(k.ifDo(k.key('left'), k.subFrom('x', '0.25')), k.ifDo(k.key('right'), k.addTo('x', '0.25')))), '', k.drawFn(k.L(k.sfill('sky'), k.ssprite('hero', 'x', 'y')))),
+          solution: k.L(k.num('x', '9'), k.num('y', '7'), '', k.update('x, y', k.L(k.ifDo(k.key('left'), k.subFrom('x', '0.25')), k.ifDo(k.key('right'), k.addTo('x', '0.25')), k.ifDo(k.key('up'), k.subFrom('y', '0.25')), k.ifDo(k.key('down'), k.addTo('y', '0.25')))), '', k.drawFn(k.L(k.sfill('sky'), k.ssprite('hero', 'x', 'y')))),
+          sims: [sim('Uppåtpilen i 12 bildrutor', 12, [hold('up')], [{ var: 'y', op: '<', value: 6, text: 'y har blivit mindre' }]), sim('Neråtpilen i 12 bildrutor', 12, [hold('down')], [{ var: 'y', op: '>', value: 8, text: 'y har blivit större' }])],
+          explain: 'Upp gör y mindre och ner gör y större, eftersom y växer nedåt på skärmen.', hint: `Gör som för x, men med ${k.key('up')}, ${k.key('down')} och y.${k.py ? ' Lägg till y i global-raden.' : ''}` },
+        { type: 'game', prompt: 'Hjälten kan gå ut från skärmen åt vänster. Se till att x aldrig blir mindre än 0.',
+          starter: k.L(k.num('x', '3'), '', k.update('x', k.ifDo(k.key('left'), k.subFrom('x', '0.25'))), '', k.drawFn(k.L(k.sfill('sky'), k.ssprite('hero', 'x', '7')))),
+          solution: k.L(k.num('x', '3'), '', k.update('x', k.ifDo(k.and(k.key('left'), 'x > 0'), k.subFrom('x', '0.25'))), '', k.drawFn(k.L(k.sfill('sky'), k.ssprite('hero', 'x', '7')))),
+          sims: [sim('Vänsterpilen i 60 bildrutor', 60, [hold('left')], [{ var: 'x', op: '>=', value: 0, text: 'x är 0 eller mer' }, { var: 'x', op: '<', value: 1, text: 'hjälten har gått ända fram till kanten' }])],
+          explain: 'Hjälten går bara om den inte redan står vid kanten.', hint: `Lägg till ${k.py ? 'and x > 0' : '&& x > 0'} i villkoret.` },
+        { type: 'fill', game: true, prompt: 'Fyll i tangenten så att hjälten går åt vänster.', code: k.L(k.num('x', '9'), '', k.update('x', k.ifDo(k.key('___'), k.subFrom('x', '0.25'))), '', k.drawFn(k.ssprite('hero', 'x', '7'))).replace('"___"', '"___"').replace('IsDown("___")', 'IsDown("___")'),
+          answers: [[k.py ? 'left' : 'Left']], explain: 'Vänsterpilen heter left.', hint: 'Vänster på engelska.' },
+      ],
+    },
+    // 13. Krockar
+    {
+      id: id('krockar'), title: 'Spel: krockar och poäng', tier: 4, pixel: true, game: true, level: null,
+      text: `\`${k.ov('x', 'y', 'gem_x', 'gem_y')}\` är ${k.py ? 'True' : 'true'} när hjälten och ädelstenen överlappar, alltså är mindre än en ruta från varandra åt båda hållen.\n\nNär de krockar kan du öka en poängräknare. Men se upp: om ädelstenen ligger kvar krockar de igen i nästa bildruta, och då ökar poängen 30 gånger i sekunden! Flytta ädelstenen när den har plockats.`,
+      example: k.L(k.num('x', '2'), k.num('gem_x', '8'), k.int('poang', '0'), '', k.update('x, gem_x, poang', k.L(k.ifDo(k.key('right'), k.addTo('x', '0.25')), k.ifDo(k.ov('x', '7', 'gem_x', '7'), k.L(k.inc('poang'), k.set('gem_x', '18')))) ), '', k.drawFn(k.L(k.sfill('sky'), k.ssprite('gem', 'gem_x', '7'), k.ssprite('hero', 'x', '7'), k.stext('Poäng: {poang}', '0.5', '0.3')))),
+      exercises: [
+        { type: 'choice', game: true, prompt: `Vad blir ${k.ov('3', '4', '3.5', '4.2')}?`, code: k.ov('3', '4', '3.5', '4.2'),
+          options: [k.truth(true), k.truth(false)], answer: 0,
+          explain: 'Skillnaden är 0.5 åt sidan och 0.2 uppåt. Båda är mindre än 1, så de överlappar.',
+          why: { 1: 'Två saker överlappar när de är mindre än en ruta från varandra åt båda hållen. Här är det 0.5 och 0.2.' } },
+        { type: 'game', prompt: 'Ge en poäng när hjälten når ädelstenen, och flytta sedan ädelstenen till gem_x = 0 så att poängen bara ökar en gång.',
+          starter: k.L(k.num('x', '2'), k.num('gem_x', '6'), k.int('poang', '0'), '', k.update('x, gem_x, poang', k.ifDo(k.key('right'), k.addTo('x', '0.25'))), '', k.drawFn(k.L(k.sfill('sky'), k.ssprite('gem', 'gem_x', '7'), k.ssprite('hero', 'x', '7')))),
+          solution: k.L(k.num('x', '2'), k.num('gem_x', '6'), k.int('poang', '0'), '', k.update('x, gem_x, poang', k.L(k.ifDo(k.key('right'), k.addTo('x', '0.25')), k.ifDo(k.ov('x', '7', 'gem_x', '7'), k.L(k.inc('poang'), k.set('gem_x', '0'))))), '', k.drawFn(k.L(k.sfill('sky'), k.ssprite('gem', 'gem_x', '7'), k.ssprite('hero', 'x', '7')))),
+          sims: [sim('Högerpilen i 40 bildrutor', 40, [hold('right')], [{ var: 'poang', op: '==', value: 1, text: 'poängen är exakt 1' }])],
+          explain: 'Krocken ger en poäng, och när ädelstenen flyttas krockar de inte igen.', hint: `Använd ${k.ov('x', '7', 'gem_x', '7')} i en if. Öka poang och sätt gem_x till 0 i samma if.` },
+        { type: 'game', debug: true, prompt: 'Poängen rusar iväg när hjälten står på ädelstenen. Rätta buggen så att varje ädelsten bara ger en poäng.',
+          starter: k.L(k.num('x', '6'), k.num('gem_x', '6'), k.int('poang', '0'), '', k.update('gem_x, poang', k.ifDo(k.ov('x', '7', 'gem_x', '7'), k.inc('poang'))), '', k.drawFn(k.L(k.sfill('sky'), k.ssprite('gem', 'gem_x', '7'), k.ssprite('hero', 'x', '7')))),
+          solution: k.L(k.num('x', '6'), k.num('gem_x', '6'), k.int('poang', '0'), '', k.update('gem_x, poang', k.ifDo(k.ov('x', '7', 'gem_x', '7'), k.L(k.inc('poang'), k.set('gem_x', '15')))), '', k.drawFn(k.L(k.sfill('sky'), k.ssprite('gem', 'gem_x', '7'), k.ssprite('hero', 'x', '7')))),
+          sims: [sim('Hjälten står stilla i 30 bildrutor', 30, [], [{ var: 'poang', op: '==', value: 1, text: 'poängen är exakt 1' }])],
+          explain: 'Ädelstenen flyttas bort efter krocken, så den räknas bara en gång.', hint: 'Flytta ädelstenen någon annanstans direkt efter att poängen ökat.' },
+        { type: 'fill', game: true, prompt: 'Fyll i så att poängen ökar när hjälten och myntet krockar.', code: k.L(k.num('x', '4'), k.num('coin_x', '4'), k.int('poang', '0'), '', k.update('coin_x, poang', k.ifDo(k.py ? '___(x, 7, coin_x, 7)' : 'Game.___(x, 7, coin_x, 7)', k.L(k.inc('poang'), k.set('coin_x', '15')))), '', k.drawFn(k.ssprite('coin', 'coin_x', '7'))),
+          answers: [[k.py ? 'overlaps' : 'Overlaps']], explain: 'overlaps svarar om två saker ligger på samma ställe.', hint: 'Funktionen heter overlaps på engelska: överlappar.' },
+      ],
+    },
+    // 14. Ditt första spel
+    {
+      id: id('spel'), title: 'Spel: ditt första spel', tier: 5, pixel: true, game: true, level: null,
+      text: `Nu bygger du ett helt spel: en sten faller från himlen, och hjälten ska undvika den. Spelet tar slut om stenen träffar.\n\n1. Låt stenen falla: öka sten_y i update().\n2. Styr hjälten åt sidan med piltangenterna.\n3. Om stenen och hjälten krockar sätts slut till ${k.truth(true)}. När slut är ${k.truth(true)} ska ingenting röra sig längre.\n\nSedan är det fritt fram: gör ett eget spel med det du kan!`,
+      example: k.L(k.num('sten_y', '0'), '', k.update('sten_y', k.addTo('sten_y', '0.2')), '', k.drawFn(k.L(k.sfill('sky'), k.ssprite('wall', '10', 'sten_y')))),
+      exercises: [
+        { type: 'game', prompt: 'Stenen faller rakt mot hjälten på x = 10. Sätt slut till sant när de krockar, och låt ingenting röra sig när spelet är slut.',
+          starter: k.L(k.num('x', '10'), k.num('sten_y', '0'), k.flag('slut', false), '', k.update('x, sten_y, slut', k.L(k.ifDo(k.key('left'), k.subFrom('x', '0.3')), k.ifDo(k.key('right'), k.addTo('x', '0.3')), k.addTo('sten_y', '0.2'))), '', k.drawFn(k.L(k.sfill('sky'), k.ssprite('wall', '10', 'sten_y'), k.ssprite('hero', 'x', '13')))),
+          solution: k.L(k.num('x', '10'), k.num('sten_y', '0'), k.flag('slut', false), '', k.update('x, sten_y, slut', k.L(k.ifDo('slut', k.ret()), k.ifDo(k.key('left'), k.subFrom('x', '0.3')), k.ifDo(k.key('right'), k.addTo('x', '0.3')), k.addTo('sten_y', '0.2'), k.ifDo(k.ov('x', '13', '10', 'sten_y'), k.set('slut', k.truth(true))))), '', k.drawFn(k.L(k.sfill('sky'), k.ssprite('wall', '10', 'sten_y'), k.ssprite('hero', 'x', '13')))),
+          sims: [
+            sim('Hjälten står still', 90, [], [{ var: 'slut', op: '==', value: true, text: 'stenen träffar och spelet tar slut' }, { var: 'sten_y', op: '<', value: 13.5, text: 'stenen stannar när spelet är slut' }]),
+            sim('Hjälten går åt vänster', 90, [hold('left')], [{ var: 'slut', op: '==', value: false, text: 'stenen missar' }]),
+          ],
+          explain: 'Spelet kollar krocken i varje bildruta, och när slut är sant gör update() ingenting mer.', hint: `Lägg till ${k.py ? 'if slut: return' : 'if (slut) return;'} först i update(), och en if med ${k.ov('x', '13', '10', 'sten_y')} sist.` },
+        { type: 'game', prompt: 'Gör ett eget spel! Det enda kravet är att något på skärmen ändras när man håller nere en piltangent. Prova med Spela när du är klar.',
+          starter: k.L(k.num('x', '9'), '', k.drawFn(k.L(k.sfill('sky'), k.ssprite('hero', 'x', '7')))),
+          solution: k.L(k.num('x', '9'), '', k.update('x', k.ifDo(k.key('right'), k.addTo('x', '0.25'))), '', k.drawFn(k.L(k.sfill('sky'), k.ssprite('hero', 'x', '7')))),
+          sims: [{ label: 'Spelet reagerar på piltangenterna', frames: 20, keys: [hold('right'), hold('left', 0, 0), hold('up', 0, 0)], reacts: true, expect: [] }],
+          explain: 'Ditt första egna spel! Dela det gärna med en länk från Pixelvärlden i Kodlabbet.', hint: `Skriv en ${k.py ? 'update()' : 'Update()'} som ändrar x när högerpilen hålls nere.` },
       ],
     },
   ];

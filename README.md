@@ -2,12 +2,12 @@
 
 Kodstig är en svensk app för nybörjare som vill lära sig C#, Python och HTML/CSS. Den innehåller korta lektioner, en lärstig, ett kodlabb och Milo, en liten AI-studiekompis som körs i webbläsaren.
 
-Allt lektionsinnehåll är **nyskrivet för den här versionen**. Det är inte kopierat från någon tidigare app. Totalt finns 183 lektioner, 1181 övningar och 24 miniprojekt:
+Allt lektionsinnehåll är **nyskrivet för den här versionen**. Det är inte kopierat från någon tidigare app. Totalt finns 191 lektioner, 1209 övningar och 26 miniprojekt:
 
 | Spår | Lektioner | Övningar |
 | --- | --- | --- |
-| C# | 65 | 419 |
-| Python | 59 | 368 |
+| C# | 69 | 433 |
+| Python | 63 | 382 |
 | HTML/CSS | 44 | 282 |
 | Git och terminalen | 15 | 112 |
 
@@ -117,6 +117,8 @@ Tolkarna har tydliga gränser, och det står i appen under **Vad klarar Kodlabbe
 En bana är JSON: `{ map: ['#####', '#Sk.G#', '#####'], dir: 'right', goals: ['goal', 'items'], worlds: [...], allowed: [...] }`. På kartan är `#` vägg, `~` vatten, `D` låst dörr, `G` mål, `S` start, `k` nyckel, `g` ädelsten och `c` mynt. x växer åt höger och y nedåt i världen, medan turtle har y uppåt som i riktig Python. Färgerna bygger på Okabe-Ito-paletten så att de går att skilja åt vid färgblindhet.
 
 I Kodlabbet finns Pixelvärlden som en egen flik (`#/pixelvarld`, `src/ui/views/pixel.js`). Scenen (`src/ui/pixel-stage.js`) spelar upp händelserna med upplyst rad, steg för steg och valbar hastighet, och kan återanvändas i lektioner och delade länkar. Grafiken är egen och ritad för Kodstig (`src/ui/pixel-art.js`). Banorna att leka med ligger i `src/content/pixel-sandbox.js`. Kapitlet Pixelvärlden (`src/content/pixel-chapter.js`) skrivs en gång och blir både Python och C# med en liten kodbyggare. Övningstypen `world` rättas i `grade.js` mot banans mål i alla startvärldar, eller mot målbilden med `src/engine/pixel/compare.js`.
+
+**Spel** i Pixelvärlden följer Pygame Zero: eleven skriver `update()` och `draw()` (C#: `void Update()` och `void Draw()`), och spelet körs i en egen worker (`src/engine/game-worker.js`) som håller programmet vid liv mellan bildrutorna. `src/engine/game-runner.js` ber om en bildruta i taget, ungefär 30 gånger per sekund, och avslutar workern om en bildruta tar mer än 1,5 sekunder. Spelövningar (`type: 'game'`) rättas med `simulate()` i `src/engine/pixel/game.js`, som kör spelet utan skärm med tangenttryck enligt ett schema och sedan läser variablerna.
 
 Felmeddelandena är på svenska och pekar på raden. **Fastnat? Få en ledtråd** ger tre steg (en fråga, en förklaring och ett exempel). Ledtrådarna börjar om när koden ändras.
 
