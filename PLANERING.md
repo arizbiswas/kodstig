@@ -44,7 +44,7 @@ Så blev det: varje klarad lektion är ett begrepp i en kö som kommer tillbaka 
 ## Fas 7: Pixelvärlden (påbörjad 10 november 2026)
 Eleven skriver riktig Python eller C# som styr en figur i en liten värld i pixelstil, ritar pixelkonst och gör till sist små spel. Byggt efter forskningen: tydliga mål där man ser varje steg, förutsäg innan man kör (PRIMM), figurens ruta och riktning syns alltid, och riktad återkoppling på vanliga fel.
 - [x] Steg 1: motorn. Värld, hjälte, pixelrutnät och turtle i `src/engine/pixel/`. Allt eleven gör spelas in som händelser med radnummer. Målen kontrolleras mot världens slutläge i alla startvärldar, så att en hårdkodad väg inte räcker. Vänliga svenska fel (vägg, vatten, låst dörr, fel färg, utanför rutnätet) med ledtrådar, och tak på 50 000 händelser. API i Python (`hjalte`, `world`, `Canvas`, `import turtle`) och C# (`Hjalte`, `World`, `PixelGrid`, `Turtle`, `Color`, `Dir`).
-- [ ] Steg 2: läget Pixelvärlden i Kodlabbet.
+- [x] Steg 2: läget Pixelvärlden i Kodlabbet. Ny flik med koden till vänster och världen till höger (under på mobilen). Kör, Steg för steg, Paus, Ett steg, Börja om och hastighet, och raden som körs lyses upp. Egen pixelgrafik i 16×16 (hjälte, nyckel, ädelsten, mynt, dörr, vägg, gräs, vatten, flagga) där rutorna skiljs åt med form och inte bara färg. Hjälten visar alltid riktningen med en pil. Rutnät med koordinater, textbeskrivning för skärmläsare, och allt spelas upp direkt vid minskad rörelse. Sex banor att leka med, delning med länk och nedladdning.
 - [ ] Steg 3: nytt kapitel sist i Python och C#.
 - [ ] Steg 4: animation och små spel.
 

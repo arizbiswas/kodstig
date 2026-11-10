@@ -38,10 +38,12 @@ export async function decodeCode(packed) {
   throw new Error('Länken är trasig.');
 }
 
-export async function shareUrl(lang, code, base = `${location.origin}${location.pathname}`) {
+export async function shareUrl(lang, code, base = `${location.origin}${location.pathname}`, extra = {}) {
   if (!SHARE_LANGS[lang]) throw new Error('Okänt språk.');
   if (code.length > MAX_SHARE_CHARS) throw new Error(`Koden är för lång för en länk. Högst ${MAX_SHARE_CHARS} tecken går att dela.`);
-  return `${base}#/delat?sprak=${lang}&kod=${await encodeCode(code)}`;
+  // Pixelvärlden: varld=1 och vilken bana koden är skriven för.
+  const more = Object.entries(extra).filter(([, v]) => v).map(([k, v]) => `&${k}=${encodeURIComponent(v)}`).join('');
+  return `${base}#/delat?sprak=${lang}${more}&kod=${await encodeCode(code)}`;
 }
 
 /** Läser en delad länk. Ger { lang, code } eller { error }. */
@@ -51,7 +53,8 @@ export async function readShared(params) {
   try {
     const code = await decodeCode(params.kod);
     if (code.length > MAX_SHARE_CHARS) return { error: 'Koden i länken är för lång.' };
-    return { lang, code };
+    const pixel = params.varld === '1' && lang !== 'web' ? { bana: String(params.bana || '').replace(/[^\w-]/g, '') } : null;
+    return { lang, code, pixel };
   } catch {
     return { error: 'Länken är trasig. Be den som delade den att kopiera hela länken.' };
   }

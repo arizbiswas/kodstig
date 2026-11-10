@@ -600,7 +600,7 @@ async function main() {
     // 7. Mobil
     await check('Mobil: ingen horisontell scroll, bottenmeny och Milo-knapp', async () => {
       const { context, page } = await newGuest(browser, { viewport: { width: 375, height: 740 }, hasTouch: true, isMobile: true });
-      for (const r of ['lar', 'labb', 'ordlista', 'utveckling', 'installningar', 'lektion/py-print']) {
+      for (const r of ['lar', 'labb', 'pixelvarld', 'ordlista', 'utveckling', 'installningar', 'lektion/py-print']) {
         await page.goto(`${BASE}#/${r}`);
         await page.waitForTimeout(300);
         assert(await noHorizontalScroll(page), `horisontell scroll på ${r}`);
@@ -639,6 +639,57 @@ async function main() {
         return document.querySelector('.ex-actions').getBoundingClientRect().bottom <= navTop + 1;
       });
       assert(ok, 'feedback och knapparna under den syns ovanför bottenmenyn');
+      await context.close();
+    });
+
+    await check('Pixelvärlden: steg för steg lyser upp raden, mål, vägg och delad länk', async () => {
+      const { context, page } = await newGuest(browser);
+      await page.goto(`${BASE}#/labb`);
+      await page.locator('a.track-btn:has-text("Pixelvärlden")').click();
+      await page.locator('#px-h').waitFor();
+      assert(await page.locator('.lang-tabs a[aria-current="page"]:has-text("Pixelvärlden")').isVisible());
+      await page.selectOption('[data-px-bana]', 'angen');
+      await page.locator('#px-code').fill('for i in range(3):\n    hjalte.move_right()\nhjalte.pick()\nhjalte.move(4)\n');
+      await page.locator('[data-px-steprun]').click();
+      await page.locator('[data-px-step]:not([disabled])').waitFor();
+      await page.locator('[data-px-step]').click();
+      await page.locator('.editor-hl').waitFor();
+      const top1 = await page.locator('.editor-hl').evaluate((e) => e.offsetTop);
+      await page.waitForFunction(() => document.querySelector('[data-px-live]').textContent.includes('(2, 1)'));
+      await page.locator('[data-px-speed]').fill('6');
+      for (let k = 0; k < 3; k++) await page.locator('[data-px-step]').click();
+      const top2 = await page.locator('.editor-hl').evaluate((e) => e.offsetTop);
+      assert(top2 > top1, 'markeringen flyttar till raden med pick()');
+      await page.locator('[data-px-play]').click();
+      await page.locator('.pixel-goals li.met').first().waitFor();
+      eq(await page.locator('.pixel-goals li.met').count(), 2, 'båda målen klara');
+      // Vägg: tydligt fel på rätt rad.
+      await page.locator('#px-code').fill('for i in range(20):\n    hjalte.move_right()\n');
+      await page.locator('[data-px-run]').click();
+      await page.locator('.px-error .err').waitFor({ timeout: 15000 });
+      assert((await page.locator('.px-error').textContent()).includes('på rad 2'), 'felet pekar på rad 2');
+      // Koden sparas per bana.
+      await page.waitForTimeout(1000);
+      await page.reload();
+      await page.locator('#px-code').waitFor();
+      assert((await page.locator('#px-code').inputValue()).includes('range(20)'), 'koden finns kvar');
+      // Turtle i C# ritar streck.
+      await page.locator('[data-px-lang="csharp"]').click();
+      await page.selectOption('[data-px-bana]', 'turtle');
+      await page.locator('[data-px-speed]').fill('6');
+      await page.locator('[data-px-run]').click();
+      await page.waitForFunction(() => document.querySelector('[data-px-live]').textContent.includes('streck'));
+      // Dela: länken öppnas utan konto och kan köras.
+      await page.locator('[data-px-share]').click();
+      const url = await page.locator('#px-share-url').inputValue();
+      assert(url.includes('varld=1') && url.includes('bana=turtle'), url);
+      const other = await browser.newContext();
+      const p2 = await other.newPage();
+      await p2.goto(url);
+      await p2.locator('[data-sh-pxrun]').click();
+      await p2.locator('.pixel-stage [data-px-restart]:not([disabled])').waitFor();
+      await other.close();
+      assert(!page.errors.length, page.errors.join('\n'));
       await context.close();
     });
 

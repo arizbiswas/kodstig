@@ -116,6 +116,8 @@ Tolkarna har tydliga gränser, och det står i appen under **Vad klarar Kodlabbe
 
 En bana är JSON: `{ map: ['#####', '#Sk.G#', '#####'], dir: 'right', goals: ['goal', 'items'], worlds: [...], allowed: [...] }`. På kartan är `#` vägg, `~` vatten, `D` låst dörr, `G` mål, `S` start, `k` nyckel, `g` ädelsten och `c` mynt. x växer åt höger och y nedåt i världen, medan turtle har y uppåt som i riktig Python. Färgerna bygger på Okabe-Ito-paletten så att de går att skilja åt vid färgblindhet.
 
+I Kodlabbet finns Pixelvärlden som en egen flik (`#/pixelvarld`, `src/ui/views/pixel.js`). Scenen (`src/ui/pixel-stage.js`) spelar upp händelserna med upplyst rad, steg för steg och valbar hastighet, och kan återanvändas i lektioner och delade länkar. Grafiken är egen och ritad för Kodstig (`src/ui/pixel-art.js`). Banorna att leka med ligger i `src/content/pixel-sandbox.js`.
+
 Felmeddelandena är på svenska och pekar på raden. **Fastnat? Få en ledtråd** ger tre steg (en fråga, en förklaring och ett exempel). Ledtrådarna börjar om när koden ändras.
 
 ## Teman

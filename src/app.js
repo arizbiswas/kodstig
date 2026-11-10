@@ -25,6 +25,7 @@ import * as settings from './ui/views/settings.js';
 import * as review from './ui/views/review.js';
 import * as quiz from './ui/views/quiz.js';
 import * as shared from './ui/views/shared.js';
+import * as pixel from './ui/views/pixel.js';
 
 const local = safeStorage('localStorage');
 const session = safeStorage('sessionStorage');
@@ -261,6 +262,7 @@ export class App {
     if (m) view = lesson.render(this.ctx(), m[1]);
     else if (path === '/installningar') view = settings.render(this.ctx());
     else if (path === '/repetition') view = review.render(this.ctx());
+    else if (path === '/pixelvarld') view = pixel.render(this.ctx(), params);
     else if (path === '/delat') view = shared.render(this.ctx(), params);
     else if ((m2 = path.match(/^\/testa\/([\w-]+)$/))) view = quiz.testOut(this.ctx(), m2[1]);
     else if ((m2 = path.match(/^\/nivatest\/([\w-]+)$/))) view = quiz.placement(this.ctx(), m2[1]);
@@ -337,7 +339,7 @@ export class App {
     main.replaceChildren(view.el);
     this.view = view;
     this.shell.querySelectorAll('[data-path]').forEach((a) => {
-      const active = path === a.dataset.path || (a.dataset.path === '/lar' && path.startsWith('/lektion'));
+      const active = path === a.dataset.path || (a.dataset.path === '/lar' && path.startsWith('/lektion')) || (a.dataset.path === '/labb' && path === '/pixelvarld');
       if (active) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
     });
     this.renderSidebarStats();

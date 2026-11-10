@@ -131,9 +131,34 @@ export function codeEditor({ value = '', lang = 'python', label = 'Kod', onInput
     ta.dispatchEvent(new Event('input'));
   });
   syncLines();
+  // Markerar en rad, till exempel raden som körs i Pixelvärlden. null tar bort markeringen.
+  let hl = null, hlLine = null;
+  const placeHl = () => {
+    if (!hl || hlLine === null) return;
+    const cs = getComputedStyle(ta);
+    const lh = parseFloat(cs.lineHeight) || 20, pad = parseFloat(cs.paddingTop) || 0;
+    hl.style.top = `${ta.offsetTop + pad + (hlLine - 1) * lh - ta.scrollTop}px`;
+    hl.style.height = `${lh}px`;
+    const visible = ta.offsetTop + pad + (hlLine - 1) * lh - ta.scrollTop;
+    hl.hidden = visible < ta.offsetTop - 2 || visible > ta.offsetTop + ta.clientHeight - lh / 2;
+  };
+  ta.addEventListener('scroll', placeHl);
+  const highlight = (line, { scroll = true } = {}) => {
+    hlLine = Number.isInteger(line) && line > 0 ? line : null;
+    if (hlLine === null) { if (hl) hl.remove(); hl = null; return; }
+    if (!hl) { hl = h('<div class="editor-hl" aria-hidden="true"></div>'); wrap.append(hl); }
+    if (scroll) {
+      const cs = getComputedStyle(ta);
+      const lh = parseFloat(cs.lineHeight) || 20, pad = parseFloat(cs.paddingTop) || 0;
+      const y = pad + (hlLine - 1) * lh;
+      if (y < ta.scrollTop || y + lh > ta.scrollTop + ta.clientHeight) ta.scrollTop = Math.max(0, y - ta.clientHeight / 3);
+    }
+    placeHl();
+  };
   return {
     el: wrap,
     textarea: ta,
+    highlight,
     get value() { return ta.value; },
     set value(v) { ta.value = v; syncLines(); },
   };
