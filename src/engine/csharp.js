@@ -5,6 +5,7 @@
 // Console, Math och string. Typfel och namnfel rapporteras som kompileringsfel.
 // Ingen JavaScript-eval används.
 import { CodeError, StepLimit, MAX_STEPS, MAX_OUTPUT, inputLines, makeRng } from './errors.js';
+import { csharpPixel, CsHost, HOST_TYPES } from './pixel/cs-bind.js';
 
 const TYPE_KW = new Set(['int', 'double', 'string', 'bool', 'char', 'var', 'decimal', 'float', 'long', 'void', 'object']);
 const KW = new Set([...TYPE_KW, 'if', 'else', 'while', 'for', 'foreach', 'in', 'do', 'return', 'break', 'continue', 'new',
@@ -180,7 +181,7 @@ class Parser {
     this.toks = toks;
     this.p = 0;
     // Klassnamn samlas in först, så att en klass kan användas som typ innan den deklarerats.
-    this.classNames = new Set([...Object.keys(EXC_TREE), 'Random']);
+    this.classNames = new Set([...Object.keys(EXC_TREE), 'Random', ...HOST_TYPES]);
     toks.forEach((t, i) => {
       if (t.t === 'KW' && (t.v === 'class' || t.v === 'interface') && toks[i + 1] && toks[i + 1].t === 'ID') this.classNames.add(toks[i + 1].v);
     });
@@ -982,6 +983,8 @@ export function csStr(val) {
   if (t === 'double') return fmtDouble(v);
   if (t === 'int' || t === 'long' || t === 'string' || t === 'char') return String(v);
   if (t === 'Type') return v.name;
+  if (t === 'Color' || t === 'Dir') return v[0].toUpperCase() + v.slice(1);
+  if (v instanceof CsHost) return v.type;
   if (t === 'lambda') return 'System.Func';
   const gb = genBase(t), ga = genArgs(t);
   if (gb === 'KeyValuePair') return `[${csStr(V(ga[0], v[0]))}, ${csStr(V(ga[1], v[1]))}]`;
@@ -1058,6 +1061,8 @@ class Interp {
     for (const c of this.classes.values()) this.link(c);
     this.stdin = inputLines(opts.input);
     this.seed = opts.seed;
+    // Pixelvärlden: Hjalte, World, PixelGrid, Turtle, Color och Dir finns bara när sidan ger en värld.
+    this.pixel = opts.host ? csharpPixel({ V, numOf, isNumT, csStr }, opts.host) : null;
     for (const c of prog.classes.values()) this.validate(c);
     for (const c of prog.classes.values()) if (!c.builtin && !c.isInterface && !c.isAbstract) this.checkAbstracts(c, c.line);
     this.trace = opts.trace ? [] : null;
@@ -1748,6 +1753,13 @@ class Interp {
       }
       case 'NewObj': {
         const ctx = getCtx(scope);
+        if (!this.prog.classes.has(e.cls) && HOST_TYPES.includes(e.cls)) {
+          if (!this.pixel) throw cErr('CS0246', `${e.cls} finns bara i Pixelvärlden. Välj fliken Pixelvärlden i Kodlabbet.`, e.line, 'unknown-type');
+          const hv = this.pixel.create(e.cls, this.evalArgs(e.args, scope), e.line);
+          if (!hv) throw cErr('CS0144', `Det går inte att skapa ett objekt av ${e.cls} med new. Skriv till exempel ${e.cls}.${e.cls === 'Color' ? 'Red' : 'Up'}.`, e.line, 'abstract-new');
+          if (e.init) for (const it of e.init) this.pixel.set(hv.v, it.name, this.eval(it.e, scope), it.line);
+          return hv;
+        }
         const v = this.instantiate(this.classes.get(e.cls), this.evalArgs(e.args, scope), e.line, ctx);
         if (e.init) for (const it of e.init) this.setMember(v, it.name, this.eval(it.e, scope), it.line, ctx, true);
         return v;
@@ -1860,6 +1872,7 @@ class Interp {
       const obj = this.eval(target.obj, scope);
       if (obj.v === null && obj.t !== 'null') throw rErr('NullReferenceException', 'Objektet är null, så det går inte att ändra något på det.', line, 'null');
       if (obj.v instanceof CsObject) { this.setMember(obj, target.name, val, line, ctx); return; }
+      if (obj.v instanceof CsHost) { this.pixel.set(obj.v, target.name, val, line); return; }
       throw cErr('CS0200', `${target.name} på ${svT(obj.t)} kan inte ändras.`, line, 'bad-assign');
     }
     throw cErr('CS0200', 'Det här kan inte tilldelas ett nytt värde.', line, 'bad-assign');
@@ -1978,11 +1991,13 @@ class Interp {
       if (full === 'int.MinValue') return V('int', -2147483648);
       if (full === 'double.MaxValue') return V('double', Number.MAX_VALUE);
       if (full === 'string.Empty' || full === 'String.Empty') return V('string', '');
+      if (this.pixel && this.pixel.hasStatic(e.obj.name)) return this.pixel.staticGet(e.obj.name, e.name, e.line);
       throw this.unknownStatic(e.obj.name, e.name, e.line);
     }
     const obj = this.eval(e.obj, scope);
     if (obj.v === null && obj.t !== 'null') throw rErr('NullReferenceException', `Värdet är null, så det går inte att läsa ${e.name}. Har objektet skapats med new?`, e.line, 'null');
     if (obj.v instanceof CsObject) return this.getMember(obj, e.name, e.line, ctx);
+    if (obj.v instanceof CsHost) return this.pixel.get(obj.v, e.name, e.line);
     const gb = genBase(obj.t), ga = genArgs(obj.t);
     if (obj.t === 'Type' && e.name === 'Name') return V('string', obj.v.name);
     if (gb === 'Dictionary') {
@@ -2100,6 +2115,8 @@ class Interp {
     if (a.length < min || a.length > max) throw cErr('CS1501', `${name} tar ${min === max ? min : `${min}–${max}`} argument men fick ${a.length}.`, line, 'arg-count');
   }
   staticCall(cls, name, a, line) {
+    if (this.pixel && this.pixel.hasStatic(cls)) return this.pixel.staticCall(cls, name, a, line);
+    if (!this.pixel && (cls === 'Hjalte' || cls === 'World')) throw cErr('CS0103', `${cls} finns bara i Pixelvärlden. Välj fliken Pixelvärlden i Kodlabbet.`, line, 'name');
     const num = (v, what) => {
       if (!isNumT(v.t)) throw cErr('CS1503', `${what} behöver ett tal, inte ${svT(v.t)}.`, line, 'arg-type');
       return numOf(v);
@@ -2339,6 +2356,7 @@ class Interp {
     const t = obj.t;
     if (obj.v === null && t !== 'null') throw rErr('NullReferenceException', `Värdet är null, så ${name}() kan inte anropas. Har objektet skapats med new?`, line, 'null');
     if (obj.v instanceof CsObject && obj.v.cls.isRandom) return this.randomCall(obj.v, name, a, line);
+    if (obj.v instanceof CsHost) return this.pixel.call(obj.v, name, a, line);
     if (obj.v instanceof CsObject) {
       const o = obj.v;
       const m = this.dispatch(this.classes.get(t) || o.cls, o.cls, name, a, line);
@@ -2545,12 +2563,12 @@ export const TRACE_MAX = 500;
 const LOOP_KINDS = new Set(['While', 'DoWhile', 'For', 'Foreach']);
 const clip = (s) => (s.length > 80 ? `${s.slice(0, 77)}...` : s);
 
-export function runCSharp(code, { calls = [], maxSteps, trace = false, input, seed } = {}) {
+export function runCSharp(code, { calls = [], maxSteps, trace = false, input, seed, host } = {}) {
   const res = { output: '', error: null, calls: [] };
   let interp;
   try {
     const prog = parseCSharp(code);
-    interp = new Interp(prog, { maxSteps, trace, input, seed });
+    interp = new Interp(prog, { maxSteps, trace, input, seed, host });
     interp.run();
   } catch (e) {
     res.error = asError(e);
