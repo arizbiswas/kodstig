@@ -441,6 +441,66 @@ CS['infinite-loop'] = () => [
   { text: 'En loop som slutar:', example: 'int i = 0;\nwhile (i < 3)\n{\n    Console.WriteLine(i);\n    i++;\n}' },
 ];
 
+// Pixelvärlden: samma ledtrådar i båda språken, med rätt kod i exemplen.
+const PIXEL = (cs) => {
+  const can = (d) => (cs ? `Hjalte.CanMove(Dir.${d[0].toUpperCase() + d.slice(1)})` : `hjalte.can_move("${d}")`);
+  const h = (m) => (cs ? `Hjalte.${m.replace(/(^|_)(\w)/g, (x, y, z) => z.toUpperCase())}()` : `hjalte.${m}()`);
+  return {
+    'pixel-wall': (c) => [
+      `Följ hjälten ruta för ruta fram till ${L(c.line)}. Var står den, och vad finns i riktningen den försöker gå?`,
+      `Räkna rutorna på kartan: x växer åt höger och y nedåt. Med ${can('right')} kan hjälten kolla om vägen är fri innan den går.`,
+      { text: 'Gå bara så länge vägen är fri:', example: cs ? `while (${can('right')})\n{\n    ${h('move_right')};\n}` : `while ${can('right')}:\n    ${h('move_right')}` },
+    ],
+    'pixel-water': (c) => [
+      `Hjälten försöker gå ut i vattnet på ${L(c.line)}. Finns det en väg runt?`,
+      'Vatten är som en vägg. Leta efter gräs runt omkring och gå runt.',
+      { text: 'Kolla innan du går:', example: cs ? `if (${can('down')})\n{\n    ${h('move_down')};\n}` : `if ${can('down')}:\n    ${h('move_down')}` },
+    ],
+    'pixel-door': () => [
+      'Dörren är låst. Vad behöver hjälten ha i ryggsäcken för att öppna den?',
+      `Plocka upp nyckeln med ${h('pick')}, ställ dig framför dörren så att hjälten tittar mot den, och använd ${h('open')}.`,
+      { text: 'Nyckel först, sedan dörren:', example: cs ? `${h('pick')};\n${h('move_right')};\n${h('open')};\n${h('move_right')};` : `${h('pick')}\n${h('move_right')}\n${h('open')}\n${h('move_right')}` },
+    ],
+    'pixel-open': () => [
+      'Åt vilket håll tittar hjälten när den försöker öppna? Och har den en nyckel?',
+      `${h('open')} öppnar dörren precis framför hjälten, i den riktning den senast gick. Hjälten behöver en nyckel i ryggsäcken.`,
+      { text: 'Gå mot dörren, sedan öppna:', example: cs ? `${h('move_right')};\n${h('open')};` : `${h('move_right')}\n${h('open')}` },
+    ],
+    'pixel-pick': () => [
+      'Står hjälten verkligen på en sak just nu?',
+      `Saker plockas upp från rutan hjälten står på. ${h('on_item')} svarar ${cs ? 'true' : 'True'} om det finns något där.`,
+      { text: 'Plocka bara när det finns något:', example: cs ? `if (${h('on_item')})\n{\n    ${h('pick')};\n}` : `if ${h('on_item')}:\n    ${h('pick')}` },
+    ],
+    'pixel-drop': () => [
+      'Har hjälten något i ryggsäcken, och är rutan tom?',
+      'drop lägger ner det hjälten senast plockade upp, på rutan där hjälten står. Rutan måste vara tom.',
+      { text: 'Plocka, gå, lägg ner:', example: cs ? `${h('pick')};\n${h('move_right')};\n${h('drop')};` : `${h('pick')}\n${h('move_right')}\n${h('drop')}` },
+    ],
+    'pixel-color': () => [
+      'Hur är färgen stavad?',
+      cs ? 'Färger skrivs Color.Red, Color.Blue och så vidare, eller som text som "red" eller "#ff0000".' : 'Färger skrivs på engelska inom citattecken, till exempel "red", "blue" och "green", eller som "#ff0000".',
+      { text: 'En röd pixel:', example: cs ? 'var g = new PixelGrid(8, 8);\ng.SetPixel(0, 0, Color.Red);' : 'grid = Canvas(8, 8)\ngrid.set_pixel(0, 0, "red")' },
+    ],
+    'pixel-range': () => [
+      'Hur stort är rutnätet, och vilket är det största x och y som finns?',
+      'Rutorna räknas från 0. I ett rutnät som är 16 brett går x från 0 till 15, inte till 16.',
+      { text: 'En loop som stannar i tid:', example: cs ? 'for (int x = 0; x < 16; x++)\n{\n    g.SetPixel(x, 0, Color.Blue);\n}' : 'for x in range(16):\n    grid.set_pixel(x, 0, "blue")' },
+    ],
+    'pixel-noworld': () => [
+      'Finns det en bana att gå på?',
+      'Hjälten behöver en bana. Välj en bana i Pixelvärlden, eller rita i stället med turtle eller ett pixelrutnät.',
+      { text: 'Rita utan bana:', example: cs ? 'var t = new Turtle();\nt.Forward(100);' : 'import turtle\nturtle.forward(100)' },
+    ],
+    'pixel-allowed': () => [
+      'Vilka kommandon får hjälten använda i den här banan?',
+      'Vissa banor tränar en sak i taget och tillåter bara några kommandon. Listan står i felmeddelandet.',
+      { text: 'Bygg med det som finns:', example: cs ? `${h('move')};\n${h('turn_left')};` : `${h('move')}\n${h('turn_left')}` },
+    ],
+  };
+};
+Object.assign(PY, PIXEL(false));
+Object.assign(CS, PIXEL(true));
+
 const GENERIC = (lang) => (c) => [
   `Läs felmeddelandet och titta på ${L(c.line)}. Vad förväntade sig ${lang === 'csharp' ? 'C#' : 'Python'} att hitta där?`,
   'Gör koden mindre: kommentera bort halva programmet och kör igen. Då ser du vilken del som orsakar felet.',

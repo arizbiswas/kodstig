@@ -2,12 +2,16 @@
 // eller lagring. Huvudtråden avbryter workern om den tar för lång tid.
 import { runPython } from './python.js';
 import { runCSharp } from './csharp.js';
+import { runPixel } from './pixel/run.js';
+
+const runners = { python: runPython, csharp: runCSharp };
 
 self.onmessage = (e) => {
-  const { id, lang, code, calls, trace, input, seed } = e.data || {};
+  const { id, lang, code, calls, trace, input, seed, pixel } = e.data || {};
   let res;
   try {
-    res = (lang === 'csharp' ? runCSharp : runPython)(String(code || ''), { calls: calls || [], trace: !!trace, input, seed });
+    if (pixel) res = runPixel(lang, String(code || ''), { level: pixel.level || null, input, seed, runners });
+    else res = (lang === 'csharp' ? runCSharp : runPython)(String(code || ''), { calls: calls || [], trace: !!trace, input, seed });
   } catch (err) {
     res = { output: '', error: { kind: 'Internt fel', message: String(err && err.message || err), line: null, hint: 'internal', phase: 'runtime' }, calls: [] };
   }

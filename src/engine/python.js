@@ -3,6 +3,7 @@
 // ordböcker, funktioner och vanliga inbyggda funktioner. Den kör aldrig
 // JavaScript-eval: koden tolkas steg för steg med en stegbudget.
 import { CodeError, StepLimit, MAX_STEPS, MAX_OUTPUT, inputLines, makeRng } from './errors.js';
+import { pythonPixel } from './pixel/py-bind.js';
 
 const KEYWORDS = new Set(['if', 'elif', 'else', 'while', 'for', 'in', 'def', 'return', 'pass', 'break', 'continue',
   'and', 'or', 'not', 'True', 'False', 'None', 'is', 'global', 'nonlocal', 'lambda', 'import', 'from', 'class', 'try', 'except', 'finally', 'raise', 'with', 'yield', 'async', 'await', 'del', 'as']);
@@ -241,7 +242,7 @@ class Parser {
         const names = [];
         do {
           if (names.length) this.next();
-          if (this.isOp('*')) throw syntax('from ... import * stöds inte. Skriv namnen du behöver, till exempel from random import randint, choice', c.line, 'unsupported');
+          if (this.isOp('*')) { this.next(); names.push({ star: true }); break; }
           const name = this.name();
           const as = this.isKw('as') ? (this.next(), this.name()) : name;
           names.push({ name, as });
@@ -773,6 +774,9 @@ class PySet {
 class PyRaise { constructor(exc, line) { this.exc = exc; this.line = line; } }
 class Builtin { constructor(name, fn, isType = false) { this.name = name; this.fn = fn; this.isType = isType; } }
 class PyModule { constructor(name) { this.name = name; this.attrs = new Map(); } }
+// Ett objekt från Pixelvärlden (hjalte, world, Canvas, Turtle). get(namn) ger en
+// metod eller ett värde, eller undefined om det inte finns.
+class PyHost { constructor(typeName, get, set, names = []) { this.typeName = typeName; this.get = get; this.set = set; this.names = names; } }
 class BreakSig {}
 class ContinueSig {}
 class ReturnSig { constructor(v) { this.v = v; } }
@@ -811,6 +815,7 @@ export function typeName(v) {
   if (v instanceof PyFunc || v instanceof Builtin || v instanceof BoundMethod) return 'function';
   if (v instanceof PySet) return 'set';
   if (v instanceof PyModule) return 'module';
+  if (v instanceof PyHost) return v.typeName;
   if (v instanceof PyObject) return v.cls.name;
   if (v instanceof PyClass) return 'type';
   return 'object';
@@ -878,6 +883,7 @@ export function pyRepr(v, seen = new Set()) {
   if (v instanceof Range) return v.step === 1 ? `range(${v.start}, ${v.stop})` : `range(${v.start}, ${v.stop}, ${v.step})`;
   if (v instanceof PyFunc || v instanceof Builtin) return `<function ${v.name}>`;
   if (v instanceof PyModule) return `<module '${v.name}'>`;
+  if (v instanceof PyHost) return `<${v.typeName}>`;
   if (v instanceof BoundMethod) return `<metod ${v.name}>`;
   if (v instanceof PySet) return v.map.size ? '{' + v.items().map((x) => pyRepr(x, seen)).join(', ') + '}' : 'set()';
   if (v instanceof PyClass) return `<class '${v.name}'>`;
@@ -1159,6 +1165,9 @@ class Interp {
     this.trace = opts.trace ? [] : null;
     this.stdin = inputLines(opts.input);
     this.rng = makeRng(opts.seed);
+    // Pixelvärlden: hjalte, world, Canvas och turtle finns bara när sidan ger en värld.
+    this.pixel = opts.host ? pythonPixel({ Builtin, PyHost, PyModule, PyFloat, Tuple, num, isNum, isInt, pyStr }, this, opts.host) : null;
+    if (this.pixel) for (const [k, v] of this.pixel.globals) this.builtins.set(k, v);
     this.modules = new Map();
     this.callStack = [];
     this.cur = null;
@@ -1481,7 +1490,10 @@ class Interp {
       case 'Import': for (const n of s.names) this.setVar(n.as, this.module(n.mod, s.line), scope); return;
       case 'ImportFrom': {
         const mod = this.module(s.mod, s.line);
-        for (const n of s.names) this.setVar(n.as, this.getAttr(mod, n.name, s.line), scope);
+        for (const n of s.names) {
+          if (n.star) { for (const [k, v] of mod.attrs) if (!k.startsWith('_')) this.setVar(k, v, scope); continue; }
+          this.setVar(n.as, this.getAttr(mod, n.name, s.line), scope);
+        }
         return;
       }
       case 'Global': if (scope) s.names.forEach((n) => scope.globals.add(n)); return;
@@ -1544,6 +1556,8 @@ class Interp {
     let tip = '';
     if (lower === 'print' && name !== 'print') tip = ' Skriv print med små bokstäver.';
     else if (lower === 'true' || lower === 'false') tip = ` Python skriver ${lower === 'true' ? 'True' : 'False'} med stor bokstav.`;
+    else if (['hjalte', 'world', 'canvas'].includes(lower)) tip = ' Det finns i Pixelvärlden i Kodlabbet.';
+    else if (lower === 'hjälte') tip = ' Skriv hjalte utan prickar över a.';
     throw new CodeError('NameError', `Namnet '${name}' är inte definierat.${tip}`, line, 'name');
   }
   assign(t, v, scope, line) {
@@ -1559,6 +1573,10 @@ class Interp {
     if (t.k === 'Attr') {
       const obj = this.eval(t.obj, scope);
       if (obj instanceof PyObject || obj instanceof PyClass) { obj.attrs.set(t.name, v); return; }
+      if (obj instanceof PyHost) {
+        if (obj.set) { obj.set(t.name, v, line); return; }
+        throw new CodeError('AttributeError', `${t.name} på ${obj.typeName} kan bara läsas. Använd metoderna för att ändra, till exempel hjalte.move_right().`, line, 'attr');
+      }
       throw new CodeError('AttributeError', `Det går inte att sätta egenskapen ${t.name} på ${sv(obj)}.`, line, 'attr');
     }
     if (t.k === 'Tuple' || t.k === 'List') {
@@ -1886,6 +1904,11 @@ class Interp {
   // Modulerna random och math. Andra moduler finns inte i Kodstig.
   module(name, line) {
     if (this.modules.has(name)) return this.modules.get(name);
+    if (name === 'turtle') {
+      if (!this.pixel) throw new CodeError('ModuleNotFoundError', 'turtle ritar i Pixelvärlden. Välj fliken Pixelvärlden i Kodlabbet för att rita med turtle.', line, 'import');
+      this.modules.set(name, this.pixel.turtle);
+      return this.pixel.turtle;
+    }
     const F = (v) => new PyFloat(v);
     const n = (v, fn) => {
       if (typeof v === 'number') return v;
@@ -1941,7 +1964,7 @@ class Interp {
         e: F(Math.E),
       };
     } else {
-      throw new CodeError('ModuleNotFoundError', `Modulen ${name} finns inte i Kodstig. Här kan du importera random och math. På din egen dator finns många fler.`, line, 'import');
+      throw new CodeError('ModuleNotFoundError', `Modulen ${name} finns inte i Kodstig. Här kan du importera random och math, och turtle i Pixelvärlden. På din egen dator finns många fler.`, line, 'import');
     }
     const mod = new PyModule(name);
     for (const [k, v] of Object.entries(attrs)) mod.attrs.set(k, typeof v === 'function' ? new Builtin(k, (args) => v(args)) : v);
@@ -1951,6 +1974,12 @@ class Interp {
 
   getAttr(obj, name, line) {
     const m = (fn) => new Builtin(name, fn);
+    if (obj instanceof PyHost) {
+      const v = obj.get(name, line);
+      if (v !== undefined) return v;
+      const g = obj.names.find((k) => k.toLowerCase() === name.toLowerCase() || k.replace(/_/g, '') === name.toLowerCase());
+      throw new CodeError('AttributeError', `${obj.typeName} har inget som heter ${name}.${g ? ` Menade du ${g}?` : ''}`, line, 'attr');
+    }
     if (obj instanceof PyModule) {
       if (obj.attrs.has(name)) return obj.attrs.get(name);
       throw new CodeError('AttributeError', `Modulen ${obj.name} har inget som heter ${name}.`, line, 'attr');
@@ -2163,12 +2192,12 @@ export const TRACE_MAX = 500;
 const clip = (s) => (s.length > 80 ? `${s.slice(0, 77)}...` : s);
 function safeRepr(v) { try { return pyRepr(v); } catch { return '?'; } }
 
-export function runPython(code, { calls = [], maxSteps, trace = false, input, seed } = {}) {
+export function runPython(code, { calls = [], maxSteps, trace = false, input, seed, host } = {}) {
   const res = { output: '', error: null, calls: [] };
   let interp;
   try {
     const ast = parsePython(code);
-    interp = new Interp({ maxSteps, trace, input, seed });
+    interp = new Interp({ maxSteps, trace, input, seed, host });
     interp.run(ast);
   } catch (e) {
     res.output = interp ? interp.output() : '';

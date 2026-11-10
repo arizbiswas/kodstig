@@ -31,11 +31,15 @@ function ensureWorker() {
   return worker;
 }
 
-export function runCode(lang, code, calls = [], { trace = false, input, seed } = {}) {
+export function runCode(lang, code, calls = [], { trace = false, input, seed, pixel } = {}) {
   return new Promise((resolve) => {
     let w;
     try { w = ensureWorker(); } catch {
       // Om Web Workers saknas körs tolken i sidan (den är fortfarande utan eval).
+      if (pixel) {
+        Promise.all([import('./pixel/run.js'), import('./python.js'), import('./csharp.js')]).then(([p, py, cs]) => resolve(p.runPixel(lang, code, { level: pixel.level || null, input, seed, runners: { python: py.runPython, csharp: cs.runCSharp } })));
+        return;
+      }
       import(lang === 'csharp' ? './csharp.js' : './python.js').then((m) => resolve((m.runCSharp || m.runPython)(code, { calls, trace, input, seed })));
       return;
     }
@@ -47,9 +51,12 @@ export function runCode(lang, code, calls = [], { trace = false, input, seed } =
       resolve({ output: '', error: { kind: 'Tidsgräns', message: 'Koden tog för lång tid och stoppades. Kanske en loop som aldrig slutar?', line: null, hint: 'infinite-loop', phase: 'runtime' }, calls: [] });
     }, TIMEOUT_MS);
     pending.set(id, { resolve, timer });
-    w.postMessage({ id, lang, code, calls, trace, input, seed });
+    w.postMessage({ id, lang, code, calls, trace, input, seed, pixel });
   });
 }
+
+/** Kör koden i Pixelvärlden. Svaret har också events, goals och final (slutläget). */
+export const runPixelCode = (lang, code, { level = null, input, seed } = {}) => runCode(lang, code, [], { input, seed, pixel: { level } });
 
 /** Kör koden och sparar varje steg: raden som körs, variablerna och utskriften. */
 export const traceCode = (lang, code, input) => runCode(lang, code, [], { trace: true, input });

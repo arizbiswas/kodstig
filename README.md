@@ -103,6 +103,19 @@ Tolkarna har tydliga gränser, och det står i appen under **Vad klarar Kodlabbe
 - **Python:** variabler, if/elif/else, while/for, range, funktioner, rekursion, listor, ordlistor, tupler, mängder, listbyggare, lambda och `sorted(key=...)`, klasser med arv och `super()`, `try/except/else/finally` och `raise`, strängmetoder, f-strängar med Pythons formatspråk, `%`-formatering och `str.format`, `*args`/`**kwargs`, `del`, `global`/`nonlocal`, `else` efter loopar, heltal utan storleksgräns, `input()` och modulerna `random` och `math`. Talen skrivs ut som i riktig Python (till exempel `1e+20` och `round(2.675, 2) == 2.67`). Följande saknas: andra moduler, generatorer med `yield`, `with` och filer.
 - **C#:** toppnivåsatser eller `class Program` med `Main`, metoder med standardvärden, int/long/double/bool/string/char (long med 64 bitar, och double skrivs ut som i .NET, till exempel `1E+20`), arrayer, `List<T>`, `Dictionary<K,V>`, egna klasser med fält, egenskaper, konstruktorer, arv, `abstract`/`virtual`/`override` och interface, `try`/`catch`/`finally`/`throw`, `switch`, lambdas och vanliga LINQ-metoder (`Where`, `Select`, `OrderBy`, `Sum`, `Count`, `Any`, `First` med flera), `out` med `TryParse`/`TryGetValue`, stränginterpolation med format och `Math`. `float` och `decimal` räknas som `double`. Följande saknas: egna generiska typer, `struct`, `record`, `async`, switch-uttryck och namespaces utöver det enklaste.
 
+### Pixelvärlden (motorn)
+
+`src/engine/pixel/` innehåller en värld i rutor med en hjälte, ett pixelrutnät och en turtle som i Python. Tolkarna anropar den direkt, utan eval. Allt eleven gör blir en händelse med radnummer, till exempel `{ t: 'move', dir: 'right', ok: true, x: 2, y: 1, line: 3 }`, så att sidan kan spela upp körningen och lysa upp raden. `runPixelCode(lang, kod, { level })` i `runner.js` ger `{ output, error, events, goals, final }`.
+
+| | Python | C# |
+| --- | --- | --- |
+| Hjälten | `hjalte.move_right()`, `move(n)`, `turn_left()`, `say(text)`, `pick()`, `drop()`, `open()`, `can_move("up")`, `on_item()`, `at_goal()`, `x`, `y`, `items` | `Hjalte.MoveRight()`, `Move(n)`, `TurnLeft()`, `Say(text)`, `Pick()`, `CanMove(Dir.Up)`, `AtGoal()`, `X`, `Y`, `Items` |
+| Världen | `world.tile(x, y)`, `world.items_left()` | `World.Tile(x, y)`, `World.ItemsLeft()` |
+| Pixelkonst | `grid = Canvas(16, 16)`, `set_pixel(x, y, "red")`, `fill`, `get_pixel`, `draw(rader)` | `var g = new PixelGrid(16, 16)`, `SetPixel(x, y, Color.Red)`, `Draw(rader)` |
+| Turtle | `import turtle` eller `from turtle import *`, med forward, left, goto, circle, penup, color, begin_fill med flera | `var t = new Turtle()`, `Forward`, `Left`, `Circle`, `PenColor`, `Speed` med flera |
+
+En bana är JSON: `{ map: ['#####', '#Sk.G#', '#####'], dir: 'right', goals: ['goal', 'items'], worlds: [...], allowed: [...] }`. På kartan är `#` vägg, `~` vatten, `D` låst dörr, `G` mål, `S` start, `k` nyckel, `g` ädelsten och `c` mynt. x växer åt höger och y nedåt i världen, medan turtle har y uppåt som i riktig Python. Färgerna bygger på Okabe-Ito-paletten så att de går att skilja åt vid färgblindhet.
+
 Felmeddelandena är på svenska och pekar på raden. **Fastnat? Få en ledtråd** ger tre steg (en fråga, en förklaring och ett exempel). Ledtrådarna börjar om när koden ändras.
 
 ## Teman

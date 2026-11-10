@@ -41,6 +41,13 @@ Så blev det: varje klarad lektion är ett begrepp i en kö som kommer tillbaka 
 - [x] Snabbare start: lektionsinnehållet laddas per spår i stället för allt på en gång. Det som laddas vid start gick från 1 304 KB till 223 KB (gzip från 358 KB till 73 KB). Python-motorn laddas först i introduktionens demo. Resten hämtas i bakgrunden efter start, så att allt fungerar offline.
 - [ ] Kvar att fundera på: generatorer med `yield` i Python och riktig `decimal` i C#.
 
+## Fas 7: Pixelvärlden (påbörjad 10 november 2026)
+Eleven skriver riktig Python eller C# som styr en figur i en liten värld i pixelstil, ritar pixelkonst och gör till sist små spel. Byggt efter forskningen: tydliga mål där man ser varje steg, förutsäg innan man kör (PRIMM), figurens ruta och riktning syns alltid, och riktad återkoppling på vanliga fel.
+- [x] Steg 1: motorn. Värld, hjälte, pixelrutnät och turtle i `src/engine/pixel/`. Allt eleven gör spelas in som händelser med radnummer. Målen kontrolleras mot världens slutläge i alla startvärldar, så att en hårdkodad väg inte räcker. Vänliga svenska fel (vägg, vatten, låst dörr, fel färg, utanför rutnätet) med ledtrådar, och tak på 50 000 händelser. API i Python (`hjalte`, `world`, `Canvas`, `import turtle`) och C# (`Hjalte`, `World`, `PixelGrid`, `Turtle`, `Color`, `Dir`).
+- [ ] Steg 2: läget Pixelvärlden i Kodlabbet.
+- [ ] Steg 3: nytt kapitel sist i Python och C#.
+- [ ] Steg 4: animation och små spel.
+
 ## Beslut för zira
 - [x] Målgrupp (11): **alla åldrar** (zira, 20 oktober 2026). Det betyder: enkelt språk som fungerar för både tonåringar och vuxna, projekt som lockar båda (spel och praktiska verktyg), och teman som Minecraft som ett val, inte appens grundidentitet. Allt som rör konton och delning ska fungera för elever under 13 år (GDPR), till exempel utan krav på att visa namn eller e-post för andra.
 - [x] Standardtema: **Klassisk** för nya besökare (zira, 21 oktober 2026). Minecraft finns kvar som val i sidomenyn och under Inställningar, och den som redan valt ett tema behåller det.
