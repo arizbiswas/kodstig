@@ -784,7 +784,7 @@ class Parser {
   primary() {
     const t = this.cur;
     switch (t.t) {
-      case 'NUM': this.next(); return { k: 'Lit', t: t.kind === 'int' || t.kind === 'long' ? 'int' : 'double', v: t.v, line: t.line };
+      case 'NUM': this.next(); return { k: 'Lit', t: t.kind === 'long' || (t.kind === 'int' && Math.abs(t.v) > 2147483647) ? 'long' : t.kind === 'int' ? 'int' : 'double', v: t.v, line: t.line };
       case 'STR': this.next(); return { k: 'Lit', t: 'string', v: t.v, line: t.line };
       case 'CHAR': this.next(); return { k: 'Lit', t: 'char', v: t.v, line: t.line };
       case 'ISTR': {
@@ -906,7 +906,7 @@ class Parser {
   }
 }
 function normType(t) {
-  const alias = { float: 'double', decimal: 'double', Double: 'double', long: 'int', Int32: 'int', String: 'string', Boolean: 'bool' };
+  const alias = { float: 'double', decimal: 'double', Double: 'double', Int64: 'long', Int32: 'int', String: 'string', Boolean: 'bool' };
   return alias[t] || t;
 }
 function exprName(e) { return e.k === 'Name' ? e.name : e.k === 'Member' ? `${exprName(e.obj)}.${e.name}` : '?'; }
@@ -916,7 +916,13 @@ function exprName(e) { return e.k === 'Name' ? e.name : e.k === 'Member' ? `${ex
 // Ett värde är { t: typ, v: rådata }. Arrayer och listor har v = JS-array av rådata,
 // en Dictionary har v = Map och ett objekt av en egen klass har v = CsObject.
 const V = (t, v) => ({ t, v });
-const isNumT = (t) => t === 'int' || t === 'double' || t === 'char';
+const isNumT = (t) => t === 'int' || t === 'long' || t === 'double' || t === 'char';
+// long räknas med BigInt och slår runt vid 64 bitar som i C#. Värdet sparas som
+// ett vanligt JS-tal när det är exakt, annars som BigInt (t.ex. long.MaxValue).
+const SAFE_B = BigInt(Number.MAX_SAFE_INTEGER);
+const norm64 = (b) => (b >= -SAFE_B && b <= SAFE_B ? Number(b) : b);
+const to64 = (b) => norm64(BigInt.asIntN(64, b));
+const big64 = (v) => BigInt(typeof v === 'string' ? v.charCodeAt(0) : typeof v === 'number' ? Math.trunc(v) : v);
 const genBase = (t) => (t.includes('<') ? t.slice(0, t.indexOf('<')) : t);
 function genArgs(t) {
   const i = t.indexOf('<');
@@ -939,21 +945,34 @@ function elemOf(t) {
   if (b === 'Dictionary') return `KeyValuePair<${genArgs(t).join(',')}>`;
   return null;
 }
-const SV = { int: 'int (heltal)', double: 'double (decimaltal)', string: 'string (text)', bool: 'bool (sant/falskt)', char: 'char (tecken)', null: 'null' };
+const SV = { int: 'int (heltal)', long: 'long (stort heltal)', double: 'double (decimaltal)', string: 'string (text)', bool: 'bool (sant/falskt)', char: 'char (tecken)', null: 'null' };
 const svT = (t) => SV[t] || t;
-const CLR = { int: 'System.Int32', double: 'System.Double', string: 'System.String', bool: 'System.Boolean', char: 'System.Char' };
+const CLR = { int: 'System.Int32', long: 'System.Int64', double: 'System.Double', string: 'System.String', bool: 'System.Boolean', char: 'System.Char' };
 
 class CsObject {
   constructor(cls, interp) { this.cls = cls; this.fields = new Map(); this.interp = interp; this.id = ++interp.objCount; }
 }
 
+// Som double.ToString() i .NET: kortaste siffrorna, och tiopotens när
+// exponenten är minst 15 eller högst -5 (1E+15, 1E-05).
 function fmtDouble(x) {
   if (Number.isNaN(x)) return 'NaN';
   if (x === Infinity) return '∞';
   if (x === -Infinity) return '-∞';
-  let s = String(x);
-  if (s.includes('e')) s = s.replace('e', 'E').replace(/E\+?(-?)(\d)$/, (m, sg, d) => `E${sg || '+'}${d.padStart(2, '0')}`);
-  return s;
+  if (x === 0) return Object.is(x, -0) ? '-0' : '0';
+  const [mant, expStr] = x.toExponential().split('e');
+  const exp = +expStr;
+  const sign = x < 0 ? '-' : '';
+  const digits = mant.replace('-', '').replace('.', '');
+  if (exp >= 15 || exp < -4) return `${sign}${digits[0]}${digits.length > 1 ? '.' + digits.slice(1) : ''}E${exp < 0 ? '-' : '+'}${String(Math.abs(exp)).padStart(2, '0')}`;
+  if (exp < 0) return `${sign}0.${'0'.repeat(-exp - 1)}${digits}`;
+  const ip = digits.slice(0, exp + 1).padEnd(exp + 1, '0'), fp = digits.slice(exp + 1);
+  return sign + ip + (fp ? '.' + fp : '');
+}
+// Math.Round och Convert.ToInt32: exakt hälften avrundas till jämnt tal.
+function roundEven(y) {
+  const f = Math.floor(y), diff = y - f;
+  return diff > 0.5 ? f + 1 : diff < 0.5 ? f : f % 2 === 0 ? f : f + 1;
 }
 export function csStr(val) {
   const { t, v } = val;
@@ -961,7 +980,7 @@ export function csStr(val) {
   if (v instanceof CsObject) return v.interp.objStr(val);
   if (t === 'bool') return v ? 'True' : 'False';
   if (t === 'double') return fmtDouble(v);
-  if (t === 'int' || t === 'string' || t === 'char') return String(v);
+  if (t === 'int' || t === 'long' || t === 'string' || t === 'char') return String(v);
   if (t === 'Type') return v.name;
   if (t === 'lambda') return 'System.Func';
   const gb = genBase(t), ga = genArgs(t);
@@ -988,7 +1007,7 @@ function fmtNumber(val, fmt, line) {
   throw rErr('FormatException', `Formatet "${fmt}" stöds inte i övningsmotorn. Prova till exempel F2.`, line, 'format');
 }
 function defaultOf(t) {
-  if (t === 'int' || t === 'double') return 0;
+  if (t === 'int' || t === 'long' || t === 'double') return 0;
   if (t === 'bool') return false;
   if (t === 'char') return '\0';
   return null;
@@ -1544,7 +1563,7 @@ class Interp {
     if (to === 'object') return val;
     if (from === 'void') throw cErr('CS0029', 'Metoden returnerar inget (void), så det finns inget värde att använda här.', line, 'void-value');
     if (from === 'null') {
-      if (['int', 'double', 'bool', 'char'].includes(to)) throw cErr('CS0037', `null kan inte sparas i en ${svT(to)}.`, line, 'type-convert');
+      if (['int', 'long', 'double', 'bool', 'char'].includes(to)) throw cErr('CS0037', `null kan inte sparas i en ${svT(to)}.`, line, 'type-convert');
       return V(to, null);
     }
     if (from === 'lambda') throw cErr('CS1660', 'En lambda kan bara användas som argument, till exempel i Where(x => x > 0).', line, 'lambda');
@@ -1559,20 +1578,30 @@ class Interp {
       if (fc && this.isSub(tc, fc)) throw cErr('CS0266', `En ${from} är inte alltid en ${to}. Kontrollera först med is, till exempel if (x is ${to} y).`, line, 'type-convert');
       throw cErr('CS0029', `Ett värde av typen ${svT(from)} kan inte användas som ${to}.`, line, 'type-convert');
     }
-    if (to === 'double' && (from === 'int' || from === 'char')) return V('double', from === 'char' ? val.v.charCodeAt(0) : val.v);
-    if (to === 'int' && from === 'char') return V('int', val.v.charCodeAt(0));
+    if (to === 'double' && (from === 'int' || from === 'long' || from === 'char')) return V('double', numOf(val));
+    if ((to === 'int' || to === 'long') && from === 'char') return V(to, val.v.charCodeAt(0));
+    if (to === 'long' && from === 'int') return V('long', val.v);
     if (explicit) {
       if (to === 'int' && from === 'double') {
         if (!Number.isFinite(val.v)) return V('int', -2147483648);
         return V('int', Math.trunc(val.v) | 0);
       }
+      if (to === 'long' && from === 'double') {
+        if (!Number.isFinite(val.v) || Math.abs(val.v) >= 9223372036854775808) return V('long', -9223372036854775808n);
+        return V('long', norm64(BigInt(Math.trunc(val.v))));
+      }
+      if (to === 'int' && from === 'long') return V('int', Number(BigInt.asIntN(32, BigInt(val.v))));
+      if (to === 'char' && from === 'long') return V('char', String.fromCharCode(Number(BigInt.asUintN(16, big64(val.v)))));
       if (to === 'char' && from === 'int') return V('char', String.fromCharCode(val.v));
       if (to === 'string') throw cErr('CS0030', `Det går inte att omvandla ${svT(from)} till string med (string). Använd .ToString() eller stränginterpolering.`, line, 'type-convert');
     }
-    if (to === 'int' && from === 'double') {
+    if (to === 'int' && from === 'long') {
+      throw cErr('CS0266', 'Ett long-värde får inte alltid plats i en int. Använd en long-variabel, eller skriv (int) framför om du vet att talet är litet.', line, 'double-to-int');
+    }
+    if ((to === 'int' || to === 'long') && from === 'double') {
       throw cErr('CS0266', 'Ett decimaltal (double) kan inte sparas i en int automatiskt. Använd en double-variabel, eller skriv (int) framför för att kapa decimalerna.', line, 'double-to-int');
     }
-    if ((to === 'int' || to === 'double') && from === 'string') {
+    if ((to === 'int' || to === 'long' || to === 'double') && from === 'string') {
       throw cErr('CS0029', `Text (string) kan inte sparas i en ${svT(to)}. Ta bort citattecknen om det ska vara ett tal, eller använd ${to}.Parse(text).`, line, 'string-to-num');
     }
     if (to === 'string' && from !== 'string') {
@@ -1736,6 +1765,7 @@ class Interp {
         }
         if (!isNumT(v.t)) throw cErr('CS0023', `Operatorn ${e.op} fungerar inte på ${svT(v.t)}.`, e.line, 'op-type');
         const x = v.t === 'char' ? v.v.charCodeAt(0) : v.v;
+        if (v.t === 'long') return V('long', e.op === '-' ? to64(-big64(x)) : x);
         return V(v.t === 'double' ? 'double' : 'int', e.op === '-' ? (v.t === 'double' ? -x : (-x) | 0) : x);
       }
       case 'Bin': return this.binop(e, scope);
@@ -1743,7 +1773,12 @@ class Interp {
       case 'IncDec': {
         const cur = this.eval(e.target, scope);
         if (!isNumT(cur.t)) throw cErr('CS0023', `${e.op} fungerar bara på tal.`, e.line, 'op-type');
-        const nv = V(cur.t, cur.t === 'int' ? (cur.v + (e.op === '++' ? 1 : -1)) | 0 : cur.v + (e.op === '++' ? 1 : -1));
+        const d = e.op === '++' ? 1 : -1;
+        let nv;
+        if (cur.t === 'char') nv = V('char', String.fromCharCode((cur.v.charCodeAt(0) + d) & 0xffff));
+        else if (cur.t === 'int') nv = V('int', (cur.v + d) | 0);
+        else if (cur.t === 'long') nv = V('long', to64(big64(cur.v) + BigInt(d)));
+        else nv = V(cur.t, cur.v + d);
         this.store(e.target, nv, scope, e.line);
         return e.prefix ? nv : cur;
       }
@@ -1839,8 +1874,9 @@ class Interp {
     if (e.op !== '=') {
       const cur = this.eval(e.target, scope);
       val = this.arith(e.op[0], cur, val, e.line);
-      if (cur.t === 'int' && val.t === 'double') throw cErr('CS0266', 'Resultatet blir ett decimaltal (double) som inte får plats i en int.', e.line, 'double-to-int');
-      if (cur.t === 'char' && val.t === 'int') val = V('char', String.fromCharCode(val.v));
+      if ((cur.t === 'int' || cur.t === 'long') && val.t === 'double') throw cErr('CS0266', `Resultatet blir ett decimaltal (double) som inte får plats i en ${cur.t}.`, e.line, 'double-to-int');
+      if (cur.t === 'int' && val.t === 'long') throw cErr('CS0266', 'Resultatet blir ett long-värde som inte alltid får plats i en int.', e.line, 'double-to-int');
+      if (cur.t === 'char' && val.t === 'int') val = V('char', String.fromCharCode(val.v & 0xffff));
     }
     this.store(e.target, val, scope, e.line);
     return val;
@@ -1891,6 +1927,21 @@ class Interp {
         default: break;
       }
     }
+    if (l.t === 'long' || r.t === 'long') {
+      const A = big64(l.v), B = big64(r.v);
+      switch (op) {
+        case '+': return V('long', to64(A + B));
+        case '-': return V('long', to64(A - B));
+        case '*': return V('long', to64(A * B));
+        case '/':
+          if (B === 0n) throw rErr('DivideByZeroException', 'Division med noll går inte för heltal.', line, 'zero-div');
+          return V('long', to64(A / B));
+        case '%':
+          if (B === 0n) throw rErr('DivideByZeroException', 'Rest vid division med noll går inte.', line, 'zero-div');
+          return V('long', to64(A % B));
+        default: throw cErr('CS0019', `Okänd operator ${op}.`, line);
+      }
+    }
     switch (op) {
       case '+': return V('int', (a + b) | 0);
       case '-': return V('int', (a - b) | 0);
@@ -1922,6 +1973,8 @@ class Interp {
       const full = `${e.obj.name}.${e.name}`;
       if (full === 'Math.PI') return V('double', Math.PI);
       if (full === 'int.MaxValue') return V('int', 2147483647);
+      if (full === 'long.MaxValue') return V('long', 9223372036854775807n);
+      if (full === 'long.MinValue') return V('long', -9223372036854775808n);
       if (full === 'int.MinValue') return V('int', -2147483648);
       if (full === 'double.MaxValue') return V('double', Number.MAX_VALUE);
       if (full === 'string.Empty' || full === 'String.Empty') return V('string', '');
@@ -2019,12 +2072,13 @@ class Interp {
     if (e.args.filter((a) => a.k === 'Out').length !== 1 || outArg.k !== 'Out') throw cErr('CS1620', 'out stöds bara som sista argument.', e.line, 'out');
     const vals = e.args.slice(0, -1).map((x) => this.eval(x, scope));
     let res, outVal, outType;
-    if (fn.k === 'Member' && fn.obj.k === 'Name' && !this.isValueName(fn.obj.name, scope) && ['int', 'double'].includes(normType(fn.obj.name)) && name === 'TryParse') {
+    if (fn.k === 'Member' && fn.obj.k === 'Name' && !this.isValueName(fn.obj.name, scope) && ['int', 'long', 'double'].includes(normType(fn.obj.name)) && name === 'TryParse') {
       if (vals.length !== 1 || vals[0].t !== 'string') throw cErr('CS1503', `${fn.obj.name}.TryParse behöver en text och en out-variabel.`, e.line, 'arg-type');
       outType = normType(fn.obj.name);
       const txt = (vals[0].v || '').trim();
-      const ok = outType === 'int' ? /^[+-]?\d+$/.test(txt) && Math.abs(parseInt(txt, 10)) <= 2147483647 : /^[+-]?(\d+\.?\d*|\.\d+)$/.test(txt);
-      outVal = ok ? (outType === 'int' ? parseInt(txt, 10) : parseFloat(txt)) : 0;
+      const lim = outType === 'long' ? 9223372036854775807n : 2147483647n;
+      const ok = outType !== 'double' ? /^[+-]?\d+$/.test(txt) && (BigInt(txt) <= lim && BigInt(txt) >= -lim - 1n) : /^[+-]?(\d+\.?\d*|\.\d+)$/.test(txt);
+      outVal = ok ? (outType !== 'double' ? norm64(BigInt(txt)) : parseFloat(txt)) : 0;
       res = V('bool', ok);
     } else if (fn.k === 'Member' && name === 'TryGetValue') {
       const d = this.eval(fn.obj, scope);
@@ -2076,10 +2130,10 @@ class Interp {
       case 'Math.Max': case 'Math.Min': {
         this.argCount(full, a, 2, 2, line);
         const x = num(a[0], full), y = num(a[1], full);
-        const t = a[0].t === 'double' || a[1].t === 'double' ? 'double' : 'int';
+        const t = a[0].t === 'double' || a[1].t === 'double' ? 'double' : a[0].t === 'long' || a[1].t === 'long' ? 'long' : 'int';
         return V(t, name === 'Max' ? Math.max(x, y) : Math.min(x, y));
       }
-      case 'Math.Abs': this.argCount(full, a, 1, 1, line); return V(a[0].t === 'double' ? 'double' : 'int', Math.abs(num(a[0], full)));
+      case 'Math.Abs': this.argCount(full, a, 1, 1, line); return V(a[0].t === 'double' || a[0].t === 'long' ? a[0].t : 'int', Math.abs(num(a[0], full)));
       case 'Math.Sqrt': this.argCount(full, a, 1, 1, line); return V('double', Math.sqrt(num(a[0], full)));
       case 'Math.Pow': this.argCount(full, a, 2, 2, line); return V('double', num(a[0], full) ** num(a[1], full));
       case 'Math.Floor': return V('double', Math.floor(num(a[0], full)));
@@ -2087,20 +2141,30 @@ class Interp {
       case 'Math.Round': {
         this.argCount(full, a, 1, 2, line);
         const x = num(a[0], full), d = a[1] ? num(a[1], full) : 0;
-        const m = 10 ** d, y = x * m;
-        const f = Math.floor(y), diff = y - f;
-        const r = Math.abs(diff - 0.5) < 1e-9 ? (f % 2 === 0 ? f : f + 1) : Math.round(y);
-        return V('double', r / m);
+        if (d === 0 || Math.abs(x) >= 1e16) return V('double', d === 0 ? roundEven(x) : x);
+        // Samma steg som .NET: multiplicera, avrunda till jämnt, dela tillbaka.
+        const m = 10 ** d;
+        return V('double', roundEven(x * m) / m);
       }
       case 'int.Parse': case 'Convert.ToInt32': {
         this.argCount(full, a, 1, 1, line);
-        if (a[0].t === 'double') return V('int', Math.round(a[0].v));
+        if (a[0].t === 'double') return V('int', roundEven(a[0].v));
         if (a[0].t !== 'string') return V('int', numOf(a[0]));
         const s = a[0].v.trim();
         if (!/^[+-]?\d+$/.test(s)) throw rErr('FormatException', `Texten "${a[0].v}" kan inte tolkas som ett heltal.`, line, 'parse');
         const n = parseInt(s, 10);
         if (Math.abs(n) > 2147483647) throw rErr('OverflowException', `Talet ${s} är för stort för en int.`, line, 'parse');
         return V('int', n);
+      }
+      case 'long.Parse': case 'Convert.ToInt64': {
+        this.argCount(full, a, 1, 1, line);
+        if (a[0].t === 'double') return V('long', roundEven(a[0].v));
+        if (a[0].t !== 'string') return V('long', numOf(a[0]));
+        const s = a[0].v.trim();
+        if (!/^[+-]?\d+$/.test(s)) throw rErr('FormatException', `Texten "${a[0].v}" kan inte tolkas som ett heltal.`, line, 'parse');
+        const n = BigInt(s);
+        if (n > 9223372036854775807n || n < -9223372036854775808n) throw rErr('OverflowException', `Talet ${s} är för stort för en long.`, line, 'parse');
+        return V('long', norm64(n));
       }
       case 'double.Parse': case 'Convert.ToDouble': {
         this.argCount(full, a, 1, 1, line);
@@ -2441,7 +2505,7 @@ class Interp {
     } finally { if (this.trace) { this.cur = this.callStack.pop(); } }
   }
 }
-const numOf = (v) => (v.t === 'char' ? v.v.charCodeAt(0) : v.v);
+const numOf = (v) => (v.t === 'char' ? v.v.charCodeAt(0) : typeof v.v === 'bigint' ? Number(v.v) : v.v);
 
 export function parseCSharp(code) {
   return new Parser(tokenize(code.replace(/\r\n?/g, '\n'))).program();
@@ -2456,6 +2520,7 @@ function fromJS(x, type) {
   if (et) return V(type, x.map((y) => fromJS(y, et).v));
   if (type === 'double') return V('double', +x);
   if (type === 'int') return V('int', x | 0);
+  if (type === 'long') return V('long', Math.trunc(+x));
   if (type === 'char') return V('char', String(x));
   if (type === 'bool') return V('bool', !!x);
   if (type === 'string') return V('string', x === null ? null : String(x));
@@ -2472,6 +2537,7 @@ function toJS(val) {
   }
   const et = elemOf(val.t);
   if (et) return val.v.map((x) => toJS(V(et, x)));
+  if (typeof val.v === 'bigint') return Number(val.v);
   return val.v;
 }
 
