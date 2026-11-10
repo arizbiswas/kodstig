@@ -50,6 +50,7 @@ export function render(ctx, params = {}) {
     <header class="page-head"><h1 id="lab-h">Kodlabbet</h1><p class="muted">Experimentera fritt. Inget här påverkar dina XP.</p></header>
     <div class="lang-tabs" role="group" aria-label="Välj språk">
       ${LAB_LANGS.map((l) => `<button class="track-btn" type="button" data-lang="${l.id}">${esc(l.name)}</button>`).join('')}
+      <a class="track-btn track-new" href="#/pixelvarld">Pixelvärlden</a>
     </div>
     <div class="lab-grid">
       <div class="lab-editor card">
