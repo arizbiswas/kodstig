@@ -684,3 +684,12 @@ a.track-btn { text-decoration: none; color: inherit; justify-content: center; }
 .px-api p { margin: .45rem 0 0; color: var(--muted); }
 .px-api code { font-size: .85em; }
 @media (max-width: 900px) { .pixel-grid { grid-template-columns: 1fr; } }
+/* Spelytan: tydlig fokusram, tangenterna gäller bara när ytan har fokus. */
+.game-stage { display: grid; gap: .5rem; justify-items: start; }
+.game-canvas { display: block; max-width: 100%; border-radius: var(--radius-sm); border: 2px solid var(--line); image-rendering: pixelated; touch-action: none; }
+.game-canvas:focus { outline: none; }
+.game-canvas:focus-visible, .game-canvas:focus { outline: 4px solid var(--focus); outline-offset: 2px; }
+.game-help { margin: 0; }
+.game-pad { display: none; gap: .4rem; flex-wrap: wrap; }
+@media (pointer: coarse) { .game-pad { display: flex; } }
+.game-pad .btn { min-width: 3rem; touch-action: none; user-select: none; }

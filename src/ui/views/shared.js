@@ -5,6 +5,7 @@ import { readShared, SHARE_LANGS } from '../../state/share.js';
 import { setLab } from '../../state/model.js';
 import { runCode, runPixelCode, previewFor } from '../../engine/runner.js';
 import { createStage } from '../pixel-stage.js';
+import { createGameStage } from '../game-stage.js';
 import { sandboxById } from '../../content/pixel-sandbox.js';
 
 export function render(ctx, params = {}, { bare = false } = {}) {
@@ -53,14 +54,20 @@ export function render(ctx, params = {}, { bare = false } = {}) {
       <div class="row gap wrap shared-actions">
         ${ctx.user ? '<button class="btn secondary" type="button" data-sh-pxopen>Öppna i Kodlabbet</button>' : '<a class="btn secondary" href="#/">Prova Kodstig</a>'}
       </div>`;
+    if (sb.game) {
+      gameApi = createGameStage({ onError: (e) => { const out = el.querySelector('.output'); out.hidden = false; out.querySelector('pre').textContent = `${e.kind}${e.line ? ` (rad ${e.line})` : ''}: ${e.message}`; } });
+      stage.querySelector('.sh-stage').append(gameApi.el);
+      return;
+    }
     stageApi = createStage();
     stage.querySelector('.sh-stage').append(stageApi.el);
     stageApi.setLevel(sb.level);
   }
-  let stageApi = null;
+  let stageApi = null, gameApi = null;
 
   const cleanups = [
     on(el, 'click', '[data-sh-pxrun]', async (e, b) => {
+      if (gameApi) { gameApi.start(shared.lang, shared.code); return; }
       b.disabled = true;
       const r = await runPixelCode(shared.lang, shared.code, { level: sandboxById(shared.pixel.bana).level });
       if (!alive) return;
@@ -97,5 +104,5 @@ export function render(ctx, params = {}, { bare = false } = {}) {
     }),
   ];
 
-  return { el, destroy() { alive = false; if (stageApi) stageApi.destroy(); cleanups.forEach((f) => f()); } };
+  return { el, destroy() { alive = false; if (stageApi) stageApi.destroy(); if (gameApi) gameApi.destroy(); cleanups.forEach((f) => f()); } };
 }

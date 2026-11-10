@@ -8,6 +8,7 @@ import { scheduleLesson } from '../../state/review.js';
 import { renderExercise } from '../exercise.js';
 import { runCode, runPixelCode, previewFor } from '../../engine/runner.js';
 import { createStage } from '../pixel-stage.js';
+import { createGameStage } from '../game-stage.js';
 import { openCelebration } from '../celebrate.js';
 
 export function render(ctx, lessonId) {
@@ -84,7 +85,11 @@ export function render(ctx, lessonId) {
     </article>`;
     const ifr = stage.querySelector('iframe');
     if (ifr) { const pv = previewFor(lesson.example, true); ifr.setAttribute('sandbox', pv.sandbox); ifr.srcdoc = pv.srcdoc; }
-    if (lesson.pixel) {
+    if (lesson.game) {
+      // Spellektion: exemplet körs som ett riktigt spel.
+      readStage = createGameStage();
+      stage.querySelector('.read-stage').append(readStage.el);
+    } else if (lesson.pixel) {
       readStage = createStage();
       stage.querySelector('.read-stage').append(readStage.el);
       readStage.setLevel(lesson.level || null);
@@ -174,6 +179,7 @@ export function render(ctx, lessonId) {
     on(el, 'click', '[data-next]', () => { if (state.step >= total) finish(); else go(state.step + 1); }),
     on(el, 'click', '[data-milo-lesson]', () => ctx.openMilo()),
     on(el, 'click', '[data-run-pixel]', async (e, b) => {
+      if (lesson.game) { if (readStage) readStage.start(lesson.lang, lesson.example); return; }
       b.disabled = true;
       const run = await runPixelCode(lesson.lang, lesson.example, { level: lesson.level || null });
       b.disabled = false;

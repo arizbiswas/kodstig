@@ -8,14 +8,18 @@ import { grade, fillCode, normalizeOutput, orderLines, shuffled } from '../../sr
 import { runPixel } from '../../src/engine/pixel/run.js';
 
 const pixelRunner = async (lang, code, level) => runPixel(lang, code, { level, runners: { python: runPython, csharp: runCSharp } });
-const isPixelEx = (les, ex) => les.pixel && (ex.type === 'world' || ex.level || ex.pixel);
+const isPixelEx = (les, ex) => les.pixel && (ex.type === 'world' || ex.level || ex.pixel || ex.game || ex.type === 'game');
+import { simulate, keySchedule } from '../../src/engine/pixel/game.js';
+import { pythonSession } from '../../src/engine/python.js';
+import { csharpSession } from '../../src/engine/csharp.js';
+const gameRunner = async (lang, code, s) => simulate(lang, code, { frames: s.frames, keys: keySchedule(s.keys), vars: s.vars || [] }, { python: pythonSession, csharp: csharpSession });
 
 const runner = async (lang, code, calls, opts = {}) => (lang === 'csharp' ? runCSharp : runPython)(code, { calls, ...opts });
 
-test('omfattning: 183 lektioner, 1181 övningar, 24 miniprojekt', () => {
-  assert.deepEqual(STATS, { lessons: 183, exercises: 1181, projects: 24 });
+test('omfattning: 191 lektioner, 1209 övningar, 26 miniprojekt', () => {
+  assert.deepEqual(STATS, { lessons: 191, exercises: 1209, projects: 26 });
   const per = Object.fromEntries(TRACKS.map((t) => [t.id, [LESSONS.filter((l) => l.trackId === t.id).length, LESSONS.filter((l) => l.trackId === t.id).reduce((n, l) => n + l.exercises.length, 0)]]));
-  assert.deepEqual(per, { csharp: [65, 419], python: [59, 368], web: [44, 282], git: [15, 112] });
+  assert.deepEqual(per, { csharp: [69, 433], python: [63, 382], web: [44, 282], git: [15, 112] });
   assert.deepEqual(Object.fromEntries(TRACKS.map((t) => [t.id, t.chapters.length])), { csharp: 14, python: 13, web: 11, git: 3 });
 });
 
@@ -31,6 +35,23 @@ test('unika id:n och förkunskapskrav som pekar på riktiga lektioner', () => {
 for (const track of TRACKS.filter((t) => t.lang === 'python' || t.lang === 'csharp')) {
   test(`${track.name}: exempel, svarsalternativ, luckor och lösningar stämmer med kodmotorn`, async () => {
     for (const les of LESSONS.filter((l) => l.trackId === track.id)) {
+      if (les.game) {
+        // Spel: koden körs utan skärm. Lösningar ska klara kontrollerna, startkoden inte.
+        const ex0 = await gameRunner(track.lang, les.example, { frames: 10 });
+        assert.equal(ex0.error, null, `${les.id}: exemplet ger fel ${ex0.error && ex0.error.message}`);
+        for (const [i, ex] of les.exercises.entries()) {
+          const tag = `${les.id}#${i}`;
+          assert.ok(isPixelEx(les, ex), `${tag}: övningen saknar game: true`);
+          if (ex.type === 'choice' && /draw|Draw/.test(ex.code)) assert.equal((await gameRunner(track.lang, ex.code, { frames: 5 })).error, null, `${tag}: koden ger fel`);
+          if (ex.type === 'fill') assert.equal((await gameRunner(track.lang, fillCode(ex.code, ex.answers.map((a) => a[0])), { frames: 10 })).error, null, `${tag}: luckan ger fel`);
+          if (ex.type === 'game') {
+            const g = await grade(ex, ex.solution, { lang: track.lang, gameRunner });
+            assert.ok(g.ok, `${tag}: lösningen godkänns inte: ${g.title} ${g.detail || ''} ${g.error?.message || ''} ${JSON.stringify(g.tests)}`);
+            assert.ok(!(await grade(ex, ex.starter || '', { lang: track.lang, gameRunner })).ok, `${tag}: startkoden godkänns direkt`);
+          }
+        }
+        continue;
+      }
       if (les.pixel) {
         // Pixelvärlden: allt körs i världen. Lösningar ska klara målen, startkoden inte.
         const ex0 = await pixelRunner(track.lang, les.example, les.level || null);

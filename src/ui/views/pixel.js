@@ -7,6 +7,7 @@ import { runPixelCode } from '../../engine/runner.js';
 import { getHints } from '../../engine/hints.js';
 import { shareUrl } from '../../state/share.js';
 import { createStage } from '../pixel-stage.js';
+import { createGameStage } from '../game-stage.js';
 import { SANDBOX, sandboxById } from '../../content/pixel-sandbox.js';
 
 const LANGS = [{ id: 'python', name: 'Python' }, { id: 'csharp', name: 'C#' }];
@@ -25,6 +26,11 @@ const API_HELP = {
     <p><strong>Frågor:</strong> <code>Hjalte.CanMove(Dir.Up)</code>, <code>OnItem()</code>, <code>AtGoal()</code>, <code>Hjalte.X</code>, <code>Hjalte.Y</code>, <code>Hjalte.Items</code>, <code>World.Tile(x, y)</code>, <code>World.ItemsLeft()</code>.</p>
     <p><strong>Pixelkonst:</strong> <code>var g = new PixelGrid(16, 16);</code>, <code>g.SetPixel(x, y, Color.Red);</code>, <code>g.Fill(Color.White);</code>, <code>g.Draw(rader);</code>.</p>
     <p><strong>Turtle:</strong> <code>var t = new Turtle();</code>, sedan <code>Forward</code>, <code>Left</code>, <code>Right</code>, <code>GoTo</code>, <code>Circle</code>, <code>PenUp</code>, <code>PenDown</code>, <code>PenColor</code>, <code>BeginFill</code> och <code>EndFill</code>.</p>`,
+};
+
+const GAME_HELP = {
+  python: '<p><strong>Spel:</strong> skriv <code>def update():</code> som ändrar läget och <code>def draw():</code> som ritar. Kodstig anropar dem ungefär 30 gånger per sekund, så du behöver ingen egen while True. Rita med <code>screen.fill("sky")</code>, <code>screen.sprite("hero", x, y)</code>, <code>screen.rect(x, y, b, h, "red")</code> och <code>screen.text("Hej", x, y)</code>. Tangenter: <code>keyboard.left</code>, <code>keyboard.space</code>. Krockar: <code>overlaps(x1, y1, x2, y2)</code>. Skärmen är 20 × 15 rutor. Variabler som ändras i update() behöver <code>global</code>.</p>',
+  csharp: '<p><strong>Spel:</strong> skriv <code>void Update()</code> som ändrar läget och <code>void Draw()</code> som ritar, utan static så att de kan använda variablerna i programmet. Kodstig anropar dem ungefär 30 gånger per sekund, så du behöver ingen egen while (true). Rita med <code>Screen.Fill(Color.Sky)</code>, <code>Screen.Sprite("hero", x, y)</code>, <code>Screen.Rect(x, y, b, h, Color.Red)</code> och <code>Screen.Text("Hej", x, y)</code>. Tangenter: <code>Keyboard.IsDown("Left")</code>. Krockar: <code>Game.Overlaps(x1, y1, x2, y2)</code>. Skärmen är 20 × 15 rutor.</p>',
 };
 
 export function render(ctx, params = {}) {
@@ -67,6 +73,7 @@ export function render(ctx, params = {}) {
       </div>
       <div class="lab-result card pixel-result">
         <div class="stage-slot"></div>
+        <div class="game-slot" hidden></div>
         <div class="px-output" hidden><span class="output-label">Utskrift</span><pre></pre></div>
         <div class="px-error" role="alert"></div>
         <div class="hint-slot" aria-live="polite"></div>
@@ -74,9 +81,15 @@ export function render(ctx, params = {}) {
     </div>
   </section>`);
 
-  let editor = null, saveTimer = null, runToken = 0, lastRun = null, hint = null;
+  let editor = null, saveTimer = null, runToken = 0, lastRun = null, hint = null, lastGameError = null;
   const stage = createStage({ onLine: (line) => editor && editor.highlight(line) });
   el.querySelector('.stage-slot').append(stage.el);
+  // Spel: en egen yta som kör update() och draw() om och om igen.
+  const game = createGameStage({
+    onError: (e) => { lastGameError = e; errBox.innerHTML = `<div class="err"><p><strong>${esc(e.kind)}${e.line ? ` på rad ${e.line}` : ''}:</strong> ${esc(e.message)}</p></div>`; if (e.line) editor.highlight(e.line); },
+    onOutput: (t) => { out.hidden = false; const pre = out.querySelector('pre'); pre.textContent = (pre.textContent + t).split('\n').slice(-40).join('\n'); },
+  });
+  el.querySelector('.game-slot').append(game.el);
   const out = el.querySelector('.px-output');
   const errBox = el.querySelector('.px-error');
   const hintSlot = el.querySelector('.hint-slot');
@@ -98,13 +111,26 @@ export function render(ctx, params = {}) {
     el.querySelectorAll('[data-px-lang]').forEach((b) => { b.setAttribute('aria-pressed', String(b.dataset.pxLang === lang)); b.classList.toggle('primary', b.dataset.pxLang === lang); b.classList.toggle('secondary', b.dataset.pxLang !== lang); });
     el.querySelector('[data-px-bana]').value = bana;
     el.querySelector('.pixel-task').textContent = s.text;
-    el.querySelector('.px-api').innerHTML = API_HELP[lang];
+    el.querySelector('.px-api').innerHTML = API_HELP[lang] + GAME_HELP[lang];
+    game.stop();
+    el.querySelector('.stage-slot').hidden = !!s.game;
+    el.querySelector('.game-slot').hidden = !s.game;
+    el.querySelector('[data-px-steprun]').hidden = !!s.game;
+    el.querySelector('[data-px-run]').textContent = s.game ? 'Kör spelet' : 'Kör';
     stage.setLevel(s.level);
     lastRun = null;
     clearResult();
   };
 
   const run = async (mode) => {
+    if (sb().game) {
+      clearResult();
+      lastGameError = null;
+      out.querySelector('pre').textContent = '';
+      editor.highlight(null);
+      await game.start(lang, editor.value);
+      return;
+    }
     const code = editor.value;
     const token = ++runToken;
     clearResult();
@@ -151,6 +177,13 @@ export function render(ctx, params = {}) {
     on(el, 'click', '[data-px-run]', () => run('play')),
     on(el, 'click', '[data-px-steprun]', () => run('step')),
     on(el, 'click', '[data-px-hint]', async () => {
+      if (sb().game) {
+        const hs = getHints(lang, editor.value, lastGameError ? { error: lastGameError, output: '' } : (game.running ? { error: null, output: '' } : null));
+        if (hint && hint.key === hs.key && hint.code === editor.value) hint.step = Math.min(hint.step + 1, hint.steps.length - 1);
+        else hint = { key: hs.key, code: editor.value, step: 0, steps: hs.steps };
+        renderHint();
+        return;
+      }
       let res = lastRun && lastRun.code === editor.value ? lastRun.res : null;
       if (!res) { res = await runPixelCode(lang, editor.value, { level: sb().level }); lastRun = { code: editor.value, res }; }
       const goalsLeft = (res.goals || []).filter((x) => !x.met);
@@ -211,6 +244,6 @@ export function render(ctx, params = {}) {
   mount();
   return {
     el,
-    destroy() { flush(); runToken++; stage.destroy(); cleanups.forEach((f) => f()); if (ctx.app.codeSource) ctx.app.codeSource = null; },
+    destroy() { flush(); runToken++; stage.destroy(); game.destroy(); cleanups.forEach((f) => f()); if (ctx.app.codeSource) ctx.app.codeSource = null; },
   };
 }

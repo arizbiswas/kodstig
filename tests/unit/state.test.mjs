@@ -18,10 +18,10 @@ async function device(backend, cache) {
   return { s, timers };
 }
 
-test('läroplanen ger 13 020 XP och högsta nivån är nåbar', () => {
+test('läroplanen ger 13 730 XP och högsta nivån är nåbar', () => {
   const p = emptyProfile();
   LESSONS.forEach((l) => completeLesson(p, l.id));
-  assert.equal(xpOf(p).total, 13020);
+  assert.equal(xpOf(p).total, 13730);
   assert.equal(levelInfo(p).level, 12);
   assert.equal(levelInfo(p).title, 'Kodstig-examen');
 });

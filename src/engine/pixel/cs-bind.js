@@ -2,6 +2,7 @@
 // new Turtle(), Color.Red och Dir.Up. Samma idéer som i Python, med PascalCase.
 import { CodeError } from '../errors.js';
 import { Canvas, Turtle, COLORS, DIRS } from './core.js';
+import { overlaps, GAME_W, GAME_H } from './game.js';
 
 export const HOST_TYPES = ['Turtle', 'PixelGrid', 'Color', 'Dir'];
 
@@ -62,6 +63,20 @@ export function csharpPixel(H, host) {
   const colorConsts = Object.fromEntries(Object.keys(COLORS).map((k) => [pascal(k), { get: () => V('Color', k) }]));
   const dirConsts = Object.fromEntries(Object.keys(DIRS).map((k) => [pascal(k), { get: () => V('Dir', k) }]));
   const statics = { Hjalte: hero, World: world, Color: colorConsts, Dir: dirConsts };
+  // Spel: Screen, Keyboard och Game.Overlaps.
+  if (host.game) {
+    statics.Screen = {
+      Fill: [1, 1, (a, line) => { host.fill(color(a[0], line), line); return none; }],
+      Clear: [0, 0, (a, line) => { host.fill('white', line); return none; }],
+      Rect: [5, 5, (a, line) => { host.rect(n(a[0], 'Rect()', line), n(a[1], 'Rect()', line), n(a[2], 'Rect()', line), n(a[3], 'Rect()', line), color(a[4], line), line); return none; }],
+      Sprite: [3, 3, (a, line) => { host.sprite(String(a[0].v), n(a[1], 'Sprite()', line), n(a[2], 'Sprite()', line), line); return none; }],
+      Text: [3, 4, (a, line) => { host.text(csStr(a[0]), n(a[1], 'Text()', line), n(a[2], 'Text()', line), a.length > 3 ? color(a[3], line) : null, line); return none; }],
+      Width: { get: () => I(GAME_W) },
+      Height: { get: () => I(GAME_H) },
+    };
+    statics.Keyboard = { IsDown: [1, 1, (a, line) => B(host.key(csStr(a[0]), line))] };
+    statics.Game = { Overlaps: [4, 4, (a, line) => B(overlaps(...a.map((v) => n(v, 'Overlaps()', line))))] };
+  }
 
   const gridTable = (c) => ({
     SetPixel: [3, 3, (a, line) => { c.set(int(a[0], 'x', line), int(a[1], 'y', line), color(a[2], line), line); return none; }],

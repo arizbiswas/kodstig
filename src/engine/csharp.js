@@ -2600,6 +2600,43 @@ export function runCSharp(code, { calls = [], maxSteps, trace = false, input, se
   return res;
 }
 
+/**
+ * Ett program som lever vidare efter att det körts, för spel i Pixelvärlden.
+ * Metoderna Update och Draw skrivs som vanliga lokala funktioner (void Update()),
+ * så att de kan använda variablerna på toppnivå, precis som i riktig C#.
+ */
+export function csharpSession(code, { host, maxSteps, seed } = {}) {
+  let interp;
+  try {
+    const prog = parseCSharp(code);
+    interp = new Interp(prog, { maxSteps, host, seed });
+    interp.run();
+  } catch (e) {
+    const error = asError(e);
+    return { start: { output: interp && error.phase !== 'compile' ? interp.out.join('') : '', error } };
+  }
+  let printed = 0;
+  const take = () => { const t = interp.out.slice(printed).join(''); printed = interp.out.length; return t; };
+  const start = { output: take(), error: null };
+  return {
+    start,
+    has: (name) => interp.prog.methods.has(name),
+    params: (name) => (interp.prog.methods.get(name) || { params: [] }).params.length,
+    call(name, args = [], budget) {
+      const m = interp.prog.methods.get(name);
+      if (!m) return { output: '', error: null, missing: true };
+      interp.steps = 0;
+      interp.maxSteps = budget || interp.maxSteps;
+      interp.depth = 0;
+      try { interp.invoke(m, args.map((x, i) => fromJS(x, m.params[i] ? m.params[i].type : 'double')), null); return { output: take(), error: null }; } catch (e) { return { output: take(), error: asError(e) }; }
+    },
+    get(name) {
+      const ref = interp.globalScope.find(name);
+      return ref ? toJS(V(ref.type, ref.value)) : undefined;
+    },
+  };
+}
+
 function asError(e) {
   if (e instanceof CsThrow) {
     const o = e.val.v;

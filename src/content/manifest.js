@@ -873,6 +873,58 @@ export default [
       ],
       "exerciseCount": 3,
       "reviewable": false
+     },
+     {
+      "id": "cs-px-bildrutor",
+      "title": "Spel: bildrutor som ett blädderblock",
+      "tier": 3,
+      "pixel": true,
+      "game": true,
+      "level": null,
+      "requires": [
+       "cs-px-projekt"
+      ],
+      "exerciseCount": 4,
+      "reviewable": true
+     },
+     {
+      "id": "cs-px-tangenter",
+      "title": "Spel: styr med tangenterna",
+      "tier": 3,
+      "pixel": true,
+      "game": true,
+      "level": null,
+      "requires": [
+       "cs-px-bildrutor"
+      ],
+      "exerciseCount": 4,
+      "reviewable": true
+     },
+     {
+      "id": "cs-px-krockar",
+      "title": "Spel: krockar och poäng",
+      "tier": 4,
+      "pixel": true,
+      "game": true,
+      "level": null,
+      "requires": [
+       "cs-px-tangenter"
+      ],
+      "exerciseCount": 4,
+      "reviewable": true
+     },
+     {
+      "id": "cs-px-spel",
+      "title": "Spel: ditt första spel",
+      "tier": 5,
+      "pixel": true,
+      "game": true,
+      "level": null,
+      "requires": [
+       "cs-px-krockar"
+      ],
+      "exerciseCount": 2,
+      "reviewable": false
      }
     ]
    }
@@ -1684,6 +1736,58 @@ export default [
        "py-px-turtle"
       ],
       "exerciseCount": 3,
+      "reviewable": false
+     },
+     {
+      "id": "py-px-bildrutor",
+      "title": "Spel: bildrutor som ett blädderblock",
+      "tier": 3,
+      "pixel": true,
+      "game": true,
+      "level": null,
+      "requires": [
+       "py-px-projekt"
+      ],
+      "exerciseCount": 4,
+      "reviewable": true
+     },
+     {
+      "id": "py-px-tangenter",
+      "title": "Spel: styr med tangenterna",
+      "tier": 3,
+      "pixel": true,
+      "game": true,
+      "level": null,
+      "requires": [
+       "py-px-bildrutor"
+      ],
+      "exerciseCount": 4,
+      "reviewable": true
+     },
+     {
+      "id": "py-px-krockar",
+      "title": "Spel: krockar och poäng",
+      "tier": 4,
+      "pixel": true,
+      "game": true,
+      "level": null,
+      "requires": [
+       "py-px-tangenter"
+      ],
+      "exerciseCount": 4,
+      "reviewable": true
+     },
+     {
+      "id": "py-px-spel",
+      "title": "Spel: ditt första spel",
+      "tier": 5,
+      "pixel": true,
+      "game": true,
+      "level": null,
+      "requires": [
+       "py-px-krockar"
+      ],
+      "exerciseCount": 2,
       "reviewable": false
      }
     ]
