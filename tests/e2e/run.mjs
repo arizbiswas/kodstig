@@ -591,6 +591,33 @@ async function main() {
       await context.close();
     });
 
+    await check('Mobil: utskrift och feedback hamnar i bild, inte bakom bottenmenyn', async () => {
+      const { context, page } = await newGuest(browser, { viewport: { width: 390, height: 664 }, hasTouch: true, isMobile: true });
+      const visible = (sel) => page.evaluate((s) => {
+        const nodes = [...document.querySelectorAll(s)];
+        const navTop = document.querySelector('.bottom-nav').getBoundingClientRect().top;
+        const r = nodes[nodes.length - 1].getBoundingClientRect();
+        return r.top >= 0 && r.top < navTop - 40;
+      }, sel);
+      await page.goto(`${BASE}#/labb`);
+      await page.locator('[data-run]').click();
+      await page.locator('.lab-result .output pre').waitFor();
+      await page.waitForTimeout(700);
+      assert(await visible('.lab-result'), 'utskriften i Kodlabbet syns efter Kör');
+      await page.goto(`${BASE}#/lektion/py-print`);
+      await page.locator('[data-start]').click();
+      await page.locator('.exercise input[type=radio]').nth(1).check({ force: true });
+      await page.locator('[data-check]').click();
+      await page.locator('.feedback.bad').waitFor();
+      await page.waitForTimeout(700);
+      const ok = await page.evaluate(() => {
+        const navTop = document.querySelector('.bottom-nav').getBoundingClientRect().top;
+        return document.querySelector('.ex-actions').getBoundingClientRect().bottom <= navTop + 1;
+      });
+      assert(ok, 'feedback och knapparna under den syns ovanför bottenmenyn');
+      await context.close();
+    });
+
     // 8. Tangentbord och fokus
     await check('Tangentbord: hoppa-länk, fokus på rubrik, Esc i kodfält', async () => {
       const { context, page } = await newGuest(browser);

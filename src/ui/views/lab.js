@@ -1,6 +1,6 @@
 // Kodlabbet: fri kod i C#, Python eller HTML/CSS. Koden sparas per språk på
 // kontot. Tipsen fungerar utan AI och börjar om när koden ändras.
-import { h, esc, on, codeEditor, announce } from '../dom.js';
+import { h, esc, on, codeEditor, announce, reveal } from '../dom.js';
 import { setLab } from '../../state/model.js';
 import { runCode, traceCode, previewFor } from '../../engine/runner.js';
 import { getHints } from '../../engine/hints.js';
@@ -164,7 +164,12 @@ export function render(ctx, params = {}) {
     if (!result.trace || !result.trace.length) { trace = null; showResult(); return; }
     trace = { code, steps: result.trace, i: 0, result };
     showTrace({ focus: '[data-trace-go]:not([disabled])' });
+    revealResult();
   };
+
+  // På mobilen hamnar utskriften under knapparna. När koden har körts flyttas den
+  // upp i bild, så att man ser att något hände.
+  const revealResult = () => reveal(el.querySelector('.lab-result'), undefined, { align: 'top' });
 
   const showResult = () => {
     if (lang === 'web') {
@@ -228,6 +233,7 @@ export function render(ctx, params = {}) {
     btn.disabled = false;
     lastRun = { code, result, lang };
     showResult();
+    revealResult();
     announce(result.error ? `Fel: ${result.error.message}` : 'Koden kördes.');
   };
 

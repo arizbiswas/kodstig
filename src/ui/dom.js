@@ -35,6 +35,25 @@ export const reducedMotion = () => {
   try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { return false; }
 };
 
+// Scrollar så att det som just dök upp syns, även på mobilen där den klistrade
+// toppraden och bottenmenyn täcker delar av skärmen. Gör inget om det redan syns.
+export function reveal(first, last = first, { align = 'bottom' } = {}) {
+  if (!first || !first.isConnected || !last || !last.isConnected) return;
+  const barH = (sel) => {
+    const b = document.querySelector(sel);
+    return b && getComputedStyle(b).display !== 'none' && getComputedStyle(b).position !== 'static' ? b.getBoundingClientRect().height : 0;
+  };
+  const viewTop = barH('.topbar') + 12;
+  const viewBottom = window.innerHeight - barH('.bottom-nav') - 12;
+  const top = first.getBoundingClientRect().top, bottom = last.getBoundingClientRect().bottom;
+  let delta = 0;
+  if (align === 'top') { if (top < viewTop || top > viewBottom - 96) delta = top - viewTop; }
+  else if (bottom > viewBottom) delta = Math.min(bottom - viewBottom, top - viewTop);
+  else if (top < viewTop) delta = top - viewTop;
+  if (Math.abs(delta) < 2) return;
+  window.scrollBy({ top: delta, behavior: reducedMotion() ? 'auto' : 'smooth' });
+}
+
 export function announce(text) {
   const live = document.getElementById('live');
   if (!live) return;
