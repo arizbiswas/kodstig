@@ -1,6 +1,6 @@
 // En lektion: Läs → övningar → klart. Steg och utkast sparas på kontot så att
 // man kan lämna och fortsätta senare.
-import { h, esc, rich, on, codeEditor, announce } from '../dom.js';
+import { h, esc, rich, on, codeEditor, announce, reveal } from '../dom.js';
 import { LESSON_BY_ID, LESSONS, TIER_NAMES, trackById } from '../../content/index.js';
 import { saveLessonState, completeLesson, pref } from '../../state/model.js';
 import { TIER_XP, isUnlocked } from '../../state/progression.js';
@@ -112,6 +112,7 @@ export function render(ctx, lessonId) {
         const nb = wrap.querySelector('[data-next]');
         nb.hidden = false;
         nb.focus({ preventScroll: true });
+        reveal(wrap.querySelector('.feedback') || nb, nb);
       },
     });
     wrap.querySelector('.ex-host').append(current.el);

@@ -33,6 +33,14 @@ Så blev det: varje klarad lektion är ett begrepp i en kö som kommer tillbaka 
 - [x] Dela ett projekt med en länk (13). Kodlabbet har "Dela med länk". Koden ligger bara i länken, inget sparas hos Kodstig, och mottagaren behöver inget konto. Varning om att inte skriva personuppgifter i koden.
 - [x] Anonym statistik över var elever fastnar (14): **nej, inte nu** (zira, 21 oktober 2026). Kodstig samlar ingen statistik.
 
+## Fas 6: Kvalitetsrunda (10 november 2026)
+- [x] Python-tolken jämförd mot riktig Python (CPython 3.13). Allt kursinnehåll gav redan samma utskrift, men fri kod i Kodlabbet kunde ge tyst fel svar: `1e20`, `0.00001`, `-0.0`, `f"{7:03d}"`, `round(2.675, 2)`, `round(1234, -2)` och `2 ** 100`. Nu rätt, och 44 program med facit från CPython ligger som test.
+- [x] Python klarar mer: hela formatspråket, `%`-formatering, `str.format`, `*args`/`**kwargs`, `print(*lista)`, `del`, `nonlocal`, `else` efter loopar, stora heltal, `hex`/`bin`/`oct`, `type(x) == int` och `key=str.lower`. Standardvärden räknas ut en gång, som i Python.
+- [x] C#-tolken: `long` räknar med 64 bitar (slog tidigare runt som `int`), `char c; c++` ger nästa tecken (blev `"A1"`), och double skrivs ut som i .NET (`1E+20`). Kodlabbet säger ärligt att `float` och `decimal` räknas som `double`.
+- [x] Mobil: utskriften i Kodlabbet och feedbacken i lektionerna scrollas fram efter Kör och Kontrollera i stället för att hamna under skärmkanten eller bakom bottenmenyn.
+- [x] Snabbare start: lektionsinnehållet laddas per spår i stället för allt på en gång. Det som laddas vid start gick från 1 304 KB till 223 KB (gzip från 358 KB till 73 KB). Python-motorn laddas först i introduktionens demo. Resten hämtas i bakgrunden efter start, så att allt fungerar offline.
+- [ ] Kvar att fundera på: generatorer med `yield` i Python och riktig `decimal` i C#.
+
 ## Beslut för zira
 - [x] Målgrupp (11): **alla åldrar** (zira, 20 oktober 2026). Det betyder: enkelt språk som fungerar för både tonåringar och vuxna, projekt som lockar båda (spel och praktiska verktyg), och teman som Minecraft som ett val, inte appens grundidentitet. Allt som rör konton och delning ska fungera för elever under 13 år (GDPR), till exempel utan krav på att visa namn eller e-post för andra.
 - [x] Standardtema: **Klassisk** för nya besökare (zira, 21 oktober 2026). Minecraft finns kvar som val i sidomenyn och under Inställningar, och den som redan valt ett tema behåller det.

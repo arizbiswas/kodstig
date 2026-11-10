@@ -1,7 +1,7 @@
 // En övning: flerval, lucka, kod, felsökning eller HTML/CSS med förhandsvisning.
 // Obegränsade försök. Vid fel visas en ledtrådstrappa: först var felet är, sedan
 // begreppet, vad som kan ändras, ett liknande exempel och sist ett lösningsförslag.
-import { h, esc, on, codeEditor, announce } from './dom.js';
+import { h, esc, on, codeEditor, announce, reveal } from './dom.js';
 import { grade, show, orderLines, shuffled } from '../engine/grade.js';
 import { runCode, checkWeb, previewFor } from '../engine/runner.js';
 import { getHints } from '../engine/hints.js';
@@ -151,6 +151,7 @@ export function renderExercise(ex, { lang, saved, solved = false, onChange, onSo
     lastRes = res;
     if (res.run) showOutput(res.run);
     setFeedback(res);
+    reveal(fb, el.querySelector('.ex-actions'));
     announce(res.ok ? 'Rätt svar.' : 'Inte rätt än. Läs ledtråden och försök igen.');
     if (onAttempt && !(typeof answer === 'string' && !answer.trim()) && !(Array.isArray(answer) && ex.type === 'order' && !answer.length)) onAttempt(res.ok);
     if (res.ok) {

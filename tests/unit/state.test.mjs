@@ -4,7 +4,10 @@ import { Store } from '../../src/state/store.js';
 import { localBackend } from '../../src/state/backends.js';
 import { completeLesson, claimBonus, saveLessonState, setPref, addActivity, activityByDay, merge, emptyProfile, pref } from '../../src/state/model.js';
 import { levelInfo, xpOf, canClaimDaily, nextStepAdvice, LEVELS, TIER_XP } from '../../src/state/progression.js';
-import { LESSONS } from '../../src/content/index.js';
+import { LESSONS, loadAllTracks } from '../../src/content/index.js';
+
+// Appens läroplan laddar övningarna per spår. Testerna behöver alla.
+await loadAllTracks();
 import { memoryStorage, manualTimers } from './helpers.mjs';
 
 async function device(backend, cache) {

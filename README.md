@@ -18,7 +18,8 @@ Du behöver Node.js 20 eller senare.
 ```bash
 npm install
 npm run dev        # utvecklingsserver på http://localhost:5173
-npm run build      # bygger till dist/
+npm run build      # bygger till dist/ (bygger först om innehållsförteckningen)
+npm run content    # bygger om src/content/manifest.js efter ändringar i läroplanen
 npm run preview    # visar det byggda resultatet
 npm test           # enhetstester (motorer, innehåll, XP, synk, Milo)
 npm run test:e2e   # webbläsartester (kräver npm run build först och Chromium via Playwright)
@@ -33,6 +34,12 @@ Appen publiceras automatiskt på GitHub Pages varje gång `main` uppdateras (se 
 Kodstig är en installerbar webbapp (PWA). I Chrome eller Edge på datorn installerar du den med installationsikonen i adressfältet. På Android väljer du **Installera app** i webbläsarens meny, och på iPhone trycker du på **Dela → Lägg till på hemskärmen** i Safari. Appen kan starta utan nät. Milos modell och data från andra tjänster sparas aldrig av appens service worker (`public/sw.js`), och sidan hämtas alltid från nätet först så att uppdateringar syns direkt.
 
 Bygger du för en annan sökväg sätter du `BASE_PATH`, till exempel `BASE_PATH=/kodstig/ npm run build`.
+
+### Läroplanen laddas per spår
+
+Allt lektionsinnehåll ligger i `src/content/`. Appen startar med en liten innehållsförteckning (`src/content/manifest.js`: spår, kapitel, lektionstitlar, krav och antal övningar). Texter, exempel och övningar ligger i en fil per spår (`body-csharp.js` med flera) som laddas när spåret öppnas. När appen har startat hämtas resten i bakgrunden, så att lektionerna öppnas direkt och fungerar offline. Det görs inte om webbläsaren ber om att spara data.
+
+Innehållsförteckningen skapas av `scripts/content-manifest.mjs`. Den byggs om automatiskt vid `npm run build`, och ett enhetstest säger till om den är inaktuell. Ändrar du i läroplanen kör du `npm run content`. Testerna och skriptet använder `src/content/full.js`, som har hela läroplanen på en gång.
 
 ## Konton med Supabase (Google-inloggning)
 
@@ -93,8 +100,8 @@ Elevens kod körs aldrig med `eval`. Python och C# tolkas av två egna, förenkl
 
 Tolkarna har tydliga gränser, och det står i appen under **Vad klarar Kodlabbet?**:
 
-- **Python:** variabler, if/elif/else, while/for, range, funktioner, rekursion, listor, ordlistor, tupler, mängder, listbyggare, lambda och `sorted(key=...)`, klasser med arv och `super()`, `try/except/else/finally` och `raise`, strängmetoder och f-strängar. Följande saknas: `import`, `with`, `*args`, filer och `input()`.
-- **C#:** toppnivåsatser eller `class Program` med `Main`, metoder med standardvärden, int/double/bool/string/char, arrayer, `List<T>`, `Dictionary<K,V>`, egna klasser med fält, egenskaper, konstruktorer, arv, `abstract`/`virtual`/`override` och interface, `try`/`catch`/`finally`/`throw`, `switch`, lambdas och vanliga LINQ-metoder (`Where`, `Select`, `OrderBy`, `Sum`, `Count`, `Any`, `First` med flera), `out` med `TryParse`/`TryGetValue`, stränginterpolation med format och `Math`. Följande saknas: egna generiska typer, `struct`, `record`, `async`, switch-uttryck och namespaces utöver det enklaste.
+- **Python:** variabler, if/elif/else, while/for, range, funktioner, rekursion, listor, ordlistor, tupler, mängder, listbyggare, lambda och `sorted(key=...)`, klasser med arv och `super()`, `try/except/else/finally` och `raise`, strängmetoder, f-strängar med Pythons formatspråk, `%`-formatering och `str.format`, `*args`/`**kwargs`, `del`, `global`/`nonlocal`, `else` efter loopar, heltal utan storleksgräns, `input()` och modulerna `random` och `math`. Talen skrivs ut som i riktig Python (till exempel `1e+20` och `round(2.675, 2) == 2.67`). Följande saknas: andra moduler, generatorer med `yield`, `with` och filer.
+- **C#:** toppnivåsatser eller `class Program` med `Main`, metoder med standardvärden, int/long/double/bool/string/char (long med 64 bitar, och double skrivs ut som i .NET, till exempel `1E+20`), arrayer, `List<T>`, `Dictionary<K,V>`, egna klasser med fält, egenskaper, konstruktorer, arv, `abstract`/`virtual`/`override` och interface, `try`/`catch`/`finally`/`throw`, `switch`, lambdas och vanliga LINQ-metoder (`Where`, `Select`, `OrderBy`, `Sum`, `Count`, `Any`, `First` med flera), `out` med `TryParse`/`TryGetValue`, stränginterpolation med format och `Math`. `float` och `decimal` räknas som `double`. Följande saknas: egna generiska typer, `struct`, `record`, `async`, switch-uttryck och namespaces utöver det enklaste.
 
 Felmeddelandena är på svenska och pekar på raden. **Fastnat? Få en ledtråd** ger tre steg (en fråga, en förklaring och ett exempel). Ledtrådarna börjar om när koden ändras.
 

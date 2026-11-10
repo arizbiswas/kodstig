@@ -5,7 +5,7 @@
 import { CodeError, StepLimit, MAX_STEPS, MAX_OUTPUT, inputLines, makeRng } from './errors.js';
 
 const KEYWORDS = new Set(['if', 'elif', 'else', 'while', 'for', 'in', 'def', 'return', 'pass', 'break', 'continue',
-  'and', 'or', 'not', 'True', 'False', 'None', 'is', 'global', 'lambda', 'import', 'from', 'class', 'try', 'except', 'finally', 'raise', 'with', 'yield', 'async', 'await', 'del', 'as']);
+  'and', 'or', 'not', 'True', 'False', 'None', 'is', 'global', 'nonlocal', 'lambda', 'import', 'from', 'class', 'try', 'except', 'finally', 'raise', 'with', 'yield', 'async', 'await', 'del', 'as']);
 const OPS = ['**=', '//=', '**', '//', '==', '!=', '<=', '>=', '+=', '-=', '*=', '/=', '%=', '->',
   '+', '-', '*', '/', '%', '<', '>', '=', '|', '&', '(', ')', '[', ']', '{', '}', ',', ':', '.', ';'];
 
@@ -79,6 +79,16 @@ function tokenize(src) {
       push(isF ? 'FSTR' : 'STR', s, startLine);
       continue;
     }
+    if (c === '0' && /[xXbBoO]/.test(src[i + 1] || '')) {
+      const base = { x: 16, b: 2, o: 8 }[src[i + 1].toLowerCase()];
+      let j = i + 2;
+      while (j < n && /[0-9a-fA-F_]/.test(src[j])) j++;
+      const digits = src.slice(i + 2, j).replace(/_/g, '');
+      const ok = digits && [...digits].every((d) => parseInt(d, 16) < base);
+      if (!ok) throw syntax(`Talet ${src.slice(i, j)} är inte ett giltigt tal i bas ${base}.`, line, 'syntax');
+      push('NUM', normInt(BigInt(src.slice(i, i + 2).toLowerCase() + digits)));
+      i = j; continue;
+    }
     if (/[0-9]/.test(c) || (c === '.' && /[0-9]/.test(src[i + 1] || ''))) {
       let j = i; let isFloat = false;
       while (j < n && /[0-9_]/.test(src[j])) j++;
@@ -86,7 +96,7 @@ function tokenize(src) {
       else if (src[j] === '.' ) { isFloat = true; j++; }
       if ((src[j] === 'e' || src[j] === 'E') && /[0-9+-]/.test(src[j + 1] || '')) { isFloat = true; j += 2; while (j < n && /[0-9]/.test(src[j])) j++; }
       const raw = src.slice(i, j).replace(/_/g, '');
-      push('NUM', isFloat ? new PyFloat(parseFloat(raw)) : parseInt(raw, 10));
+      push('NUM', isFloat ? new PyFloat(parseFloat(raw)) : normInt(BigInt(raw)));
       i = j; continue;
     }
     if (/[A-Za-z_À-ɏ]/.test(c)) {
@@ -162,7 +172,7 @@ class Parser {
           this.next();
           const test = this.condition();
           this.inLoop++; const body = this.block(); this.inLoop--;
-          return [{ k: 'While', test, body, line: c.line }];
+          return [{ k: 'While', test, body, orelse: this.loopElse(), line: c.line }];
         }
         case 'for': {
           this.next();
@@ -171,7 +181,7 @@ class Parser {
           this.next();
           const iter = this.exprList();
           this.inLoop++; const body = this.block(); this.inLoop--;
-          return [{ k: 'For', target, iter, body, line: c.line }];
+          return [{ k: 'For', target, iter, body, orelse: this.loopElse(), line: c.line }];
         }
         case 'def': return [this.funcDef()];
         case 'class': return [this.classDef()];
@@ -180,12 +190,20 @@ class Parser {
           throw syntax(`${c.v} måste komma direkt efter ett if-block med samma indragning.`, c.line, 'stray-else');
         case 'except': case 'finally':
           throw syntax(`${c.v} måste komma direkt efter ett try-block med samma indragning.`, c.line, 'stray-except');
-        case 'with': case 'yield': case 'async': case 'await': case 'del':
+        case 'with': case 'yield': case 'async': case 'await':
           throw new CodeError('Stöds inte', `Kodstigs övningsmotor stöder inte ${c.v} ännu.`, c.line, 'unsupported', 'compile');
         default: break;
       }
     }
     return this.simpleLine();
+  }
+  // else efter en loop körs bara om loopen inte avbröts med break.
+  loopElse() {
+    const save = this.p;
+    while (this.is('NEWLINE')) this.next();
+    if (this.isKw('else')) { this.next(); return this.block(); }
+    this.p = save;
+    return [];
   }
   simpleLine() {
     const out = [this.simple()];
@@ -245,10 +263,20 @@ class Parser {
         const exc = this.is('NEWLINE') || this.isOp(';') || this.is('EOF') ? null : this.expr();
         return { k: 'Raise', exc, line: c.line };
       }
-      if (c.v === 'global') {
+      if (c.v === 'global' || c.v === 'nonlocal') {
+        if (c.v === 'nonlocal' && !this.inFunc) throw syntax('nonlocal kan bara användas i en funktion som ligger inuti en annan funktion.', c.line);
         this.next(); const names = [this.name()];
         while (this.isOp(',')) { this.next(); names.push(this.name()); }
-        return { k: 'Global', names, line: c.line };
+        return { k: c.v === 'global' ? 'Global' : 'Nonlocal', names, line: c.line };
+      }
+      if (c.v === 'del') {
+        this.next();
+        const targets = [this.postfix()];
+        while (this.isOp(',')) { this.next(); targets.push(this.postfix()); }
+        for (const t of targets) {
+          if (!['Name', 'Index', 'Attr'].includes(t.k)) throw syntax('Efter del ska det stå en variabel, ett element som lista[0] eller en nyckel som ordbok["nyckel"].', c.line, 'bad-assign');
+        }
+        return { k: 'Del', targets, line: c.line };
       }
     }
     const e = this.exprList();
@@ -305,12 +333,26 @@ class Parser {
     const name = this.name();
     this.expectOp('(', 'Efter funktionens namn behövs parenteser, till exempel def hej():', 'parens');
     const params = [];
+    let kwOnly = false;
     while (!this.isOp(')')) {
+      let kind = kwOnly ? 'kwonly' : 'pos';
+      if (this.isOp('**')) { this.next(); kind = 'kwstar'; }
+      else if (this.isOp('*')) {
+        this.next(); kwOnly = true;
+        if (this.isOp(',')) { this.next(); continue; } // ensam * : resten måste namnges
+        kind = 'star';
+      }
       const pname = this.name();
+      if (params.some((p) => p.name === pname)) throw syntax(`Parametern ${pname} finns redan i funktionen.`, this.cur.line);
       let def = null;
       if (this.isOp(':')) { this.next(); this.expr(); } // typannotering ignoreras
-      if (this.isOp('=')) { this.next(); def = this.expr(); }
-      params.push({ name: pname, def });
+      if (this.isOp('=')) {
+        if (kind === 'star' || kind === 'kwstar') throw syntax('*args och **kwargs kan inte ha standardvärden.', this.cur.line);
+        this.next(); def = this.expr();
+      } else if (kind === 'pos' && params.some((p) => p.kind === 'pos' && p.def)) {
+        throw syntax(`Parametern ${pname} saknar standardvärde men kommer efter en parameter som har ett. Lägg parametrar med standardvärde sist.`, this.cur.line);
+      }
+      params.push({ name: pname, def, kind });
       if (!this.isOp(',')) break;
       this.next();
     }
@@ -474,6 +516,12 @@ class Parser {
           if (this.is('NAME') && this.peek().t === 'OP' && this.peek().v === '=') {
             const name = this.next().v; this.next();
             kwargs.push({ name, value: this.expr() });
+          } else if (this.isOp('**')) {
+            this.next();
+            kwargs.push({ name: null, value: this.expr() });
+          } else if (this.isOp('*')) {
+            const sl = this.next().line;
+            args.push({ k: 'Starred', v: this.expr(), line: sl });
           } else {
             if (kwargs.length) throw syntax('Namngivna argument måste komma efter de vanliga argumenten.', this.cur.line);
             args.push(this.expr());
@@ -642,17 +690,25 @@ function parseFString(raw, line) {
       while (j < raw.length && d) { if (raw[j] === '{') d++; else if (raw[j] === '}') d--; if (d) j++; }
       if (d) throw syntax('En { i f-strängen är aldrig stängd med }.', line, 'fstring');
       let inner = raw.slice(i + 1, j);
-      let spec = null;
+      let spec = null, conv = null, debug = null;
       const colon = findTopColon(inner);
       if (colon >= 0) { spec = inner.slice(colon + 1); inner = inner.slice(0, colon); }
+      const cm = /!([rsa])\s*$/.exec(inner);
+      if (cm) { conv = cm[1]; inner = inner.slice(0, cm.index); }
+      // f"{x=}" skriver ut både uttrycket och värdet
+      if (/[^=!<>]=\s*$/.test(inner)) { debug = inner; inner = inner.replace(/=\s*$/, ''); }
       if (!inner.trim()) throw syntax('Det står inget mellan { och } i f-strängen.', line, 'fstring');
       if (lit) parts.push({ k: 'Const', v: lit, line });
       lit = '';
+      if (debug !== null) { parts.push({ k: 'Const', v: debug, line }); if (!conv && spec === null) conv = 'r'; }
       const toks = tokenize(inner.trim()).filter((tk) => tk.t !== 'NEWLINE' && tk.t !== 'INDENT' && tk.t !== 'DEDENT');
       toks.forEach((tk) => { tk.line = line; });
       const p = new Parser(toks);
       const e = p.expr();
-      parts.push({ k: 'FVal', v: e, spec, line });
+      if (!p.is('EOF')) throw syntax('Uttrycket mellan { och } i f-strängen är inte komplett.', line, 'fstring');
+      // Formatet kan själv innehålla {}, till exempel f"{tal:>{bredd}}"
+      if (spec !== null && spec.includes('{')) spec = parseFString(spec, line);
+      parts.push({ k: 'FVal', v: e, spec, conv, line });
       i = j + 1; continue;
     }
     if (c === '}') throw syntax('En ensam } i f-strängen. Skriv }} för att visa en klammer.', line, 'fstring');
@@ -685,6 +741,7 @@ class PyDict {
   constructor() { this.map = new Map(); }
   static key(k, line) {
     if (typeof k === 'string') return 's:' + k;
+    if (typeof k === 'bigint') return 'n:' + k;
     if (typeof k === 'number' || typeof k === 'boolean' || k instanceof PyFloat) return 'n:' + num(k);
     if (k === null) return 'none';
     if (k instanceof Tuple) return 't:' + k.items.map((x) => PyDict.key(x, line)).join('|');
@@ -696,7 +753,7 @@ class PyDict {
   set(k, v, line) { this.map.set(PyDict.key(k, line), [k, v]); }
   has(k, line) { return this.map.has(PyDict.key(k, line)); }
 }
-class PyFunc { constructor(def, interp, closure = null) { this.def = def; this.name = def.name; this.interp = interp; this.closure = closure; this.owner = null; } }
+class PyFunc { constructor(def, interp, closure = null, defaults = new Map()) { this.def = def; this.name = def.name; this.interp = interp; this.closure = closure; this.owner = null; this.defaults = defaults; } }
 class PyClass {
   constructor(name, base, attrs = new Map(), isExc = false) { this.name = name; this.base = base; this.attrs = attrs; this.isExc = isExc || !!(base && base.isExc); }
   find(name) { for (let c = this; c; c = c.base) if (c.attrs.has(name)) return c.attrs.get(name); return undefined; }
@@ -714,22 +771,38 @@ class PySet {
 }
 // Ett undantag som kastats med raise (eller ett motorfel som fångats och kastats vidare).
 class PyRaise { constructor(exc, line) { this.exc = exc; this.line = line; } }
-class Builtin { constructor(name, fn) { this.name = name; this.fn = fn; } }
+class Builtin { constructor(name, fn, isType = false) { this.name = name; this.fn = fn; this.isType = isType; } }
 class PyModule { constructor(name) { this.name = name; this.attrs = new Map(); } }
 class BreakSig {}
 class ContinueSig {}
 class ReturnSig { constructor(v) { this.v = v; } }
 
-const isNum = (v) => typeof v === 'number' || typeof v === 'boolean' || v instanceof PyFloat;
-const num = (v) => (v instanceof PyFloat ? v.v : typeof v === 'boolean' ? (v ? 1 : 0) : v);
+// Heltal är vanliga JS-tal så länge de är exakta, och BigInt när de blir större
+// (Python har heltal utan storleksgräns, till exempel 2 ** 100).
+const isInt = (v) => typeof v === 'number' || typeof v === 'bigint' || typeof v === 'boolean';
+const isNum = (v) => isInt(v) || v instanceof PyFloat;
+const num = (v) => (v instanceof PyFloat ? v.v : typeof v === 'boolean' ? (v ? 1 : 0) : typeof v === 'bigint' ? Number(v) : v);
 const isFloat = (v) => v instanceof PyFloat;
 const mkNum = (r, float) => (float ? new PyFloat(r) : r);
+const MAX_SAFE = BigInt(Number.MAX_SAFE_INTEGER);
+const big = (v) => (typeof v === 'bigint' ? v : BigInt(typeof v === 'boolean' ? +v : v));
+function normInt(b) { return b >= -MAX_SAFE && b <= MAX_SAFE ? Number(b) : b; }
+// Ett heltal från ett flyttal, t.ex. int(1e20), utan att tappa siffror.
+const intFromFloat = (x) => (Number.isSafeInteger(Math.trunc(x)) ? Math.trunc(x) : BigInt(Math.trunc(x)));
+const MAX_INT_BITS = 20000;
+function checkBig(b, line) {
+  if (typeof b === 'bigint' && (b < 0n ? -b : b).toString(16).length * 4 > MAX_INT_BITS) {
+    throw new CodeError('Stegbegränsning', 'Talet blir för stort för Kodstigs övningsmotor (över 6000 siffror).', line, 'infinite-loop');
+  }
+  return b;
+}
 
 export function typeName(v) {
   if (v === null) return 'NoneType';
   if (typeof v === 'boolean') return 'bool';
-  if (typeof v === 'number') return 'int';
+  if (typeof v === 'number' || typeof v === 'bigint') return 'int';
   if (v instanceof PyFloat) return 'float';
+  if (v instanceof Builtin && v.isType) return 'type';
   if (typeof v === 'string') return 'str';
   if (Array.isArray(v)) return 'list';
   if (v instanceof Tuple) return 'tuple';
@@ -745,14 +818,38 @@ export function typeName(v) {
 const SV_TYPE = { int: 'heltal (int)', float: 'decimaltal (float)', str: 'text (str)', bool: 'sanningsvärde (bool)', NoneType: 'None', list: 'lista (list)', tuple: 'tupel (tuple)', dict: 'ordbok (dict)', range: 'range', function: 'funktion', set: 'mängd (set)', type: 'klass' };
 const sv = (v) => (v instanceof PyObject ? `ett ${v.cls.name}-objekt` : SV_TYPE[typeName(v)] || typeName(v));
 
+// Som Pythons repr(float): kortaste siffrorna som ger tillbaka samma tal, och
+// tiopotens när exponenten är under -4 eller minst 16 (1e+16, 1e-05).
 function fmtFloat(x) {
   if (Number.isNaN(x)) return 'nan';
   if (x === Infinity) return 'inf';
   if (x === -Infinity) return '-inf';
-  if (Number.isInteger(x) && Math.abs(x) < 1e16) return x.toFixed(1);
-  let s = String(x);
-  if (s.includes('e')) s = s.replace(/e([+-])(\d)$/, 'e$10$2');
-  return s;
+  if (x === 0) return Object.is(x, -0) ? '-0.0' : '0.0';
+  const [mant, expStr] = x.toExponential().split('e');
+  const exp = +expStr;
+  const sign = x < 0 ? '-' : '';
+  const digits = mant.replace('-', '').replace('.', '');
+  if (exp < -4 || exp >= 16) {
+    return `${sign}${digits[0]}${digits.length > 1 ? '.' + digits.slice(1) : ''}e${exp < 0 ? '-' : '+'}${String(Math.abs(exp)).padStart(2, '0')}`;
+  }
+  if (exp < 0) return `${sign}0.${'0'.repeat(-exp - 1)}${digits}`;
+  return `${sign}${digits.slice(0, exp + 1).padEnd(exp + 1, '0')}.${digits.slice(exp + 1) || '0'}`;
+}
+// Avrundar |x| till nd decimaler och ger siffrorna som text. Räknar på flyttalets
+// exakta decimalvärde och avrundar exakt hälften till jämnt, som Python gör.
+function fixedDigits(x, nd) {
+  const ax = Math.abs(x);
+  if (ax >= 1e21) {
+    const ip = BigInt(ax).toString();
+    return nd > 0 ? `${ip}.${'0'.repeat(nd)}` : ip;
+  }
+  const [ip, fp] = ax.toFixed(100).split('.');
+  const keep = ip + fp.slice(0, nd), rest = fp.slice(nd);
+  let n = BigInt(keep);
+  const up = rest[0] > '5' || (rest[0] === '5' && (/[1-9]/.test(rest.slice(1)) || n % 2n === 1n));
+  if (up) n += 1n;
+  const str = n.toString().padStart(nd + 1, '0');
+  return nd > 0 ? `${str.slice(0, -nd)}.${str.slice(-nd)}` : str;
 }
 export function pyStr(v) {
   if (typeof v === 'string') return v;
@@ -767,8 +864,9 @@ export function pyRepr(v, seen = new Set()) {
   if (v === null) return 'None';
   if (v === true) return 'True';
   if (v === false) return 'False';
-  if (typeof v === 'number') return String(v);
+  if (typeof v === 'number' || typeof v === 'bigint') return String(v);
   if (v instanceof PyFloat) return fmtFloat(v.v);
+  if (v instanceof Builtin && v.isType) return `<class '${v.name}'>`;
   if (typeof v === 'string') {
     const q = v.includes("'") && !v.includes('"') ? '"' : "'";
     const body = v.replace(/\\/g, '\\\\').replace(/\n/g, '\\n').replace(/\t/g, '\\t');
@@ -796,6 +894,7 @@ function truthy(v) {
   if (v === null || v === false) return false;
   if (v === true) return true;
   if (typeof v === 'number') return v !== 0;
+  if (typeof v === 'bigint') return v !== 0n;
   if (v instanceof PyFloat) return v.v !== 0;
   if (typeof v === 'string' || Array.isArray(v)) return v.length > 0;
   if (v instanceof Tuple) return v.items.length > 0;
@@ -807,6 +906,7 @@ function truthy(v) {
 function rangeLen(r) { return Math.max(0, Math.ceil((r.stop - r.start) / r.step)); }
 
 function pyEq(a, b) {
+  if ((typeof a === 'bigint' || typeof b === 'bigint') && isInt(a) && isInt(b)) return big(a) === big(b);
   if (isNum(a) && isNum(b)) return num(a) === num(b);
   if (typeof a === 'string' && typeof b === 'string') return a === b;
   if (a === null || b === null) return a === b;
@@ -822,6 +922,7 @@ function pyEq(a, b) {
   return a === b;
 }
 function pyCmp(a, b, line, op) {
+  if ((typeof a === 'bigint' || typeof b === 'bigint') && isInt(a) && isInt(b)) { const x = big(a), y = big(b); return x < y ? -1 : x > y ? 1 : 0; }
   if (isNum(a) && isNum(b)) return num(a) < num(b) ? -1 : num(a) > num(b) ? 1 : 0;
   if (typeof a === 'string' && typeof b === 'string') return a < b ? -1 : a > b ? 1 : 0;
   const seq = (x) => (Array.isArray(x) ? x : x instanceof Tuple ? x.items : null);
@@ -872,41 +973,176 @@ function sliceIdx(lo, hi, step, len) {
   return idx;
 }
 
+// round(): exakt hälften avrundas till jämnt tal (round(2.5) == 2), och
+// round(2.675, 2) blir 2.67 eftersom 2.675 egentligen lagras som 2.67499999...
 function pyRound(x, nd) {
   if (nd === undefined || nd === null) {
+    if (!Number.isFinite(x)) throw new CodeError('OverflowError', 'Det går inte att avrunda oändligheten eller nan till ett heltal.', null, 'value');
     const f = Math.floor(x), d = x - f;
-    if (d > 0.5) return f + 1;
-    if (d < 0.5) return f;
-    return f % 2 === 0 ? f : f + 1;
+    const r = d > 0.5 ? f + 1 : d < 0.5 ? f : f % 2 === 0 ? f : f + 1;
+    return intFromFloat(r);
   }
-  const m = 10 ** nd;
-  return new PyFloat(Math.round(x * m) / m);
+  if (!Number.isFinite(x)) return new PyFloat(x);
+  if (nd < 0) {
+    const m = 10 ** -nd;
+    let q = Math.floor(x / m);
+    const rem = x - q * m;
+    if (rem * 2 > m || (rem * 2 === m && q % 2 !== 0)) q++;
+    const r = q * m;
+    return new PyFloat(r === 0 && (x < 0 || Object.is(x, -0)) ? -0 : r);
+  }
+  if (nd > 300) return new PyFloat(x);
+  const r = Number(fixedDigits(x, nd));
+  return new PyFloat(x < 0 || Object.is(x, -0) ? -r : r);
+}
+function roundInt(v, nd) {
+  if (nd >= 0) return v;
+  const m = 10n ** BigInt(-nd), b = big(v);
+  let q = b / m, rem = b % m;
+  if (rem < 0n) { q -= 1n; rem += m; }
+  if (rem * 2n > m || (rem * 2n === m && q % 2n !== 0n)) q += 1n;
+  return normInt(q * m);
 }
 
+// Pythons formatspråk: f"{tal:>8.2f}", f"{n:03d}", f"{n:,}", f"{x:.1%}", f"{n:b}" ...
 function formatSpec(v, spec, line) {
-  const m = /^([<>^]?)(\d*)(,?)(?:\.(\d+))?([fdse%]?)$/.exec(spec);
-  if (!m) throw new CodeError('ValueError', `Formatet :${spec} stöds inte i övningsmotorn.`, line, 'format');
-  const [, align, width, comma, prec, type] = m;
-  let s;
-  if (type === 'f' || type === '%' || (prec && type !== 's')) {
-    if (!isNum(v)) throw new CodeError('ValueError', `Formatet :${spec} fungerar bara för tal.`, line, 'format');
-    let x = num(v); if (type === '%') x *= 100;
-    s = x.toFixed(prec ? +prec : 6);
-    if (type === '%') s += '%';
-  } else if (type === 'd') {
-    if (!(typeof v === 'number')) throw new CodeError('ValueError', `Formatet :d fungerar bara för heltal.`, line, 'format');
-    s = String(v);
-  } else s = pyStr(v);
-  if (comma) { const [a, b] = s.split('.'); s = a.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + (b ? '.' + b : ''); }
-  const w = +width || 0;
-  if (s.length < w) {
-    const pad = w - s.length;
-    const al = align || (isNum(v) ? '>' : '<');
-    if (al === '>') s = ' '.repeat(pad) + s;
-    else if (al === '^') s = ' '.repeat(Math.floor(pad / 2)) + s + ' '.repeat(Math.ceil(pad / 2));
-    else s += ' '.repeat(pad);
+  const bad = (msg) => new CodeError('ValueError', msg, line, 'format');
+  if (spec === '') return pyStr(v);
+  const m = /^(?:([\s\S])?([<>^=]))?([+\- ]?)(#?)(0?)(\d*)([,_]?)(?:\.(\d+))?([bcdeEfFgGnosxX%]?)$/.exec(spec);
+  if (!m) throw bad(`Formatet :${spec} känns inte igen. Exempel som fungerar: :.2f, :>8, :03d och :,`);
+  let [, fill, align, sign, alt, zero, width, group, prec, type] = m;
+  const isStrLike = !isNum(v);
+  if (isStrLike) {
+    if (type && type !== 's') throw bad(`Formatet :${spec} fungerar bara för tal, men värdet är ${sv(v)}.`);
+    if (sign || group) throw bad(`Formatet :${spec} fungerar bara för tal, men värdet är ${sv(v)}.`);
   }
-  return s;
+  let body, neg = false, prefix = '';
+  const p = prec === undefined ? null : +prec;
+  if (typeof v === 'string' || isStrLike) {
+    body = pyStr(v);
+    if (p !== null) body = [...body].slice(0, p).join('');
+  } else {
+    const intLike = isInt(v);
+    let t = type;
+    if (!t) t = intLike ? 'd' : p !== null ? 'g' : 'r';
+    if ('bcdoxXn'.includes(t)) {
+      if (!intLike) throw bad(`Formatet :${t} fungerar bara för heltal. Använd :.0f för decimaltal, eller int() först.`);
+      let b = big(v); neg = b < 0n; if (neg) b = -b;
+      if (t === 'c') body = String.fromCodePoint(Number(b));
+      else {
+        const radix = { b: 2, o: 8, x: 16, X: 16 }[t] || 10;
+        body = b.toString(radix);
+        if (t === 'X') body = body.toUpperCase();
+        if (alt && radix !== 10) prefix = '0' + (t === 'X' ? 'X' : { 2: 'b', 8: 'o', 16: 'x' }[radix]);
+      }
+    } else {
+      let x = num(v);
+      neg = x < 0 || Object.is(x, -0); x = Math.abs(x);
+      if (t === 'r') body = fmtFloat(x);
+      else if (!Number.isFinite(x)) body = Number.isNaN(x) ? 'nan' : 'inf';
+      else if (t === 'f' || t === 'F' || t === '%') {
+        if (t === '%') x *= 100;
+        body = fixedDigits(x, p ?? 6);
+        if (alt && !body.includes('.')) body += '.';
+        if (t === '%') body += '%';
+      } else if (t === 'e' || t === 'E') {
+        body = x.toExponential(p ?? 6).replace(/e([+-])(\d)$/, 'e$10$2');
+        if (t === 'E') body = body.toUpperCase();
+      } else { // g / G
+        const pp = p === null ? 6 : Math.max(p, 1);
+        if (x === 0) body = '0';
+        else {
+          const exp = +x.toExponential(pp - 1).split('e')[1];
+          if (exp >= -4 && exp < pp) body = fixedDigits(x, pp - 1 - exp);
+          else body = x.toExponential(pp - 1).replace(/e([+-])(\d)$/, 'e$10$2');
+          if (!alt) {
+            const [mant, ex] = body.split('e');
+            body = (mant.includes('.') ? mant.replace(/\.?0+$/, '') : mant) + (ex ? 'e' + ex : '');
+          }
+        }
+        if (!type && !/[.e]/.test(body)) body += '.0';
+        if (t === 'G') body = body.toUpperCase();
+      }
+    }
+    if (group) {
+      const [ip, ...rest] = body.split('.');
+      body = ip.replace(/\B(?=(\d{3})+(?!\d))/g, group) + (rest.length ? '.' + rest.join('.') : '');
+    }
+  }
+  const signStr = neg ? '-' : sign === '+' ? '+' : sign === ' ' ? ' ' : '';
+  if (!isStrLike && typeof v !== 'string') body = prefix + body;
+  const w = +width || 0;
+  if (zero && !align) { fill = '0'; align = '='; }
+  fill = fill ?? ' ';
+  align = align || (isStrLike || typeof v === 'string' ? '<' : '>');
+  const len = [...body].length + signStr.length;
+  if (len >= w) return signStr + body;
+  const pad = w - len;
+  if (align === '=') {
+    const pre = prefix && body.startsWith(prefix) ? prefix : '';
+    return signStr + pre + fill.repeat(pad) + body.slice(pre.length);
+  }
+  if (align === '<') return signStr + body + fill.repeat(pad);
+  if (align === '^') return fill.repeat(Math.floor(pad / 2)) + signStr + body + fill.repeat(Math.ceil(pad / 2));
+  return fill.repeat(pad) + signStr + body;
+}
+
+// Gammal %-formatering: "%s har %d poäng" % (namn, poäng)
+function percentFormat(fmt, arg, line, interp) {
+  const named = arg instanceof PyDict;
+  const items = named ? [] : arg instanceof Tuple ? arg.items.slice() : [arg];
+  let used = 0;
+  const out = fmt.replace(/%(?:\(([^)]*)\))?([-+ #0]*)(\*|\d+)?(?:\.(\d+))?([sdifrxXeEgGco%])?/g, (all, key, flags, width, prec, type) => {
+    if (!type) throw new CodeError('ValueError', `Formateringen ${all} är inte komplett. Skriv till exempel %s, %d eller %.2f.`, line, 'format');
+    if (type === '%') return '%';
+    let v;
+    if (key !== undefined) {
+      if (!named) throw new CodeError('TypeError', '%(namn)s kräver en ordbok efter %.', line, 'format');
+      const g = arg.get(key, line);
+      if (!g) throw new CodeError('KeyError', `Nyckeln ${pyRepr(key)} finns inte i ordboken.`, line, 'key');
+      v = g[1];
+    } else {
+      if (width === '*') { width = String(num(items[used++])); }
+      if (used >= items.length) throw new CodeError('TypeError', 'Det finns fler %-platser i texten än värden efter %.', line, 'format');
+      v = items[used++];
+    }
+    if (type === 's') v = pyStr(v);
+    else if (type === 'r') v = pyRepr(v);
+    else {
+      if (!isNum(v)) throw new CodeError('TypeError', `%${type} behöver ett tal, inte ${sv(v)}.`, line, 'format');
+      if ('dixXoc'.includes(type)) v = isInt(v) ? v : intFromFloat(num(v));
+      else if (isInt(v)) v = new PyFloat(num(v));
+    }
+    const t = type === 's' || type === 'r' ? '' : type === 'i' ? 'd' : type;
+    let sp = '';
+    if (flags.includes('-')) sp += '<';
+    if (flags.includes('+')) sp += '+'; else if (flags.includes(' ')) sp += ' ';
+    if (flags.includes('#')) sp += '#';
+    if (flags.includes('0') && !flags.includes('-') && t) sp += '0';
+    sp += (width || '') + (prec !== undefined ? '.' + prec : '') + t;
+    return formatSpec(v, sp, line);
+  });
+  if (!named && used < items.length) throw new CodeError('TypeError', 'Det finns fler värden efter % än %-platser i texten.', line, 'format');
+  void interp;
+  return out;
+}
+
+// str.format: "{} och {}", "{0} {1}", "{namn}", "{:>5}", "{!r}"
+function strFormat(fmt, args, kw, line) {
+  let auto = 0;
+  const out = fmt.replace(/\{\{|\}\}|\{([^{}!:]*)(?:!([rsa]))?(?::([^{}]*))?\}/g, (all, field, conv, spec) => {
+    if (all === '{{') return '{';
+    if (all === '}}') return '}';
+    let v;
+    const f = field.trim();
+    if (f === '') { if (auto >= args.length) throw new CodeError('IndexError', 'format() fick färre värden än det finns {} i texten.', line, 'format'); v = args[auto++]; }
+    else if (/^\d+$/.test(f)) { if (+f >= args.length) throw new CodeError('IndexError', `format() har inget värde nummer ${f}.`, line, 'format'); v = args[+f]; }
+    else if (Object.hasOwn(kw, f)) v = kw[f];
+    else throw new CodeError('KeyError', `format() fick inget värde som heter ${f}. Skriv till exempel .format(${f}=...).`, line, 'format');
+    if (conv === 'r' || conv === 'a') v = pyRepr(v); else if (conv === 's') v = pyStr(v);
+    return formatSpec(v, spec || '', line);
+  });
+  return out;
 }
 
 // ---------- Tolk ----------
@@ -985,10 +1221,23 @@ class Interp {
       const v = args[0];
       if (typeof v === 'string') {
         const s = v.trim();
-        if (!/^[+-]?\d+$/.test(s.replace(/_/g, ''))) throw new CodeError('ValueError', `int() kan inte göra om ${pyRepr(v)} till ett heltal.`, line, 'value-int');
-        return parseInt(s.replace(/_/g, ''), 10);
+        const base = args.length > 1 ? num(args[1]) : 10;
+        if (base !== 10) {
+          const t = s.toLowerCase().replace(/_/g, '').replace(/^([+-]?)0[xbo]/, '$1');
+          const neg = t.startsWith('-');
+          const digits = t.replace(/^[+-]/, '');
+          if (!digits || ![...digits].every((d) => parseInt(d, 36) < base)) throw new CodeError('ValueError', `int() kan inte göra om ${pyRepr(v)} till ett heltal i bas ${base}.`, line, 'value-int');
+          let r = 0n; for (const d of digits) r = r * BigInt(base) + BigInt(parseInt(d, 36));
+          return normInt(neg ? -r : r);
+        }
+        if (!/^[+-]?\d+$/.test(s.replace(/_/g, '')) || /^_|_$|__/.test(s.replace(/^[+-]/, ''))) throw new CodeError('ValueError', `int() kan inte göra om ${pyRepr(v)} till ett heltal.`, line, 'value-int');
+        return normInt(BigInt(s.replace(/_/g, '')));
       }
-      if (isNum(v)) return Math.trunc(num(v));
+      if (isInt(v)) return typeof v === 'boolean' ? +v : v;
+      if (isNum(v)) {
+        if (!Number.isFinite(num(v))) throw new CodeError('ValueError', `int() kan inte göra om ${pyRepr(v)} till ett heltal.`, line, 'value-int');
+        return intFromFloat(num(v));
+      }
       throw new CodeError('TypeError', `int() kan inte ta ${sv(v)}.`, line, 'type');
     });
     def('float', (args, kw, line) => {
@@ -1004,11 +1253,24 @@ class Interp {
       throw new CodeError('TypeError', `float() kan inte ta ${sv(v)}.`, line, 'type');
     });
     def('bool', (args) => (args.length ? truthy(args[0]) : false));
-    def('abs', (args, kw, line) => { argc('abs', args, 1, 1, line); this.needNum(args[0], 'abs', line); return mkNum(Math.abs(num(args[0])), isFloat(args[0])); });
+    def('abs', (args, kw, line) => {
+      argc('abs', args, 1, 1, line); this.needNum(args[0], 'abs', line);
+      if (typeof args[0] === 'bigint') return args[0] < 0n ? -args[0] : args[0];
+      return mkNum(Math.abs(num(args[0])), isFloat(args[0]));
+    });
+    const radix = (name, r, pre) => def(name, (args, kw, line) => {
+      argc(name, args, 1, 1, line);
+      if (!isInt(args[0])) throw new CodeError('TypeError', `${name}() behöver ett heltal, inte ${sv(args[0])}.`, line, 'type');
+      const b = big(args[0]);
+      return (b < 0n ? '-' : '') + pre + (b < 0n ? -b : b).toString(r);
+    });
+    radix('hex', 16, '0x'); radix('bin', 2, '0b'); radix('oct', 8, '0o');
+    def('format', (args, kw, line) => { argc('format', args, 1, 2, line); return formatSpec(args[0], args.length > 1 ? pyStr(args[1]) : '', line); });
     def('round', (args, kw, line) => {
       argc('round', args, 1, 2, line); this.needNum(args[0], 'round', line);
-      if (args.length === 1 || args[1] === null) return pyRound(num(args[0]));
-      if (!isFloat(args[0])) return args[0];
+      if (args.length === 1 || args[1] === null) return isInt(args[0]) ? (typeof args[0] === 'boolean' ? +args[0] : args[0]) : pyRound(num(args[0]));
+      if (!isInt(args[1])) throw new CodeError('TypeError', 'Antalet decimaler i round() måste vara ett heltal.', line, 'type');
+      if (!isFloat(args[0])) return roundInt(args[0], num(args[1]));
       return pyRound(num(args[0]), num(args[1]));
     });
     const minmax = (name, pick) => (args, kw, line) => {
@@ -1066,7 +1328,12 @@ class Interp {
       const n = Math.min(...ls.map((l) => l.length));
       return Array.from({ length: n }, (_, i) => new Tuple(ls.map((l) => l[i])));
     });
-    def('type', (args) => (args[0] instanceof PyObject ? args[0].cls : `<class '${typeName(args[0])}'>`));
+    def('type', (args, kw, line) => {
+      argc('type', args, 1, 1, line);
+      if (args[0] instanceof PyObject) return args[0].cls;
+      const t = B.get(typeName(args[0]));
+      return t instanceof Builtin && t.isType ? t : `<class '${typeName(args[0])}'>`;
+    });
     def('isinstance', (args, kw, line) => {
       const t = args[1];
       const types = t instanceof Tuple ? t.items : [t];
@@ -1093,6 +1360,8 @@ class Interp {
     def('super', (args, kw, line) => { throw new CodeError('TypeError', 'super() kan bara användas inuti en metod i en klass.', line, 'super'); });
     def('any', (args, kw, line) => iterate(args[0], line).some(truthy));
     def('all', (args, kw, line) => iterate(args[0], line).every(truthy));
+    // Typerna går att jämföra (type(x) == int) och skrivs ut som <class 'int'>.
+    for (const t of ['int', 'float', 'str', 'bool', 'list', 'dict', 'tuple', 'set']) B.get(t).isType = true;
     return B;
   }
   needNum(v, name, line) {
@@ -1123,31 +1392,47 @@ class Interp {
         if (truthy(this.eval(s.test, scope))) this.execBlock(s.body, scope);
         else this.execBlock(s.orelse, scope);
         return;
-      case 'While':
+      case 'While': {
+        let broke = false;
         while ((this.trace && this.snap(s.line, scope), truthy(this.eval(s.test, scope)))) {
           this.step(s.line);
           try { this.execBlock(s.body, scope); } catch (e) {
-            if (e instanceof BreakSig) break;
+            if (e instanceof BreakSig) { broke = true; break; }
             if (e instanceof ContinueSig) continue;
             throw e;
           }
         }
+        if (!broke && s.orelse && s.orelse.length) this.execBlock(s.orelse, scope);
         return;
+      }
       case 'For': {
         const items = iterate(this.eval(s.iter, scope), s.line);
+        let broke = false;
         for (const it of items) {
           this.step(s.line);
           this.assign(s.target, it, scope, s.line);
           if (this.trace) this.snap(s.line, scope);
           try { this.execBlock(s.body, scope); } catch (e) {
-            if (e instanceof BreakSig) break;
+            if (e instanceof BreakSig) { broke = true; break; }
             if (e instanceof ContinueSig) continue;
             throw e;
           }
         }
+        if (!broke && s.orelse && s.orelse.length) this.execBlock(s.orelse, scope);
         return;
       }
-      case 'Def': this.setVar(s.name, new PyFunc(s, this, scope && scope.isClass ? scope.parent : scope), scope); return;
+      case 'Def': this.setVar(s.name, this.makeFunc(s, scope && scope.isClass ? scope.parent : scope, scope), scope); return;
+      case 'Del':
+        for (const t of s.targets) this.del(t, scope, s.line);
+        return;
+      case 'Nonlocal':
+        for (const n of s.names) {
+          let sc = scope && scope.parent;
+          while (sc && !(sc.fname && sc.vars.has(n))) sc = sc.parent;
+          if (!sc) throw new CodeError('SyntaxError', `nonlocal ${n}: det finns ingen variabel ${n} i en yttre funktion.`, s.line, 'name');
+          (scope.nonlocals || (scope.nonlocals = new Map())).set(n, sc);
+        }
+        return;
       case 'Class': {
         let base = null;
         if (s.base) {
@@ -1205,8 +1490,47 @@ class Interp {
   }
 
   setVar(name, v, scope) {
-    if (scope && !scope.globals.has(name)) scope.vars.set(name, v);
+    if (scope && scope.nonlocals && scope.nonlocals.has(name)) scope.nonlocals.get(name).vars.set(name, v);
+    else if (scope && !scope.globals.has(name)) scope.vars.set(name, v);
     else this.globals.set(name, v);
+  }
+  // Standardvärden räknas ut en gång, när def körs, precis som i Python.
+  makeFunc(def, closure, evalScope) {
+    const defaults = new Map();
+    for (const p of def.params) if (p.def) defaults.set(p.name, this.eval(p.def, evalScope));
+    return new PyFunc(def, this, closure, defaults);
+  }
+  del(t, scope, line) {
+    if (t.k === 'Name') {
+      if (scope && !scope.globals.has(t.name)) {
+        if (scope.vars.has(t.name)) { scope.vars.delete(t.name); return; }
+      } else if (this.globals.has(t.name)) { this.globals.delete(t.name); return; }
+      throw new CodeError('NameError', `Namnet '${t.name}' är inte definierat, så det går inte att ta bort.`, line, 'name');
+    }
+    if (t.k === 'Attr') {
+      const obj = this.eval(t.obj, scope);
+      if ((obj instanceof PyObject || obj instanceof PyClass) && obj.attrs.has(t.name)) { obj.attrs.delete(t.name); return; }
+      throw new CodeError('AttributeError', `${sv(obj)} har ingen egenskap ${t.name} att ta bort.`, line, 'attr');
+    }
+    const obj = this.eval(t.obj, scope);
+    if (t.index.k === 'Slice') {
+      if (!Array.isArray(obj)) throw new CodeError('TypeError', `Det går inte att ta bort delar ur ${sv(obj)}.`, line, 'type');
+      const lo = t.index.lo && this.eval(t.index.lo, scope), hi = t.index.hi && this.eval(t.index.hi, scope);
+      const st = t.index.step ? num(this.eval(t.index.step, scope)) : 1;
+      const drop = new Set(sliceIdx(lo, hi, st, obj.length));
+      const keep = obj.filter((_, i) => !drop.has(i));
+      obj.length = 0; obj.push(...keep);
+      return;
+    }
+    const idx = this.eval(t.index, scope);
+    if (Array.isArray(obj)) { obj.splice(normIndex(idx, obj.length, line, 'listan'), 1); return; }
+    if (obj instanceof PyDict) {
+      if (!obj.has(idx, line)) throw new CodeError('KeyError', `Nyckeln ${pyRepr(idx)} finns inte i ordboken.`, line, 'key');
+      obj.map.delete(PyDict.key(idx, line));
+      return;
+    }
+    if (typeof obj === 'string') throw new CodeError('TypeError', 'Text kan inte ändras tecken för tecken. Skapa en ny text i stället.', line, 'str-immutable');
+    throw new CodeError('TypeError', `Det går inte att ta bort element ur ${sv(obj)}.`, line, 'type');
   }
   lookup(name, scope, line) {
     if (scope && !scope.globals.has(name)) {
@@ -1250,7 +1574,13 @@ class Interp {
     switch (e.k) {
       case 'Const': return e.v;
       case 'Name': return this.lookup(e.name, scope, e.line);
-      case 'FStr': return e.parts.map((p) => (p.k === 'Const' ? p.v : p.spec ? formatSpec(this.eval(p.v, scope), p.spec, e.line) : pyStr(this.eval(p.v, scope)))).join('');
+      case 'FStr': return e.parts.map((p) => {
+        if (p.k === 'Const') return p.v;
+        let v = this.eval(p.v, scope);
+        if (p.conv === 'r' || p.conv === 'a') v = pyRepr(v); else if (p.conv === 's') v = pyStr(v);
+        if (p.spec === null || p.spec === undefined) return pyStr(v);
+        return formatSpec(v, typeof p.spec === 'string' ? p.spec : this.eval(p.spec, scope), e.line);
+      }).join('');
       case 'List': return e.items.map((x) => this.eval(x, scope));
       case 'Tuple': return new Tuple(e.items.map((x) => this.eval(x, scope)));
       case 'Dict': {
@@ -1259,7 +1589,7 @@ class Interp {
         return d;
       }
       case 'Set': return new PySet(e.items.map((x) => this.eval(x, scope)), e.line);
-      case 'Lambda': return new PyFunc(e.def, this, scope);
+      case 'Lambda': return this.makeFunc(e.def, scope, scope);
       case 'DictComp': {
         const d = new PyDict();
         for (const it of iterate(this.eval(e.iter, scope), e.line)) {
@@ -1283,6 +1613,7 @@ class Interp {
       case 'Unary': {
         const v = this.eval(e.v, scope);
         if (!isNum(v)) throw new CodeError('TypeError', `Det går inte att sätta ${e.op} framför ${sv(v)}.`, e.line, 'type');
+        if (typeof v === 'bigint') return e.op === '-' ? normInt(-v) : v;
         return mkNum(e.op === '-' ? -num(v) : num(v), isFloat(v));
       }
       case 'Not': return !truthy(this.eval(e.v, scope));
@@ -1334,9 +1665,21 @@ class Interp {
           return new SuperProxy(sc.owner.base, sc.self);
         }
         const fn = this.eval(e.fn, scope);
-        const args = e.args.map((a) => this.eval(a, scope));
+        const args = [];
+        for (const a of e.args) {
+          if (a.k === 'Starred') args.push(...iterate(this.eval(a.v, scope), e.line));
+          else args.push(this.eval(a, scope));
+        }
         const kw = {};
-        for (const k of e.kwargs) kw[k.name] = this.eval(k.value, scope);
+        for (const k of e.kwargs) {
+          if (k.name !== null) { kw[k.name] = this.eval(k.value, scope); continue; }
+          const d = this.eval(k.value, scope);
+          if (!(d instanceof PyDict)) throw new CodeError('TypeError', `Efter ** ska det stå en ordbok, inte ${sv(d)}.`, e.line, 'type');
+          for (const [key, val] of d.map.values()) {
+            if (typeof key !== 'string') throw new CodeError('TypeError', 'Nycklarna i en ordbok efter ** måste vara text.', e.line, 'type');
+            kw[key] = val;
+          }
+        }
         return this.callValue(fn, args, kw, e.line);
       }
       default: throw new CodeError('Internt fel', 'Okänt uttryck.', e.line);
@@ -1366,7 +1709,41 @@ class Interp {
     }
   }
 
+  // Heltalsräkning som blir för stor för ett exakt JS-tal räknas om med BigInt.
+  intOp(op, a, b, line) {
+    const x = big(a), y = big(b);
+    switch (op) {
+      case '+': return normInt(x + y);
+      case '-': return normInt(x - y);
+      case '*': return normInt(checkBig(x * y, line));
+      case '//': case '%': {
+        if (y === 0n) throw new CodeError('ZeroDivisionError', op === '//' ? 'Heltalsdivision med noll går inte.' : 'Rest vid division med noll går inte.', line, 'zero-div');
+        let q = x / y; const r = x - q * y;
+        if (r !== 0n && (r < 0n) !== (y < 0n)) q -= 1n;
+        return normInt(op === '//' ? q : x - q * y);
+      }
+      case '**': {
+        if (y < 0n) return undefined;
+        const ax = x < 0n ? -x : x;
+        if (ax > 1n && Number(y) * ax.toString(2).length > MAX_INT_BITS) checkBig(1n << BigInt(MAX_INT_BITS + 8), line);
+        return normInt(x ** y);
+      }
+      default: return undefined;
+    }
+  }
+
   binop(op, a, b, line) {
+    if (isInt(a) && isInt(b) && ['+', '-', '*', '//', '%', '**'].includes(op)) {
+      if (typeof a === 'bigint' || typeof b === 'bigint' || op === '**') {
+        const r = this.intOp(op, a, b, line);
+        if (r !== undefined) return r;
+      } else {
+        const x = num(a), y = num(b);
+        const r = op === '+' ? x + y : op === '-' ? x - y : op === '*' ? x * y : null;
+        if (r !== null) return Number.isSafeInteger(r) ? r : this.intOp(op, a, b, line);
+      }
+    }
+    if (op === '%' && typeof a === 'string') return percentFormat(a, b, line, this);
     if (isNum(a) && isNum(b)) {
       const x = num(a), y = num(b), f = isFloat(a) || isFloat(b);
       switch (op) {
@@ -1420,25 +1797,45 @@ class Interp {
   }
   callFunc(fn, args, kw, line) {
     const d = fn.def;
-    const req = d.params.filter((p) => !p.def).length;
-    if (args.length > d.params.length || args.length + Object.keys(kw).length < req) {
+    const pos = d.params.filter((p) => !p.kind || p.kind === 'pos');
+    const star = d.params.find((p) => p.kind === 'star');
+    const kwstar = d.params.find((p) => p.kind === 'kwstar');
+    const kwonly = d.params.filter((p) => p.kind === 'kwonly');
+    const hasDef = (p) => !!p.def;
+    const req = pos.filter((p) => !hasDef(p)).length;
+    const nkw = Object.keys(kw).length;
+    if ((!star && args.length > pos.length) || (!kwstar && !kwonly.length && args.length + nkw < req)) {
       if (fn.owner && (!d.params.length || d.params[0].name !== 'self')) {
         throw new CodeError('TypeError', `Metoden ${d.name}() i klassen ${fn.owner.name} saknar self som första parameter. Skriv def ${d.name}(self${d.params.length ? ', ...' : ''}):`, d.line, 'missing-self');
       }
       const off = fn.owner ? 1 : 0;
-      throw new CodeError('TypeError', `${d.name}() tar ${req === d.params.length ? req - off : `${req - off}–${d.params.length - off}`} argument men fick ${args.length + Object.keys(kw).length - off}.`, line, 'arg-count');
+      throw new CodeError('TypeError', `${d.name}() tar ${req === pos.length ? req - off : `${req - off}–${pos.length - off}`} argument men fick ${args.length + nkw - off}.`, line, 'arg-count');
+    }
+    const vals = new Map();
+    const rest = { ...kw };
+    pos.forEach((p, i) => {
+      if (i < args.length) {
+        if (p.name in rest) throw new CodeError('TypeError', `${d.name}() fick två värden för ${p.name}, ett på plats och ett med namn.`, line, 'arg-count');
+        vals.set(p.name, args[i]);
+      } else if (p.name in rest) { vals.set(p.name, rest[p.name]); delete rest[p.name]; }
+      else if (hasDef(p)) vals.set(p.name, fn.defaults.has(p.name) ? fn.defaults.get(p.name) : this.eval(p.def, null));
+      else throw new CodeError('TypeError', `${d.name}() saknar argumentet ${p.name}.`, line, 'arg-count');
+    });
+    if (star) vals.set(star.name, new Tuple(args.slice(pos.length)));
+    for (const p of kwonly) {
+      if (p.name in rest) { vals.set(p.name, rest[p.name]); delete rest[p.name]; }
+      else if (hasDef(p)) vals.set(p.name, fn.defaults.get(p.name));
+      else throw new CodeError('TypeError', `${d.name}() saknar argumentet ${p.name}, som måste skrivas med namn: ${p.name}=...`, line, 'arg-count');
+    }
+    if (kwstar) {
+      const dict = new PyDict();
+      for (const [k, v] of Object.entries(rest)) dict.set(k, v, line);
+      vals.set(kwstar.name, dict);
+    } else {
+      for (const k of Object.keys(rest)) throw new CodeError('TypeError', `${d.name}() har ingen parameter som heter ${k}.`, line, 'arg-count');
     }
     if (++this.depth > 200) throw new CodeError('RecursionError', 'Funktionen anropar sig själv för många gånger.', line, 'recursion');
-    const scope = { vars: new Map(), globals: new Set(), parent: fn.closure, owner: fn.owner, self: fn.owner ? args[0] : undefined, fname: fn.owner ? `${fn.owner.name}.${d.name}` : d.name };
-    d.params.forEach((p, i) => {
-      let v;
-      if (i < args.length) v = args[i];
-      else if (p.name in kw) v = kw[p.name];
-      else if (p.def) v = this.eval(p.def, null);
-      else throw new CodeError('TypeError', `${d.name}() saknar argumentet ${p.name}.`, line, 'arg-count');
-      scope.vars.set(p.name, v);
-    });
-    for (const k of Object.keys(kw)) if (!d.params.some((p) => p.name === k)) throw new CodeError('TypeError', `${d.name}() har ingen parameter som heter ${k}.`, line, 'arg-count');
+    const scope = { vars: vals, globals: new Set(), parent: fn.closure, owner: fn.owner, self: fn.owner ? args[0] : undefined, fname: fn.owner ? `${fn.owner.name}.${d.name}` : d.name };
     if (this.trace) this.callStack.push(this.cur);
     try {
       this.execBlock(d.body, scope);
@@ -1593,32 +1990,78 @@ class Interp {
       throw new CodeError('AttributeError', `En mängd har ingen metod som heter ${name}.`, line, 'attr');
     }
     const noAttr = () => new CodeError('AttributeError', `${sv(obj)} har ingen metod eller egenskap som heter ${name}.`, line, 'attr');
+    // str.lower, list.append ... som funktioner, t.ex. sorted(ord, key=str.lower)
+    if (obj instanceof Builtin && obj.isType) {
+      if (name === '__name__') return obj.name;
+      return m((a, kw) => {
+        if (!a.length) throw new CodeError('TypeError', `${obj.name}.${name}() behöver ett värde att arbeta på.`, line, 'arg-count');
+        if (typeName(a[0]) !== obj.name) throw new CodeError('TypeError', `${obj.name}.${name}() fungerar på ${SV_TYPE[obj.name] || obj.name}, inte på ${sv(a[0])}.`, line, 'type');
+        return this.callValue(this.getAttr(a[0], name, line), a.slice(1), kw, line);
+      });
+    }
     if (typeof obj === 'string') {
       const s = obj;
+      const str = (v, what) => { if (typeof v !== 'string') throw new CodeError('TypeError', `${what} behöver text, inte ${sv(v)}.`, line, 'type'); return v; };
+      const chars = (a, re) => (a[0] === undefined || a[0] === null ? re : new RegExp(re.source.split('\\s').join(escRe(str(a[0], name))), 'g'));
+      const splitWs = (text, max) => {
+        let rest = text.replace(/^\s+/, '');
+        const out = [];
+        while (rest) {
+          if (max >= 0 && out.length >= max) { out.push(rest); break; }
+          const w = /\s+/.exec(rest);
+          if (!w) { out.push(rest); break; }
+          out.push(rest.slice(0, w.index)); rest = rest.slice(w.index + w[0].length);
+        }
+        return out;
+      };
+      const rev = (t) => [...t].reverse().join('');
+      const splitMax = (sep, max, fromRight) => {
+        if (sep === undefined || sep === null) return fromRight ? splitWs(rev(s), max).map(rev).reverse() : splitWs(s, max);
+        str(sep, 'split()');
+        if (sep === '') throw new CodeError('ValueError', 'split() kan inte dela på en tom text.', line, 'value');
+        const parts = s.split(sep);
+        if (max < 0 || parts.length <= max + 1) return parts;
+        return fromRight ? [parts.slice(0, parts.length - max).join(sep), ...parts.slice(parts.length - max)] : [...parts.slice(0, max), parts.slice(max).join(sep)];
+      };
       const S = {
-        upper: () => s.toUpperCase(), lower: () => s.toLowerCase(),
-        strip: (a) => (a[0] ? s.replace(new RegExp(`^[${escRe(a[0])}]+|[${escRe(a[0])}]+$`, 'g'), '') : s.trim()),
-        lstrip: () => s.replace(/^\s+/, ''), rstrip: () => s.replace(/\s+$/, ''),
+        upper: () => s.toUpperCase(), lower: () => s.toLowerCase(), casefold: () => s.toLowerCase(),
+        swapcase: () => [...s].map((c) => (c === c.toUpperCase() ? c.toLowerCase() : c.toUpperCase())).join(''),
+        strip: (a) => s.replace(chars(a, /^[\s]+|[\s]+$/g), ''),
+        lstrip: (a) => s.replace(chars(a, /^[\s]+/g), ''), rstrip: (a) => s.replace(chars(a, /[\s]+$/g), ''),
+        splitlines: () => { const l = s.split(/\r\n|\n|\r/); if (l.length && l[l.length - 1] === '') l.pop(); return l; },
+        rsplit: (a, kw) => splitMax(a[0] ?? kw.sep, num(a[1] ?? kw.maxsplit ?? -1), true),
+        partition: (a) => { const i = s.indexOf(str(a[0], 'partition()')); return new Tuple(i < 0 ? [s, '', ''] : [s.slice(0, i), a[0], s.slice(i + a[0].length)]); },
+        rpartition: (a) => { const i = s.lastIndexOf(str(a[0], 'rpartition()')); return new Tuple(i < 0 ? ['', '', s] : [s.slice(0, i), a[0], s.slice(i + a[0].length)]); },
+        removeprefix: (a) => (s.startsWith(str(a[0], 'removeprefix()')) ? s.slice(a[0].length) : s),
+        removesuffix: (a) => (a[0] && s.endsWith(str(a[0], 'removesuffix()')) ? s.slice(0, -a[0].length) : s),
+        rfind: (a) => s.lastIndexOf(str(a[0], 'rfind()')),
+        istitle: () => /[A-Za-zÅÄÖåäö]/.test(s) && s === S.title(),
+        isnumeric: () => s.length > 0 && /^\d+$/.test(s), isdecimal: () => s.length > 0 && /^\d+$/.test(s),
         title: () => s.toLowerCase().replace(/(^|[^a-zåäöA-ZÅÄÖ])([a-zåäö])/g, (x, p, c) => p + c.toUpperCase()),
         capitalize: () => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase(),
-        split: (a) => (a[0] === undefined || a[0] === null ? s.split(/\s+/).filter(Boolean) : s.split(a[0])),
+        split: (a, kw) => splitMax(a[0] ?? kw.sep, num(a[1] ?? kw.maxsplit ?? -1), false),
         join: (a) => iterate(a[0], line).map((x) => {
           if (typeof x !== 'string') throw new CodeError('TypeError', `join() behöver text, men hittade ${sv(x)}. Använd str() först.`, line, 'type');
           return x;
         }).join(s),
-        replace: (a) => s.split(a[0]).join(a[1]),
-        startswith: (a) => s.startsWith(a[0]), endswith: (a) => s.endsWith(a[0]),
-        find: (a) => s.indexOf(a[0]), count: (a) => (a[0] === '' ? s.length + 1 : s.split(a[0]).length - 1),
+        replace: (a) => {
+          const parts = s.split(str(a[0], 'replace()')); str(a[1], 'replace()');
+          const n = a.length > 2 ? num(a[2]) : -1;
+          return n < 0 || parts.length <= n + 1 ? parts.join(a[1]) : parts.slice(0, n + 1).join(a[1]) + a[0] + parts.slice(n + 1).join(a[0]);
+        },
+        startswith: (a) => (a[0] instanceof Tuple ? a[0].items : [a[0]]).some((p) => s.startsWith(str(p, 'startswith()'), a[1] === undefined ? 0 : num(a[1]))),
+        endswith: (a) => (a[0] instanceof Tuple ? a[0].items : [a[0]]).some((p) => s.endsWith(str(p, 'endswith()'))),
+        find: (a) => s.indexOf(str(a[0], 'find()'), a[1] === undefined ? 0 : num(a[1])), count: (a) => (str(a[0], 'count()') === '' ? s.length + 1 : s.split(a[0]).length - 1),
         isdigit: () => s.length > 0 && /^\d+$/.test(s), isalpha: () => s.length > 0 && /^[A-Za-zÅÄÖåäöÉé]+$/.test(s),
         isupper: () => /[A-ZÅÄÖ]/.test(s) && s === s.toUpperCase(), islower: () => /[a-zåäö]/.test(s) && s === s.toLowerCase(),
-        format: (a) => { let i = 0; return s.replace(/\{\}/g, () => pyStr(a[i++])); },
-        center: (a) => formatSpec(s, '^' + num(a[0]), line),
+        format: (a, kw) => strFormat(s, a, kw, line),
+        center: (a) => formatSpec(s, (a[1] ?? ' ') + '^' + num(a[0]), line),
         ljust: (a) => s.padEnd(num(a[0]), a[1] ?? ' '), rjust: (a) => s.padStart(num(a[0]), a[1] ?? ' '),
         zfill: (a) => (s.startsWith('-') ? '-' + s.slice(1).padStart(num(a[0]) - 1, '0') : s.padStart(num(a[0]), '0')),
         isalnum: () => s.length > 0 && /^[A-Za-zÅÄÖåäö0-9]+$/.test(s), isspace: () => s.length > 0 && /^\s+$/.test(s),
         index: (a) => { const i = s.indexOf(a[0]); if (i < 0) throw new CodeError('ValueError', `${pyRepr(a[0])} finns inte i texten.`, line, 'value'); return i; },
       };
-      if (Object.hasOwn(S, name)) return m((a) => S[name](a));
+      if (Object.hasOwn(S, name)) return m((a, kw) => S[name](a, kw || {}));
       throw noAttr();
     }
     if (Array.isArray(obj)) {
@@ -1664,10 +2107,20 @@ class Interp {
         pop: (a) => { const g = obj.get(a[0], line); if (!g) throw new CodeError('KeyError', `Nyckeln ${pyRepr(a[0])} finns inte.`, line, 'key'); obj.map.delete(PyDict.key(a[0], line)); return g[1]; },
       };
       D.setdefault = (a) => { const g = obj.get(a[0], line); if (g) return g[1]; const v = a.length > 1 ? a[1] : null; obj.set(a[0], v, line); return v; };
-      D.update = (a) => { if (a[0] instanceof PyDict) for (const [k, v] of a[0].map.values()) obj.set(k, v, line); return null; };
+      D.update = (a, kw) => {
+        if (a[0] instanceof PyDict) for (const [k, v] of a[0].map.values()) obj.set(k, v, line);
+        else if (a[0] !== undefined) for (const p of iterate(a[0], line)) { const [k, v] = iterate(p, line); obj.set(k, v, line); }
+        for (const [k, v] of Object.entries(kw)) obj.set(k, v, line);
+        return null;
+      };
+      D.popitem = () => {
+        const last = [...obj.map.keys()].pop();
+        if (last === undefined) throw new CodeError('KeyError', 'popitem(): ordboken är tom.', line, 'key');
+        const [k, v] = obj.map.get(last); obj.map.delete(last); return new Tuple([k, v]);
+      };
       D.copy = () => { const c = new PyDict(); for (const [k, v] of obj.map.values()) c.set(k, v, line); return c; };
       D.clear = () => { obj.map.clear(); return null; };
-      if (Object.hasOwn(D, name)) return m((a) => D[name](a));
+      if (Object.hasOwn(D, name)) return m((a, kw) => D[name](a, kw || {}));
       throw noAttr();
     }
     throw noAttr();
@@ -1691,6 +2144,7 @@ export function fromJS(v) {
 }
 export function toJS(v) {
   if (v instanceof PyFloat) return v.v;
+  if (typeof v === 'bigint') return Number(v);
   if (Array.isArray(v)) return v.map(toJS);
   if (v instanceof Tuple) return v.items.map(toJS);
   if (v instanceof PyDict) { const o = {}; for (const [, [k, x]] of v.map) o[pyStr(k)] = toJS(x); return o; }

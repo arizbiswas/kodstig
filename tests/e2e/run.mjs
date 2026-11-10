@@ -5,7 +5,7 @@
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { chromium } from 'playwright';
-import { LESSON_BY_ID, LESSONS, STATS, TRACKS } from '../../src/content/index.js';
+import { LESSON_BY_ID, LESSONS, STATS, TRACKS } from '../../src/content/full.js';
 
 const PORT = 4174;
 const DEV_PORT = 4175;
@@ -122,15 +122,39 @@ async function main() {
       await page.locator('[data-next]').click();
       await page.locator('.blank').fill('Print');
       await page.locator('[data-check3]').click();
-      assert((await page.locator('.feedback').textContent()).includes('små bokstäver'));
+      await page.locator('.feedback:has-text("små bokstäver")').waitFor();
       await page.locator('.blank').fill('print');
       await page.locator('[data-check3]').click();
+      await page.locator('.feedback.good').waitFor();
       eq((await page.locator('.output pre').textContent()).trim(), 'Hej, kodare!');
       await page.locator('[data-next]').click();
       assert(await page.locator('[data-guest]').isVisible());
       const stored = await page.evaluate(() => localStorage.getItem('kodstig.guest.v1'));
       eq(stored, null, 'demon sparar inget');
       await page.close();
+    });
+
+    await check('Snabb start: lektionerna laddas per spår, resten i bakgrunden', async () => {
+      const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+      const page = await context.newPage();
+      const got = [];
+      page.on('request', (r) => { const m = /\/assets\/(body-\w+|python)-[^/]+\.js$/.exec(r.url()); if (m) got.push(m[1]); });
+      await page.goto(BASE);
+      await page.locator('h1').waitFor();
+      await page.waitForTimeout(500);
+      eq(got.join(','), '', 'introduktionen laddar varken lektioner eller Python-motorn');
+      await page.locator('.hero [data-login]').click();
+      await page.locator('dialog [data-guest]').click();
+      await page.locator('#learn-h').waitFor();
+      const first = got.filter((x) => x.startsWith('body-'));
+      eq(first.length, 1, `bara ett spår vid start, fick ${first.join(',')}`);
+      await page.goto(`${BASE}#/lektion/git-terminal`);
+      await page.locator('[data-start]').waitFor();
+      assert(got.includes('body-git'), 'Git-spåret laddas när en Git-lektion öppnas');
+      for (let i = 0; i < 40 && new Set(got.filter((x) => x.startsWith('body-'))).size < 4; i++) await page.waitForTimeout(500);
+      eq(new Set(got.filter((x) => x.startsWith('body-'))).size, 4, 'resten hämtas i bakgrunden');
+      assert(!page.errors || !page.errors.length);
+      await context.close();
     });
 
     // 2. Inloggning utan konfiguration är ärlig
@@ -588,6 +612,33 @@ async function main() {
       assert(await noHorizontalScroll(page));
       await page.goto(BASE + '#/prova');
       assert(await noHorizontalScroll(page));
+      await context.close();
+    });
+
+    await check('Mobil: utskrift och feedback hamnar i bild, inte bakom bottenmenyn', async () => {
+      const { context, page } = await newGuest(browser, { viewport: { width: 390, height: 664 }, hasTouch: true, isMobile: true });
+      const visible = (sel) => page.evaluate((s) => {
+        const nodes = [...document.querySelectorAll(s)];
+        const navTop = document.querySelector('.bottom-nav').getBoundingClientRect().top;
+        const r = nodes[nodes.length - 1].getBoundingClientRect();
+        return r.top >= 0 && r.top < navTop - 40;
+      }, sel);
+      await page.goto(`${BASE}#/labb`);
+      await page.locator('[data-run]').click();
+      await page.locator('.lab-result .output pre').waitFor();
+      await page.waitForTimeout(700);
+      assert(await visible('.lab-result'), 'utskriften i Kodlabbet syns efter Kör');
+      await page.goto(`${BASE}#/lektion/py-print`);
+      await page.locator('[data-start]').click();
+      await page.locator('.exercise input[type=radio]').nth(1).check({ force: true });
+      await page.locator('[data-check]').click();
+      await page.locator('.feedback.bad').waitFor();
+      await page.waitForTimeout(700);
+      const ok = await page.evaluate(() => {
+        const navTop = document.querySelector('.bottom-nav').getBoundingClientRect().top;
+        return document.querySelector('.ex-actions').getBoundingClientRect().bottom <= navTop + 1;
+      });
+      assert(ok, 'feedback och knapparna under den syns ovanför bottenmenyn');
       await context.close();
     });
 

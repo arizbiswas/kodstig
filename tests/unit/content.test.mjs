@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { TRACKS, LESSONS, STATS } from '../../src/content/index.js';
+import { TRACKS, LESSONS, STATS } from '../../src/content/full.js';
 import { GLOSSARY } from '../../src/content/glossary.js';
 import { runCSharp } from '../../src/engine/csharp.js';
 import { runPython } from '../../src/engine/python.js';
@@ -107,5 +107,26 @@ test('ordningspussel: rimliga rader, blandas aldrig rätt från början och rät
     assert.notDeepEqual(pool.slice(0, ex.lines.length), ex.lines, `${tag}: blandningen börjar i rätt ordning`);
     assert.ok((await grade(ex, ex.lines, { lang })).ok, `${tag}: rätt ordning godkänns inte`);
     assert.ok(!(await grade(ex, [...ex.lines].reverse(), { lang })).ok, `${tag}: omvänd ordning godkänns`);
+  }
+});
+
+test('innehållsförteckningen är aktuell och de lata spåren ger samma läroplan', async () => {
+  const { manifestSource } = await import('../../scripts/content-manifest.mjs');
+  const { readFileSync } = await import('node:fs');
+  const onDisk = readFileSync(new URL('../../src/content/manifest.js', import.meta.url), 'utf8');
+  assert.ok(onDisk === manifestSource(), 'src/content/manifest.js är inaktuell. Kör npm run content.');
+  const lazy = await import('../../src/content/index.js');
+  assert.deepEqual(lazy.STATS, STATS);
+  assert.equal(lazy.trackLoaded('python'), false, 'inget spår är laddat från början');
+  assert.equal(lazy.LESSON_BY_ID.get('py-print').exercises, undefined);
+  await lazy.loadAllTracks();
+  assert.equal(lazy.LESSONS.length, LESSONS.length);
+  for (const [i, l] of LESSONS.entries()) {
+    const z = lazy.LESSONS[i];
+    for (const k of ['id', 'title', 'tier', 'trackId', 'chapterId', 'lang', 'order', 'numberInChapter', 'chapterIndex', 'text', 'example', 'exampleInput']) assert.deepEqual(z[k], l[k], `${l.id}.${k}`);
+    assert.deepEqual(z.requires, l.requires, `${l.id}.requires`);
+    assert.deepEqual(z.sequence, l.sequence, `${l.id}.sequence`);
+    assert.equal(JSON.stringify(z.exercises, (k, v) => (v instanceof RegExp ? String(v) : v)), JSON.stringify(l.exercises, (k, v) => (v instanceof RegExp ? String(v) : v)), `${l.id}.exercises`);
+    assert.equal(z.exerciseCount, l.exercises.length);
   }
 });

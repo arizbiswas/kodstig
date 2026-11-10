@@ -1,6 +1,6 @@
 // Kodlabbet: fri kod i C#, Python eller HTML/CSS. Koden sparas per språk på
 // kontot. Tipsen fungerar utan AI och börjar om när koden ändras.
-import { h, esc, on, codeEditor, announce } from '../dom.js';
+import { h, esc, on, codeEditor, announce, reveal } from '../dom.js';
 import { setLab } from '../../state/model.js';
 import { runCode, traceCode, previewFor } from '../../engine/runner.js';
 import { getHints } from '../../engine/hints.js';
@@ -13,8 +13,8 @@ export const LAB_LANGS = [
 ];
 
 const LIMITS = {
-  python: 'Kodlabbets Python är en egen, förenklad tolk som körs i webbläsaren. Den klarar variabler, if, loopar, funktioner, listor, ordlistor, mängder, listbyggare, lambda, klasser med arv, try/except/raise, strängmetoder, f-strängar, input() och modulerna random och math. Andra moduler, with och filer finns inte. Slumptalen blir inte samma som i riktig Python. Program som kör för länge stoppas efter några sekunder.',
-  csharp: 'Kodlabbets C# är en egen, förenklad tolk som körs i webbläsaren, inte en riktig .NET-kompilator. Den klarar variabler, if, switch, loopar, metoder, arrayer, List<T>, Dictionary<K,V>, egna klasser med arv och interface, undantag med try/catch, lambdas, vanliga LINQ-metoder, Console.ReadLine() och Random. Async, egna generiska typer och bibliotek utöver det vanligaste finns inte. Slumptalen blir inte samma som i riktig .NET. Program som kör för länge stoppas efter några sekunder.',
+  python: 'Kodlabbets Python är en egen, förenklad tolk som körs i webbläsaren. Den klarar variabler, if, loopar (även med else), funktioner med *args och **kwargs, listor, ordlistor, mängder, listbyggare, lambda, klasser med arv, try/except/raise, del, global och nonlocal, strängmetoder, f-strängar med format som :.2f och :>8, %-formatering, stora heltal, input() och modulerna random och math. Andra moduler, generatorer med yield, with och filer finns inte. Slumptalen blir inte samma som i riktig Python. Program som kör för länge stoppas efter några sekunder.',
+  csharp: 'Kodlabbets C# är en egen, förenklad tolk som körs i webbläsaren, inte en riktig .NET-kompilator. Den klarar variabler (int, long, double, bool, char och string), if, switch, loopar, metoder, arrayer, List<T>, Dictionary<K,V>, egna klasser med arv och interface, undantag med try/catch, lambdas, vanliga LINQ-metoder, Console.ReadLine() och Random. float och decimal räknas som double, så 0.1m + 0.2m blir 0.30000000000000004 i stället för 0.3. Async, egna generiska typer och bibliotek utöver det vanligaste finns inte. Slumptalen blir inte samma som i riktig .NET. Program som kör för länge stoppas efter några sekunder.',
   web: 'HTML och CSS visas i en isolerad ram. JavaScript i en script-tagg körs också där, men sidan kan inte nå resten av Kodstig, ditt konto eller internet. Loopar som kör väldigt länge stoppas. Bilder från internet (https) kan visas.',
 };
 
@@ -164,7 +164,12 @@ export function render(ctx, params = {}) {
     if (!result.trace || !result.trace.length) { trace = null; showResult(); return; }
     trace = { code, steps: result.trace, i: 0, result };
     showTrace({ focus: '[data-trace-go]:not([disabled])' });
+    revealResult();
   };
+
+  // På mobilen hamnar utskriften under knapparna. När koden har körts flyttas den
+  // upp i bild, så att man ser att något hände.
+  const revealResult = () => reveal(el.querySelector('.lab-result'), undefined, { align: 'top' });
 
   const showResult = () => {
     if (lang === 'web') {
@@ -228,6 +233,7 @@ export function render(ctx, params = {}) {
     btn.disabled = false;
     lastRun = { code, result, lang };
     showResult();
+    revealResult();
     announce(result.error ? `Fel: ${result.error.message}` : 'Koden kördes.');
   };
 

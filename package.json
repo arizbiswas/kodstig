@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "content": "node scripts/content-manifest.mjs",
+    "prebuild": "node scripts/content-manifest.mjs",
     "build": "vite build",
     "preview": "vite preview",
     "test": "node --test tests/unit/*.test.mjs",

@@ -159,3 +159,17 @@ test('rättning med indata och slump: flera körningar, utskrift som mönster', 
   assert.ok((await grade(dice, 'import random\nprint("Du slog", random.randint(1, 6))', { lang: 'python', runner })).ok);
   assert.ok(!(await grade(dice, 'import random\nprint("Du slog", random.randint(0, 6))', { lang: 'python', runner })).ok, 'en nolla hittas till slut');
 });
+
+test('c#: double skrivs ut som i .NET', () => {
+  const r = runCSharp('Console.WriteLine(1e20); Console.WriteLine(0.0001); Console.WriteLine(0.00001); Console.WriteLine(1e15); Console.WriteLine(123456789012345.0); Console.WriteLine(2.50); Console.WriteLine(0.1 + 0.2);');
+  assert.equal(r.output, '1E+20\n0.0001\n1E-05\n1E+15\n123456789012345\n2.5\n0.30000000000000004\n');
+});
+test('c#: long räknar med 64 bitar och slår runt som i .NET', () => {
+  const r = runCSharp('long a = 3000000000L * 3; Console.WriteLine(a);\nlong f = 1; for (int i = 1; i <= 20; i++) f *= i; Console.WriteLine(f);\nConsole.WriteLine(long.MaxValue); Console.WriteLine(long.MaxValue + 1);\nConsole.WriteLine((int)3000000000L); Console.WriteLine(long.Parse("9000000000") + 1);');
+  assert.equal(r.output, '9000000000\n2432902008176640000\n9223372036854775807\n-9223372036854775808\n-1294967296\n9000000001\n');
+  assert.equal(runCSharp('long x = 10; int y = x;').error.hint, 'double-to-int');
+});
+test('c#: char++ ger nästa tecken, och avrundning till jämnt tal', () => {
+  assert.equal(runCSharp("char c = 'A'; c++; Console.WriteLine(c); c += 2; Console.WriteLine(c);").output, 'B\nD\n');
+  assert.equal(runCSharp('Console.WriteLine(Convert.ToInt32(2.5) + " " + Convert.ToInt32(3.5) + " " + Math.Round(2.5) + " " + Math.Round(0.125, 2) + " " + Math.Round(2.675, 2));').output, '2 4 2 0.12 2.68\n');
+});

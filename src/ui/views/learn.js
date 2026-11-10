@@ -2,7 +2,7 @@
 // med sex kapitel per spår. Ett kapitel i taget kan vara öppet.
 import { h, esc, on, announce, toast } from '../dom.js';
 import { ICONS } from '../icons.js';
-import { TRACKS, LESSONS, TIER_NAMES, trackById } from '../../content/index.js';
+import { TRACKS, LESSONS, TIER_NAMES, trackById, trackLoaded, loadTrack } from '../../content/index.js';
 import { quizPool, TEST_OUT } from '../../state/placement.js';
 import { pref, setPref, claimBonus } from '../../state/model.js';
 import { dueLessons, nextDue, reviewKey, SESSION_MAX } from '../../state/review.js';
@@ -21,7 +21,7 @@ function hashStr(s) {
 export function dailyExercise(profile, track, day = today()) {
   const lessons = track.chapters.flatMap((c) => c.lessons);
   const done = lessons.filter((l) => profile.completed?.[l.id]);
-  const pool = (done.length ? done : lessons.slice(0, 1)).flatMap((l) => l.exercises
+  const pool = (done.length ? done : lessons.slice(0, 1)).flatMap((l) => (l.exercises || [])
     .map((ex, i) => ({ ex, lesson: l, i }))
     .filter((x) => x.ex.type === 'choice' || x.ex.type === 'fill'));
   if (!pool.length) return null;
@@ -116,7 +116,7 @@ export function render(ctx, params = {}) {
     slot.innerHTML = `<article class="card next-card">
       <p class="eyebrow">${started ? 'Fortsätt där du var' : 'Nästa steg'} · ${esc(ch.title)}</p>
       <h2>${esc(next.title)}</h2>
-      <p class="muted">${esc(TIER_NAMES[next.tier])} · ${next.exercises.length} övningar · ${TIER_XP[next.tier]} XP</p>
+      <p class="muted">${esc(TIER_NAMES[next.tier])} · ${next.exerciseCount} övningar · ${TIER_XP[next.tier]} XP</p>
       ${adviceHtml}
       <a class="btn primary" href="#/lektion/${next.id}">${ICONS.play}<span>${started ? 'Fortsätt' : 'Starta lektionen'}</span></a>
       ${fresh ? `<p class="tiny placement-link">Kan du redan lite ${esc(track.name)}? <a href="#/nivatest/${track.id}">Gör nivåtestet</a> och börja på rätt ställe.</p>` : ''}
@@ -150,6 +150,13 @@ export function render(ctx, params = {}) {
     if (!claim.ok) {
       slot.innerHTML = `<article class="card daily-card claimed"><p class="eyebrow">Dagens utmaning</p><h2>Klar för i dag ${ICONS.check}</h2>
         <p class="muted">En ny utmaning väntar i morgon. Ingen stress om du missar en dag.</p></article>`;
+      return;
+    }
+    if (!trackLoaded(track.id)) {
+      // Spårets övningar laddas fortfarande. Visa utmaningen när de är klara.
+      slot.replaceChildren();
+      const t = track;
+      loadTrack(t.id).then(() => { if (t === track && el.isConnected) renderDaily(); }).catch(() => {});
       return;
     }
     if (!pick) { slot.replaceChildren(); return; }
