@@ -630,6 +630,251 @@ export default [
       "reviewable": false
      }
     ]
+   },
+   {
+    "id": "cs-px",
+    "title": "Pixelvärlden",
+    "standalone": true,
+    "pixel": true,
+    "lessons": [
+     {
+      "id": "cs-px-kommandon",
+      "title": "Hjälten följer dina rader",
+      "tier": 1,
+      "pixel": true,
+      "level": {
+       "map": [
+        "#######",
+        "#S...G#",
+        "#######"
+       ],
+       "goals": [
+        "goal"
+       ]
+      },
+      "requires": [],
+      "exerciseCount": 5,
+      "reviewable": true
+     },
+     {
+      "id": "cs-px-funktioner",
+      "title": "Egna metoder",
+      "tier": 2,
+      "pixel": true,
+      "level": {
+       "map": [
+        "####",
+        "#S.#",
+        "#.##",
+        "#G##",
+        "####"
+       ],
+       "goals": [
+        "goal"
+       ]
+      },
+      "requires": [
+       "cs-px-kommandon"
+      ],
+      "exerciseCount": 5,
+      "reviewable": true
+     },
+     {
+      "id": "cs-px-loopar",
+      "title": "Gör om med en loop",
+      "tier": 2,
+      "pixel": true,
+      "level": {
+       "map": [
+        "###########",
+        "#S.......G#",
+        "###########"
+       ],
+       "goals": [
+        "goal"
+       ]
+      },
+      "requires": [
+       "cs-px-funktioner"
+      ],
+      "exerciseCount": 5,
+      "reviewable": true
+     },
+     {
+      "id": "cs-px-villkor",
+      "title": "Titta innan du går",
+      "tier": 3,
+      "pixel": true,
+      "level": {
+       "map": [
+        "#########",
+        "#S.g..g.G#",
+        "#########"
+       ],
+       "worlds": [
+        [
+         "#########",
+         "#Sg..g..G#",
+         "#########"
+        ],
+        [
+         "#########",
+         "#S...gg.G#",
+         "#########"
+        ]
+       ],
+       "goals": [
+        "goal",
+        "items"
+       ]
+      },
+      "requires": [
+       "cs-px-loopar"
+      ],
+      "exerciseCount": 5,
+      "reviewable": true
+     },
+     {
+      "id": "cs-px-while",
+      "title": "Gå tills du är framme",
+      "tier": 3,
+      "pixel": true,
+      "level": {
+       "map": [
+        "######",
+        "#S..G#",
+        "######"
+       ],
+       "worlds": [
+        [
+         "#########",
+         "#S......G#",
+         "#########"
+        ],
+        [
+         "####",
+         "#SG#",
+         "####"
+        ]
+       ],
+       "goals": [
+        "goal"
+       ]
+      },
+      "requires": [
+       "cs-px-villkor"
+      ],
+      "exerciseCount": 5,
+      "reviewable": true
+     },
+     {
+      "id": "cs-px-variabler",
+      "title": "Räkna med variabler",
+      "tier": 3,
+      "pixel": true,
+      "level": {
+       "map": [
+        "#########",
+        "#Sggggg.#",
+        "#########"
+       ],
+       "goals": [
+        "items",
+        {
+         "say": "Jag har 5"
+        }
+       ]
+      },
+      "requires": [
+       "cs-px-while"
+      ],
+      "exerciseCount": 5,
+      "reviewable": true
+     },
+     {
+      "id": "cs-px-listor",
+      "title": "Listor: vägar och ryggsäckar",
+      "tier": 3,
+      "pixel": true,
+      "level": {
+       "map": [
+        "######",
+        "#S.###",
+        "##..##",
+        "###.G#",
+        "######"
+       ],
+       "goals": [
+        "goal"
+       ]
+      },
+      "requires": [
+       "cs-px-variabler"
+      ],
+      "exerciseCount": 5,
+      "reviewable": true
+     },
+     {
+      "id": "cs-px-pixelkonst",
+      "title": "Loopar i loopar: pixelkonst",
+      "tier": 4,
+      "pixel": true,
+      "level": null,
+      "requires": [
+       "cs-px-listor"
+      ],
+      "exerciseCount": 5,
+      "reviewable": true
+     },
+     {
+      "id": "cs-px-turtle",
+      "title": "Rita figurer med turtle",
+      "tier": 4,
+      "pixel": true,
+      "level": null,
+      "requires": [
+       "cs-px-pixelkonst"
+      ],
+      "exerciseCount": 5,
+      "reviewable": true
+     },
+     {
+      "id": "cs-px-projekt",
+      "title": "Slutprojekt i Pixelvärlden",
+      "tier": 5,
+      "pixel": true,
+      "level": {
+       "map": [
+        "#########",
+        "#S..#...#",
+        "###.#.#.#",
+        "#...#.#.#",
+        "#.###.#.#",
+        "#.....#G#",
+        "#########"
+       ],
+       "worlds": [
+        [
+         "#######",
+         "#S....#",
+         "#####.#",
+         "#.....#",
+         "#.#####",
+         "#....G#",
+         "#######"
+        ]
+       ],
+       "goals": [
+        "goal"
+       ]
+      },
+      "requires": [
+       "cs-px-turtle"
+      ],
+      "exerciseCount": 3,
+      "reviewable": false
+     }
+    ]
    }
   ]
  },
@@ -1194,6 +1439,251 @@ export default [
        "py-menu-loop"
       ],
       "exerciseCount": 4,
+      "reviewable": false
+     }
+    ]
+   },
+   {
+    "id": "py-px",
+    "title": "Pixelvärlden",
+    "standalone": true,
+    "pixel": true,
+    "lessons": [
+     {
+      "id": "py-px-kommandon",
+      "title": "Hjälten följer dina rader",
+      "tier": 1,
+      "pixel": true,
+      "level": {
+       "map": [
+        "#######",
+        "#S...G#",
+        "#######"
+       ],
+       "goals": [
+        "goal"
+       ]
+      },
+      "requires": [],
+      "exerciseCount": 5,
+      "reviewable": true
+     },
+     {
+      "id": "py-px-funktioner",
+      "title": "Egna funktioner",
+      "tier": 2,
+      "pixel": true,
+      "level": {
+       "map": [
+        "####",
+        "#S.#",
+        "#.##",
+        "#G##",
+        "####"
+       ],
+       "goals": [
+        "goal"
+       ]
+      },
+      "requires": [
+       "py-px-kommandon"
+      ],
+      "exerciseCount": 5,
+      "reviewable": true
+     },
+     {
+      "id": "py-px-loopar",
+      "title": "Gör om med en loop",
+      "tier": 2,
+      "pixel": true,
+      "level": {
+       "map": [
+        "###########",
+        "#S.......G#",
+        "###########"
+       ],
+       "goals": [
+        "goal"
+       ]
+      },
+      "requires": [
+       "py-px-funktioner"
+      ],
+      "exerciseCount": 5,
+      "reviewable": true
+     },
+     {
+      "id": "py-px-villkor",
+      "title": "Titta innan du går",
+      "tier": 3,
+      "pixel": true,
+      "level": {
+       "map": [
+        "#########",
+        "#S.g..g.G#",
+        "#########"
+       ],
+       "worlds": [
+        [
+         "#########",
+         "#Sg..g..G#",
+         "#########"
+        ],
+        [
+         "#########",
+         "#S...gg.G#",
+         "#########"
+        ]
+       ],
+       "goals": [
+        "goal",
+        "items"
+       ]
+      },
+      "requires": [
+       "py-px-loopar"
+      ],
+      "exerciseCount": 5,
+      "reviewable": true
+     },
+     {
+      "id": "py-px-while",
+      "title": "Gå tills du är framme",
+      "tier": 3,
+      "pixel": true,
+      "level": {
+       "map": [
+        "######",
+        "#S..G#",
+        "######"
+       ],
+       "worlds": [
+        [
+         "#########",
+         "#S......G#",
+         "#########"
+        ],
+        [
+         "####",
+         "#SG#",
+         "####"
+        ]
+       ],
+       "goals": [
+        "goal"
+       ]
+      },
+      "requires": [
+       "py-px-villkor"
+      ],
+      "exerciseCount": 5,
+      "reviewable": true
+     },
+     {
+      "id": "py-px-variabler",
+      "title": "Räkna med variabler",
+      "tier": 3,
+      "pixel": true,
+      "level": {
+       "map": [
+        "#########",
+        "#Sggggg.#",
+        "#########"
+       ],
+       "goals": [
+        "items",
+        {
+         "say": "Jag har 5"
+        }
+       ]
+      },
+      "requires": [
+       "py-px-while"
+      ],
+      "exerciseCount": 5,
+      "reviewable": true
+     },
+     {
+      "id": "py-px-listor",
+      "title": "Listor: vägar och ryggsäckar",
+      "tier": 3,
+      "pixel": true,
+      "level": {
+       "map": [
+        "######",
+        "#S.###",
+        "##..##",
+        "###.G#",
+        "######"
+       ],
+       "goals": [
+        "goal"
+       ]
+      },
+      "requires": [
+       "py-px-variabler"
+      ],
+      "exerciseCount": 5,
+      "reviewable": true
+     },
+     {
+      "id": "py-px-pixelkonst",
+      "title": "Loopar i loopar: pixelkonst",
+      "tier": 4,
+      "pixel": true,
+      "level": null,
+      "requires": [
+       "py-px-listor"
+      ],
+      "exerciseCount": 5,
+      "reviewable": true
+     },
+     {
+      "id": "py-px-turtle",
+      "title": "Rita figurer med turtle",
+      "tier": 4,
+      "pixel": true,
+      "level": null,
+      "requires": [
+       "py-px-pixelkonst"
+      ],
+      "exerciseCount": 5,
+      "reviewable": true
+     },
+     {
+      "id": "py-px-projekt",
+      "title": "Slutprojekt i Pixelvärlden",
+      "tier": 5,
+      "pixel": true,
+      "level": {
+       "map": [
+        "#########",
+        "#S..#...#",
+        "###.#.#.#",
+        "#...#.#.#",
+        "#.###.#.#",
+        "#.....#G#",
+        "#########"
+       ],
+       "worlds": [
+        [
+         "#######",
+         "#S....#",
+         "#####.#",
+         "#.....#",
+         "#.#####",
+         "#....G#",
+         "#######"
+        ]
+       ],
+       "goals": [
+        "goal"
+       ]
+      },
+      "requires": [
+       "py-px-turtle"
+      ],
+      "exerciseCount": 3,
       "reviewable": false
      }
     ]

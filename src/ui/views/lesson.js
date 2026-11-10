@@ -6,7 +6,8 @@ import { saveLessonState, completeLesson, pref } from '../../state/model.js';
 import { TIER_XP, isUnlocked } from '../../state/progression.js';
 import { scheduleLesson } from '../../state/review.js';
 import { renderExercise } from '../exercise.js';
-import { runCode, previewFor } from '../../engine/runner.js';
+import { runCode, runPixelCode, previewFor } from '../../engine/runner.js';
+import { createStage } from '../pixel-stage.js';
 import { openCelebration } from '../celebrate.js';
 
 export function render(ctx, lessonId) {
@@ -77,16 +78,23 @@ export function render(ctx, lessonId) {
       <h3 class="ex-h">${lesson.lang === 'text' ? 'Så här kan det se ut' : 'Exempel'}</h3>
       <pre class="code-block"><code>${esc(lesson.example)}</code></pre>
       ${lesson.exampleInput ? `<p class="tiny muted">Indata när exemplet körs, en rad per läsning: <code>${esc(lesson.exampleInput.replace(/\n$/, '').split('\n').join(' ⏎ '))}</code></p>` : ''}
-      ${lesson.lang === 'text' ? '<p class="tiny muted">Kodstig kan inte köra en riktig terminal. Öva kommandona här och prova dem sedan på din egen dator.</p>' : isWeb ? `<div class="preview"><span class="output-label">Så här ser det ut</span><iframe title="Exemplets resultat" sandbox="" referrerpolicy="no-referrer"></iframe></div>`
+      ${lesson.pixel ? '<div class="read-stage"></div><div class="row"><button class="btn secondary small" type="button" data-run-pixel>Kör exemplet</button></div>' : lesson.lang === 'text' ? '<p class="tiny muted">Kodstig kan inte köra en riktig terminal. Öva kommandona här och prova dem sedan på din egen dator.</p>' : isWeb ? `<div class="preview"><span class="output-label">Så här ser det ut</span><iframe title="Exemplets resultat" sandbox="" referrerpolicy="no-referrer"></iframe></div>`
         : '<div class="row"><button class="btn secondary small" type="button" data-run-example>Kör exemplet</button></div><div class="output" hidden><span class="output-label">Utskrift</span><pre></pre></div>'}
       <div class="row end"><button class="btn primary" type="button" data-start>${Object.keys(state.solved).length ? 'Fortsätt öva' : 'Börja öva'}</button></div>
     </article>`;
     const ifr = stage.querySelector('iframe');
     if (ifr) { const pv = previewFor(lesson.example, true); ifr.setAttribute('sandbox', pv.sandbox); ifr.srcdoc = pv.srcdoc; }
+    if (lesson.pixel) {
+      readStage = createStage();
+      stage.querySelector('.read-stage').append(readStage.el);
+      readStage.setLevel(lesson.level || null);
+    }
   };
+  let readStage = null;
 
   const showExercise = (pos) => {
     if (current && current.destroy) current.destroy();
+    if (readStage) { readStage.destroy(); readStage = null; }
     const i = seq[pos];
     const ex = lesson.exercises[i];
     const wrap = h(`<article class="card exercise-card" data-i="${i}">
@@ -165,6 +173,12 @@ export function render(ctx, lessonId) {
     on(el, 'click', '[data-prev]', () => go(state.step - 1)),
     on(el, 'click', '[data-next]', () => { if (state.step >= total) finish(); else go(state.step + 1); }),
     on(el, 'click', '[data-milo-lesson]', () => ctx.openMilo()),
+    on(el, 'click', '[data-run-pixel]', async (e, b) => {
+      b.disabled = true;
+      const run = await runPixelCode(lesson.lang, lesson.example, { level: lesson.level || null });
+      b.disabled = false;
+      if (readStage) readStage.load(run);
+    }),
     on(el, 'click', '[data-run-example]', async (e, b) => {
       b.disabled = true;
       const run = await runCode(lesson.lang, lesson.example, [], { input: lesson.exampleInput });
@@ -185,6 +199,7 @@ export function render(ctx, lessonId) {
       clearTimeout(saveTimer);
       if (saveTimer) persist(true);
       if (current && current.destroy) current.destroy();
+      if (readStage) readStage.destroy();
       cleanups.forEach((f) => f());
       ctx.app.codeSource = null;
     },

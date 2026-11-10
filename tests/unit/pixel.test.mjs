@@ -132,3 +132,27 @@ test('pixel: API:t finns bara i Pixelvärlden och felen förklarar varför', () 
   assert.match(py('hjalte.moveRight()', LEVEL).error.message, /Menade du move_right\?/);
   assert.match(cs('Hjalte.X();', LEVEL).error.message, /egenskap/);
 });
+
+test('ritövningar: riktad återkoppling på vinklar, sidor, penna och pixlar', async () => {
+  const { grade } = await import('../../src/engine/grade.js');
+  const pixelRunner = async (lang, code, level) => runPixel(lang, code, { level, runners });
+  const ex = { type: 'world', draw: true, solution: 'import turtle\nt = turtle.Turtle()\nfor i in range(5):\n    t.forward(100)\n    t.left(72)' };
+  const g = (code, e = ex, lang = 'python') => grade(e, code, { lang, pixelRunner });
+  assert.match((await g('import turtle\nt = turtle.Turtle()\nfor i in range(5):\n    t.forward(100)\n    t.left(71)')).detail, /vred 71 grader, men det behövs 72.*360 \/ 5/);
+  assert.match((await g('import turtle\nt = turtle.Turtle()\nfor i in range(5):\n    t.forward(100)\n    t.left(108)')).detail, /inre vinkeln.*360 \/ 5 = 72/);
+  assert.match((await g('import turtle\nt = turtle.Turtle()\nfor i in range(5):\n    t.forward(100)\n    t.right(72)')).detail, /åt fel håll/);
+  assert.equal((await g('import turtle\nt = turtle.Turtle()\nfor i in range(10):\n    t.forward(50)\n    if i % 2 == 1:\n        t.left(72)')).ok, true, 'en sida i två delar räknas som samma sida');
+  const sq = { type: 'world', draw: true, solution: 'import turtle\nt = turtle.Turtle()\nfor i in range(4):\n    t.forward(100)\n    t.left(90)' };
+  assert.match((await g('import turtle\nt = turtle.Turtle()\nfor i in range(4):\n    t.forward(100 if i != 2 else 80)\n    t.left(90)', sq)).detail, /Sida 3/);
+  const dash = { type: 'world', draw: true, solution: 'import turtle\nt = turtle.Turtle()\nt.forward(50)\nt.penup()\nt.forward(30)\nt.pendown()\nt.forward(50)' };
+  assert.match((await g('import turtle\nt = turtle.Turtle()\nt.forward(130)', dash)).detail, /penup\(\)/);
+  assert.match((await g('var t = new Turtle();\nt.Forward(130);', { ...dash, solution: 'var t = new Turtle();\nt.Forward(50);\nt.PenUp();\nt.Forward(30);\nt.PenDown();\nt.Forward(50);' }, 'csharp')).detail, /PenUp\(\)/);
+  const art = { type: 'world', draw: true, solution: 'grid = Canvas(3, 2)\ngrid.draw(["r.r", ".r."])' };
+  assert.match((await g('grid = Canvas(3, 2)\ngrid.draw(["r.r", "..."])', art)).detail, /1 ruta skiljer.*\(1, 1\) vara röd, men den är tom/);
+  assert.match((await g('grid = Canvas(4, 2)', art)).detail, /3 brett och 2 högt/);
+  const free = { type: 'world', check: { canvas: { minColors: 2, minPixels: 3 } }, solution: '' };
+  assert.match((await g('grid = Canvas(4, 4)\ngrid.set_pixel(0, 0, "red")', free)).detail, /minst 2/);
+  const par = { type: 'world', level: { map: ['#####', '#S.G#', '#####'] }, par: 2, solution: '' };
+  assert.match((await g('for i in range(2):\n    hjalte.move_right()', par)).detail, /Extrastjärna/);
+  assert.match((await g('hjalte.move_right()\nhjalte.move_right()\nhjalte.say("klar")', par)).detail, /frivilligt/);
+});

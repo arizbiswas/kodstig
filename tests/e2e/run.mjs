@@ -693,6 +693,41 @@ async function main() {
       await context.close();
     });
 
+    await check('Pixelvärlden: kapitlet är öppet direkt, och en hel lektion går att klara', async () => {
+      const { context, page } = await newGuest(browser);
+      await page.goto(`${BASE}#/lar?kapitel=py-px`);
+      await page.locator('#chapter-panel').waitFor();
+      assert((await page.locator('#chapter-panel').textContent()).includes('Hjälten följer dina rader'), 'kapitlet visar första lektionen');
+      await page.goto(`${BASE}#/lektion/py-px-kommandon`);
+      await page.locator('.read-stage canvas').waitFor();
+      await page.locator('[data-run-pixel]').click();
+      await page.locator('.read-stage [data-px-restart]:not([disabled])').waitFor();
+      await finishLesson(page, 'py-px-kommandon');
+      await page.keyboard.press('Escape');
+      assert((await xpText(page)).includes('30'), 'lektionen gav XP');
+      // En rita-övning visar målbilden och ger riktad återkoppling på vinkeln.
+      await page.evaluate(() => {
+        const raw = localStorage.getItem('kodstig.guest.v1');
+        const p = JSON.parse(raw);
+        for (const id of ['py-px-funktioner', 'py-px-loopar', 'py-px-villkor', 'py-px-while', 'py-px-variabler', 'py-px-listor', 'py-px-pixelkonst']) p.doc.completed[id] = { at: new Date().toISOString() };
+        p.rev += 1;
+        localStorage.setItem('kodstig.guest.v1', JSON.stringify(p));
+      });
+      await page.reload();
+      await page.locator('#main h1').waitFor();
+      await page.goto(`${BASE}#/lektion/py-px-turtle`);
+      await startPractice(page);
+      const lesson = LESSON_BY_ID.get('py-px-turtle');
+      const pos = lesson.sequence.findIndex((i) => lesson.exercises[i].type === 'world' && /femhörning/.test(lesson.exercises[i].prompt));
+      for (let k = 0; k < pos; k++) { await solveExercise(page, lesson.exercises[lesson.sequence[k]]); await page.locator('[data-next]').click(); }
+      await page.locator('.exercise-card textarea').fill('import turtle\n\nt = turtle.Turtle()\nfor i in range(5):\n    t.forward(100)\n    t.left(70)\n');
+      await page.locator('[data-check]').click();
+      await page.locator('.feedback.bad').waitFor({ timeout: 8000 });
+      assert((await page.locator('.feedback').textContent()).includes('360 / 5'), 'återkopplingen säger 360 / 5');
+      assert(!page.errors.length, page.errors.join('\n'));
+      await context.close();
+    });
+
     // 8. Tangentbord och fokus
     await check('Tangentbord: hoppa-länk, fokus på rubrik, Esc i kodfält', async () => {
       const { context, page } = await newGuest(browser);

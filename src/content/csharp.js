@@ -1,6 +1,7 @@
 // C#-spåret. Grundkapitlen ligger här, fortsättningen i csharp-pro.js.
 import advanced from './csharp-pro.js';
 import interactive from './csharp-io.js';
+import { pixelChapter } from './pixel-chapter.js';
 const R = (re, msg) => ({ re, msg });
 
 export default {
@@ -510,5 +511,6 @@ export default {
     },
     ...advanced,
     ...interactive,
+    pixelChapter('csharp'),
   ],
 };

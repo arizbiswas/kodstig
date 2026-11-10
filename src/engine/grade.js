@@ -1,3 +1,5 @@
+import { compareTurtle, compareCanvas } from './pixel/compare.js';
+
 // Bedömning av övningar. Själva kodkörningen görs av `runner`, som i
 // webbläsaren är en isolerad Web Worker och i testerna tolkarna direkt.
 
@@ -53,7 +55,7 @@ export function show(v, lang) {
  * Bedömer ett svar.
  * @returns {Promise<{ok:boolean, title:string, detail?:string, tests?:Array, run?:object}>}
  */
-export async function grade(ex, answer, { lang, runner, webChecker }) {
+export async function grade(ex, answer, { lang, runner, webChecker, pixelRunner }) {
   switch (ex.type) {
     case 'choice': {
       const ok = answer === ex.answer;
@@ -82,9 +84,72 @@ export async function grade(ex, answer, { lang, runner, webChecker }) {
       return gradeCode(ex, String(answer ?? ''), lang, runner);
     case 'web':
       return webChecker(ex, String(answer ?? ''));
+    case 'world':
+      return gradeWorld(ex, String(answer ?? ''), lang, pixelRunner);
     default:
       return { ok: false, title: 'Okänd övningstyp.' };
   }
+}
+
+// Pixelvärlden. Rätt betyder att målen är klara i alla startvärldar, eller att
+// bilden blir som målbilden. Målbilden räknas fram genom att köra lösningen.
+const targets = new WeakMap();
+export async function worldTarget(ex, lang, pixelRunner) {
+  if (!ex.draw) return null;
+  if (!targets.has(ex)) targets.set(ex, pixelRunner(lang, ex.solution, ex.level || null).then((r) => r.final && { ...r.final, events: r.events }));
+  return targets.get(ex);
+}
+/** Antal rader med kod, utan tomma rader och kommentarer. */
+export const codeLines = (code, lang) => stripComments(code, lang).split('\n').filter((l) => l.trim() && !/^\s*[{}]\s*$/.test(l)).length;
+
+// Fria uppgifter utan facit: bara några krav på bilden.
+function freeCheck(check, run) {
+  if (check.canvas) {
+    const cv = run.final.canvases[run.final.canvases.length - 1];
+    if (!cv) return 'Det finns inget rutnät än.';
+    const cells = cv.px.flat().filter(Boolean);
+    const colors = new Set(cells).size;
+    if (check.canvas.minColors && colors < check.canvas.minColors) return `Bilden har ${colors} ${colors === 1 ? 'färg' : 'färger'}. Använd minst ${check.canvas.minColors}.`;
+    if (check.canvas.minPixels && cells.length < check.canvas.minPixels) return `Du har målat ${cells.length} rutor. Måla minst ${check.canvas.minPixels}.`;
+  }
+  if (check.turtle) {
+    const lines = run.final.lines.filter((l) => Math.hypot(l.x2 - l.x1, l.y2 - l.y1) > 0.5);
+    const colors = new Set(lines.map((l) => l.c)).size;
+    if (check.turtle.minLines && lines.length < check.turtle.minLines) return `Sköldpaddan har ritat ${lines.length} streck. Rita minst ${check.turtle.minLines}.`;
+    if (check.turtle.minColors && colors < check.turtle.minColors) return `Mönstret har ${colors} ${colors === 1 ? 'färg' : 'färger'}. Använd minst ${check.turtle.minColors}.`;
+  }
+  return null;
+}
+
+async function gradeWorld(ex, code, lang, pixelRunner) {
+  if (!stripComments(code, lang).trim()) return { ok: false, title: 'Skriv lite kod först.', detail: ex.hint };
+  const run = await pixelRunner(lang, code, ex.level || null);
+  const target = await worldTarget(ex, lang, pixelRunner);
+  if (run.error) return { ok: false, title: 'Koden stoppades av ett fel.', error: run.error, run, target, detail: ex.hint };
+  const src = checkSource(ex, code, lang, run);
+  if (src) return { ...src, target };
+  const goals = run.goals || [];
+  const tests = goals.map((g) => ({ label: g.text, ok: g.met }));
+  if (goals.some((g) => !g.met)) {
+    const other = run.otherWorld && run.mainOk ? ` Det gick inte i startvärld ${run.otherWorld.index} av ${run.worlds}. Koden ska fungera på alla kartor, så använd en loop och hjältens sensorer i stället för att räkna rutor.` : '';
+    return { ok: false, title: 'Inte i mål än.', tests, run, target, detail: `${ex.hint || 'Kör steg för steg och följ hjälten.'}${other}` };
+  }
+  if (ex.check) {
+    const msg = freeCheck(ex.check, run);
+    if (msg) return { ok: false, title: 'Nästan klart!', run, detail: msg };
+  }
+  if (target) {
+    const cmp = target.canvases && target.canvases.length
+      ? compareCanvas(target.canvases[target.canvases.length - 1], run.final.canvases[run.final.canvases.length - 1])
+      : compareTurtle(target, { lines: run.final.lines, events: run.events }, lang);
+    if (!cmp.ok) return { ok: false, title: 'Bilden är inte som målbilden än.', run, target, detail: cmp.msg };
+  }
+  let detail = ex.explain || '';
+  if (ex.par) {
+    const n = codeLines(code, lang);
+    detail += n <= ex.par ? ` Extrastjärna! Du klarade det på ${n} rader (högst ${ex.par}).` : ` Vill du ha en extrastjärna? Det går att klara på högst ${ex.par} rader, du använde ${n}. Det är frivilligt.`;
+  }
+  return { ok: true, title: 'Rätt!', detail: detail.trim(), tests, run, target, star: !!(ex.par && codeLines(code, lang) <= ex.par) };
 }
 
 // Ordningspussel: raderna ska stå i rätt ordning, och inga felaktiga rader får vara med.

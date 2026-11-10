@@ -1,6 +1,7 @@
 // Python-spåret. Grundkapitlen ligger här, fortsättningen i python-pro.js.
 import advanced from './python-pro.js';
 import interactive from './python-io.js';
+import { pixelChapter } from './pixel-chapter.js';
 
 const R = (re, msg) => ({ re, msg });
 
@@ -464,5 +465,6 @@ export default {
     },
     ...advanced,
     ...interactive,
+    pixelChapter('python'),
   ],
 };

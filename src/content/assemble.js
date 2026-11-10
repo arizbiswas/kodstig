@@ -50,6 +50,8 @@ export function decorate(tracks, { keepRequires = false } = {}) {
     track.chapters.forEach((ch, ci) => {
       ch.trackId = track.id;
       ch.index = ci;
+      // Ett fristående kapitel (Pixelvärlden) kräver inte kapitlen före det.
+      if (ch.standalone) prev = null;
       ch.lessons.forEach((l, li) => {
         l.trackId = track.id;
         l.chapterId = ch.id;

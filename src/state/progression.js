@@ -39,7 +39,8 @@ export function knowledge(profile) {
     k.total++;
     k[`t${l.tier}`]++;
     if (l.tier >= 4) k.applied++;
-    if (l.chapterIndex >= BASE_CHAPTERS) k.pro++;
+    // Pixelvärlden är ett eget spår in i programmering och räknas inte som fortsättningskapitel.
+    if (l.chapterIndex >= BASE_CHAPTERS && !l.pixel) k.pro++;
   }
   return k;
 }
@@ -115,7 +116,7 @@ export function nextStepAdvice(profile, preferredTrack) {
   if (!info.next) return null;
   const { reqs, xpMissing } = info.next;
   if (!reqs.length) return null;
-  const wanted = (l) => reqs.some((r) => (r.key === 'pro' ? l.chapterIndex >= BASE_CHAPTERS : REQ_TIERS[r.key].includes(l.tier)));
+  const wanted = (l) => reqs.some((r) => (r.key === 'pro' ? l.chapterIndex >= BASE_CHAPTERS && !l.pixel : REQ_TIERS[r.key].includes(l.tier)));
   const avail = availableLessons(profile);
   const pick = avail.find((l) => wanted(l) && l.trackId === preferredTrack) || avail.find(wanted);
   return {
